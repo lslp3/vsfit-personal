@@ -11,6 +11,7 @@ import {
   Wallet,
   MessageSquare,
   BarChart3,
+  Activity,
   User,
   LogOut,
   X,
@@ -34,6 +35,7 @@ const navItems = [
   { to: '/personal/financial', icon: Wallet, label: 'Financeiro' },
   { to: '/personal/chat', icon: MessageSquare, label: 'Chat' },
   { to: '/personal/reports', icon: BarChart3, label: 'Relatórios' },
+  { to: '/personal/progress', icon: Activity, label: 'Progresso' },
   { to: '/personal/profile', icon: User, label: 'Perfil' },
 ];
 
@@ -44,10 +46,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (!open) return;
+
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
+
     document.addEventListener('keydown', handleKeyDown);
+
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
@@ -84,13 +89,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <div className="w-10 h-10 rounded-full bg-[#ff2a32]/15 border border-[#ff2a32]/30 flex items-center justify-center">
                     <Logo className="w-5 h-5 text-[#ff2a32]" />
                   </div>
+
                   <div>
-                    <p className="text-base font-black text-white leading-tight">VSFit Personal</p>
+                    <p className="text-base font-black text-white leading-tight">
+                      VSFit Personal
+                    </p>
+
                     {trainerProfile && (
-                      <p className="text-[11px] text-zinc-500 mt-0.5">{trainerProfile.name}</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        {trainerProfile.name}
+                      </p>
                     )}
                   </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={onClose}
@@ -105,9 +117,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-bold text-white">
                     {getInitials(trainerProfile.name)}
                   </div>
+
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white truncate">{trainerProfile.name}</p>
-                    <p className="text-[11px] text-zinc-500 truncate">{trainerProfile.email}</p>
+                    <p className="text-sm font-bold text-white truncate">
+                      {trainerProfile.name}
+                    </p>
+
+                    <p className="text-[11px] text-zinc-500 truncate">
+                      {trainerProfile.email}
+                    </p>
                   </div>
                 </div>
               )}
