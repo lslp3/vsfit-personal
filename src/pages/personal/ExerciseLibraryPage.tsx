@@ -69,7 +69,7 @@ export function ExerciseLibraryPage() {
     setError(null);
     try {
       const data = await exerciseService.getExercises();
-      console.log('[ExerciseLibraryPage] loaded exercises:', data.length);
+   
       setExercises(data || []);
     } catch (err) {
       console.error('[ExerciseLibraryPage] load error:', err);
@@ -108,8 +108,6 @@ export function ExerciseLibraryPage() {
     const matchMuscle = !activeMuscle || label === activeMuscle;
     return matchSearch && matchMuscle;
   });
-
-  console.log('[EXERCISES PAGE] rendered:', exercises.length, '| filtered:', filtered.length);
 
   const handleCreate = async () => {
     if (!trainerProfile || !formName.trim()) return;
