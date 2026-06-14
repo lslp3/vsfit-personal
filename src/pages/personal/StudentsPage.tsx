@@ -13,9 +13,10 @@ import {
   Users,
   X,
 } from 'lucide-react';
+
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
-import { Input, Select, Textarea } from '../../components/ui/Input';
+import { Input, Textarea } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
 import * as studentService from '../../services/studentService';
 import * as subscriptionService from '../../services/subscriptionService';
@@ -37,6 +38,21 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'active', label: 'Ativos' },
   { key: 'paused', label: 'Pausados' },
   { key: 'inactive', label: 'Inativos' },
+];
+
+const OBJECTIVE_OPTIONS = [
+  { value: 'Emagrecimento', label: 'Emagrecimento' },
+  { value: 'Hipertrofia', label: 'Hipertrofia' },
+  { value: 'Definição', label: 'Definição' },
+  { value: 'Condicionamento', label: 'Condicionamento' },
+  { value: 'Saúde', label: 'Saúde' },
+  { value: 'Performance', label: 'Performance' },
+];
+
+const LEVEL_OPTIONS = [
+  { value: 'Iniciante', label: 'Iniciante' },
+  { value: 'Intermediário', label: 'Intermediário' },
+  { value: 'Avançado', label: 'Avançado' },
 ];
 
 function getStudentInitials(name?: string) {
@@ -464,6 +480,7 @@ export function StudentsPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
                 VSFit Personal
               </p>
+
               <h1 className="mt-0.5 text-2xl font-black tracking-tight">Alunos</h1>
             </div>
 
@@ -631,7 +648,9 @@ export function StudentsPage() {
                     label="Nome *"
                     placeholder="Nome completo"
                     value={createForm.name}
-                    onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, name: event.target.value })
+                    }
                   />
                 </div>
 
@@ -641,7 +660,9 @@ export function StudentsPage() {
                     type="email"
                     placeholder="email@exemplo.com"
                     value={createForm.email}
-                    onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, email: event.target.value })
+                    }
                   />
                 </div>
 
@@ -650,37 +671,62 @@ export function StudentsPage() {
                     label="Telefone"
                     placeholder="(11) 99999-9999"
                     value={createForm.phone}
-                    onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, phone: event.target.value })
+                    }
                   />
                 </div>
 
-                <div className="col-span-2">
-                  <Select
-                    label="Objetivo"
-                    value={createForm.objective}
-                    onChange={(event) => setCreateForm({ ...createForm, objective: event.target.value })}
-                    options={[
-                      { value: 'Emagrecimento', label: 'Emagrecimento' },
-                      { value: 'Hipertrofia', label: 'Hipertrofia' },
-                      { value: 'Definição', label: 'Definição' },
-                      { value: 'Condicionamento', label: 'Condicionamento' },
-                      { value: 'Saúde', label: 'Saúde' },
-                      { value: 'Performance', label: 'Performance' },
-                    ]}
-                  />
+                <div className="col-span-2 space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+                    Objetivo
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {OBJECTIVE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          setCreateForm({ ...createForm, objective: option.value })
+                        }
+                        className={cn(
+                          'min-h-11 rounded-2xl border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
+                          createForm.objective === option.value
+                            ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
+                            : 'border-white/10 bg-white/[0.045] text-zinc-400'
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <Select
-                    label="Nível"
-                    value={createForm.level}
-                    onChange={(event) => setCreateForm({ ...createForm, level: event.target.value })}
-                    options={[
-                      { value: 'Iniciante', label: 'Iniciante' },
-                      { value: 'Intermediário', label: 'Intermediário' },
-                      { value: 'Avançado', label: 'Avançado' },
-                    ]}
-                  />
+                <div className="col-span-2 space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+                    Nível
+                  </span>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {LEVEL_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          setCreateForm({ ...createForm, level: option.value })
+                        }
+                        className={cn(
+                          'h-11 rounded-2xl border px-2 text-[11px] font-black transition-all active:scale-[0.97]',
+                          createForm.level === option.value
+                            ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
+                            : 'border-white/10 bg-white/[0.045] text-zinc-400'
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -702,7 +748,9 @@ export function StudentsPage() {
                     step="0.1"
                     placeholder="ex: 75"
                     value={createForm.weight}
-                    onChange={(event) => setCreateForm({ ...createForm, weight: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, weight: event.target.value })
+                    }
                   />
                 </div>
 
@@ -712,11 +760,13 @@ export function StudentsPage() {
                     type="number"
                     placeholder="ex: 175"
                     value={createForm.height}
-                    onChange={(event) => setCreateForm({ ...createForm, height: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, height: event.target.value })
+                    }
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div>
                   <Input
                     label="Peso meta (kg)"
                     type="number"
@@ -734,7 +784,9 @@ export function StudentsPage() {
                     label="Observações"
                     placeholder="Anotações sobre o aluno..."
                     value={createForm.notes}
-                    onChange={(event) => setCreateForm({ ...createForm, notes: event.target.value })}
+                    onChange={(event) =>
+                      setCreateForm({ ...createForm, notes: event.target.value })
+                    }
                   />
                 </div>
 
@@ -747,7 +799,10 @@ export function StudentsPage() {
                     id="createAppAccess"
                     checked={createForm.createAppAccess}
                     onChange={(event) =>
-                      setCreateForm({ ...createForm, createAppAccess: event.target.checked })
+                      setCreateForm({
+                        ...createForm,
+                        createAppAccess: event.target.checked,
+                      })
                     }
                     className="h-5 w-5 rounded border-white/10 bg-white/5 accent-[#ff2a32]"
                   />
