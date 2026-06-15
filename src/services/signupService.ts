@@ -1,63 +1,64 @@
 import { supabase } from '../lib/supabase';
+import { generatePassword } from '../lib/utils';
 import type { SignupLink, SignupLead } from '../types/database';
-import { generateSlug } from '../lib/utils';
+
+type CreateSignupLinkData = {
+  title: string;
+  plan_name?: string;
+  message?: string;
+  slug?: string;
+};
+
+type SubmitSignupLeadData = {
+  signup_link_id: string;
+  coach_id: string;
+  coach_auth_user_id?: string | null;
+  name: string;
+  email: string;
+  phone?: string | null;
+  birth_date?: string | null;
+  goal?: string | null;
+  message?: string | null;
+};
+
+function normalizeSlug(value: string) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+function randomSlug(title: string) {
+  const base = normalizeSlug(title) || 'captacao';
+  const suffix = Math.random().toString(36).slice(2, 8);
+
+  return `${base}-${suffix}`;
+}
+
+function toNullableDate(value?: string | null) {
+  if (!value) return null;
+  return value;
+}
 
 export async function getSignupLinks(trainerId: string): Promise<SignupLink[]> {
   try {
     const { data, error } = await supabase
       .from('signup_links')
       .select('*')
-      .eq('trainer_id', trainerId)
+      .eq('coach_id', trainerId)
       .order('created_at', { ascending: false });
-    if (error) {
-      console.error('[SignupService] getSignupLinks error:', error);
-      return [];
-    }
-    return data || [];
+
+    if (error) throw error;
+
+    return (data || []) as SignupLink[];
   } catch (error) {
-    console.error('[SignupService] getSignupLinks exception:', error);
+    console.error('[signupService] getSignupLinks error:', error);
     return [];
   }
-}
-
-export async function createSignupLink(trainerId: string, data: {
-  title: string;
-  plan_name?: string;
-  message?: string;
-  slug?: string;
-}) {
-  const slug = data.slug || generateSlug();
-  const { data: link, error } = await supabase
-    .from('signup_links')
-    .insert({
-      trainer_id: trainerId,
-      title: data.title,
-      slug,
-      plan_name: data.plan_name || null,
-      message: data.message || null,
-      is_active: true,
-      visits_count: 0
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return link;
-}
-
-export async function toggleLinkStatus(linkId: string, active: boolean) {
-  const { error } = await supabase
-    .from('signup_links')
-    .update({ is_active: active })
-    .eq('id', linkId);
-  if (error) throw error;
-}
-
-export async function deleteSignupLink(linkId: string) {
-  const { error } = await supabase
-    .from('signup_links')
-    .delete()
-    .eq('id', linkId);
-  if (error) throw error;
 }
 
 export async function getLeadsByTrainer(trainerId: string): Promise<SignupLead[]> {
@@ -65,111 +66,123 @@ export async function getLeadsByTrainer(trainerId: string): Promise<SignupLead[]
     const { data, error } = await supabase
       .from('signup_leads')
       .select('*')
-      .eq('trainer_id', trainerId)
+      .eq('coach_id', trainerId)
       .order('created_at', { ascending: false });
-    if (error) {
-      console.error('[SignupService] getLeadsByTrainer error:', error);
-      return [];
-    }
-    return data || [];
+
+    if (error) throw error;
+
+    return (data || []) as SignupLead[];
   } catch (error) {
-    console.error('[SignupService] getLeadsByTrainer exception:', error);
+    console.error('[signupService] getLeadsByTrainer error:', error);
     return [];
   }
 }
 
-export async function getSignupLinkBySlug(slug: string): Promise<SignupLink | null> {
-  try {
-    const { data, error } = await supabase
-      .from('signup_links')
-      .select('*')
-      .eq('slug', slug)
-      .maybeSingle();
-    if (error) {
-      console.error('[SignupService] getSignupLinkBySlug error:', error);
-      return null;
-    }
-    return data;
-  } catch (error) {
-    console.error('[SignupService] getSignupLinkBySlug exception:', error);
-    return null;
-  }
+export async function createSignupLink(trainerId: string, payload: CreateSignupLinkData) {
+  const slug = normalizeSlug(payload.slug || '') || randomSlug(payload.title);
+
+  const { data, error } = await supabase
+    .from('signup_links')
+    .insert({
+      coach_id: trainerId,
+      title: payload.title,
+      plan_name: payload.plan_name || null,
+      message: payload.message || null,
+      slug,
+      is_active: true,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return data as SignupLink;
 }
 
-export async function getTrainerBySignupLink(slug: string): Promise<{ trainer_id: string; name: string; plan_name: string | null } | null> {
-  try {
-    const link = await getSignupLinkBySlug(slug);
-    if (!link) return null;
+export async function deleteSignupLink(id: string) {
+  const { error } = await supabase.from('signup_links').delete().eq('id', id);
 
-    const { data, error } = await supabase
-      .from('trainer_profiles')
-      .select('id, name')
-      .eq('id', link.trainer_id)
-      .maybeSingle();
-    if (error) {
-      console.error('[SignupService] getTrainerBySignupLink error:', error);
-      return null;
-    }
-    if (!data) return null;
-
-    return { trainer_id: link.trainer_id, name: data.name, plan_name: link.plan_name };
-  } catch (error) {
-    console.error('[SignupService] getTrainerBySignupLink exception:', error);
-    return null;
-  }
+  if (error) throw error;
 }
 
-export async function submitSignupLead(data: {
-  signupLinkSlug: string;
-  name: string;
-  email: string;
-  phone?: string;
-  goal?: string;
-  message?: string;
-}): Promise<boolean> {
-  try {
-    const link = await getSignupLinkBySlug(data.signupLinkSlug);
-    if (!link) {
-      console.error('[SignupService] submitSignupLead: link not found');
-      return false;
-    }
+export async function toggleLinkStatus(id: string, isActive: boolean) {
+  const { data, error } = await supabase
+    .from('signup_links')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .select('*')
+    .single();
 
-    const { error } = await supabase
-      .from('signup_leads')
-      .insert({
-        signup_link_id: link.id,
-        trainer_id: link.trainer_id,
-        name: data.name,
-        email: data.email || null,
-        phone: data.phone || null,
-        goal: data.goal || null,
-        message: data.message || null,
-        status: 'pending',
-      });
-    if (error) {
-      console.error('[SignupService] submitSignupLead error:', error);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error('[SignupService] submitSignupLead exception:', error);
-    return false;
-  }
+  if (error) throw error;
+
+  return data as SignupLink;
 }
 
-function generateTemporaryPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  let password = '';
-  for (let i = 0; i < 8; i++) {
-    password += chars[Math.floor(Math.random() * chars.length)];
+export async function getTrainerBySignupLink(slug: string) {
+  const { data: link, error: linkError } = await supabase
+    .from('signup_links')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (linkError) throw linkError;
+  if (!link) return null;
+
+  await supabase
+    .from('signup_links')
+    .update({ visits_count: Number(link.visits_count || 0) + 1 })
+    .eq('id', link.id);
+
+  let trainer = null;
+
+  for (const table of ['trainer_profiles', 'profiles', 'user_profiles']) {
+    try {
+      const { data } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', link.coach_id)
+        .maybeSingle();
+
+      if (data) {
+        trainer = data;
+        break;
+      }
+    } catch {
+      // tenta próxima tabela
+    }
   }
-  return password;
+
+  return {
+    link,
+    trainer,
+  };
 }
 
-export async function convertLeadToStudent(leadId: string, trainerId: string): Promise<{
-  student: any;
-  credentials: { email: string; password: string };
-}> {
+export async function submitSignupLead(payload: SubmitSignupLeadData) {
+  const { data, error } = await supabase
+    .from('signup_leads')
+    .insert({
+      signup_link_id: payload.signup_link_id,
+      coach_id: payload.coach_id,
+      coach_auth_user_id: payload.coach_auth_user_id || null,
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone || null,
+      birth_date: toNullableDate(payload.birth_date),
+      goal: payload.goal || null,
+      message: payload.message || null,
+      status: 'new',
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return data as SignupLead;
+}
+
+export async function convertLeadToStudent(leadId: string, trainerId: string) {
   const { data: lead, error: leadError } = await supabase
     .from('signup_leads')
     .select('*')
@@ -179,18 +192,7 @@ export async function convertLeadToStudent(leadId: string, trainerId: string): P
   if (leadError) throw leadError;
   if (!lead) throw new Error('Lead não encontrado.');
 
-  const temporaryPassword = generateTemporaryPassword();
-
-  const { data: existingStudent } = await supabase
-    .from('students')
-    .select('*')
-    .eq('trainer_id', trainerId)
-    .eq('email', lead.email)
-    .maybeSingle();
-
-  if (existingStudent) {
-    throw new Error('Este lead já existe como aluno.');
-  }
+  const temporaryPassword = generatePassword();
 
   const { data: student, error: studentError } = await supabase
     .from('students')
@@ -199,29 +201,60 @@ export async function convertLeadToStudent(leadId: string, trainerId: string): P
       name: lead.name,
       email: lead.email,
       phone: lead.phone || null,
+      birth_date: lead.birth_date || null,
       status: 'active',
+      source: 'signup_link',
+      signup_lead_id: lead.id,
+      login_enabled: true,
+      app_access_status: 'invited',
     })
     .select('*')
     .single();
 
   if (studentError) throw studentError;
 
-  const { data: authResult, error: authError } = await supabase.functions.invoke('create-or-reset-student-auth', {
-    body: {
-      studentId: student.id,
-      email: student.email,
-      password: temporaryPassword,
-      name: student.name,
-    },
+  await supabase.from('student_goals').insert({
+    student_id: student.id,
+    objective: lead.goal || null,
+    level: 'Iniciante',
   });
 
-  if (authError) {
-    console.error('[CREATE STUDENT AUTH]', authError);
-    throw new Error(authError.message || 'Erro ao criar acesso do aluno.');
+  const { data: authResult, error: fnError } = await supabase.functions.invoke(
+    'create-or-reset-student-auth',
+    {
+      body: {
+        studentId: student.id,
+        email: lead.email,
+        name: lead.name,
+        password: temporaryPassword,
+      },
+    }
+  );
+
+  if (fnError) {
+    console.error('[signupService] create-or-reset-student-auth error:', fnError);
   }
 
-  if (!authResult?.success) {
-    throw new Error(authResult?.error || 'Erro ao criar acesso do aluno.');
+  const authUserId = authResult?.authUserId || authResult?.user?.id || null;
+
+  await supabase.from('student_accounts').upsert(
+    {
+      student_id: student.id,
+      auth_user_id: authUserId,
+      email: lead.email,
+      temporary_password: temporaryPassword,
+      must_change_password: true,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'student_id' }
+  );
+
+  if (authUserId) {
+    await supabase
+      .from('students')
+      .update({ auth_user_id: authUserId })
+      .eq('id', student.id);
   }
 
   await supabase
@@ -232,10 +265,13 @@ export async function convertLeadToStudent(leadId: string, trainerId: string): P
       converted_student_id: student.id,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', leadId);
+    .eq('id', lead.id);
 
   return {
     student,
-    credentials: { email: lead.email, password: temporaryPassword },
+    credentials: {
+      email: lead.email,
+      password: temporaryPassword,
+    },
   };
 }

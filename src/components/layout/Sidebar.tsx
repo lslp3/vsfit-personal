@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
+  Bell,
   Users,
   Dumbbell,
   ClipboardList,
@@ -29,6 +30,7 @@ interface SidebarProps {
 
 const navItems = [
   { to: '/personal/dashboard', icon: LayoutDashboard, label: 'Painel' },
+  { to: '/personal/notifications', icon: Bell, label: 'Notificações' },
   { to: '/personal/students', icon: Users, label: 'Alunos' },
   { to: '/personal/exercise-library', icon: Dumbbell, label: 'Biblioteca' },
   { to: '/personal/workout-builder', icon: ClipboardList, label: 'Montar Treino' },
@@ -171,3 +173,5 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     </AnimatePresence>
   );
 }
+
+export default Sidebar;

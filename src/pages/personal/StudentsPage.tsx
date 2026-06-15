@@ -1,22 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  AlertTriangle,
-  Check,
-  Copy,
-  KeyRound,
-  Phone,
-  Plus,
-  Search,
-  Send,
-  Users,
-  X,
-} from 'lucide-react';
-
+import { Search, Plus, Users, Phone, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { supabase } from '../../lib/supabase';
-import { Input, Textarea } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Input, Select, Textarea } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import * as studentService from '../../services/studentService';
 import * as subscriptionService from '../../services/subscriptionService';
@@ -26,13 +15,6 @@ import type { Student } from '../../types/database';
 
 type FilterType = 'all' | 'active' | 'paused' | 'inactive';
 
-type CreatedStudentAccess = {
-  name: string;
-  email: string;
-  phone?: string;
-  password?: string;
-};
-
 const filters: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'Todos' },
   { key: 'active', label: 'Ativos' },
@@ -40,20 +22,24 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'inactive', label: 'Inativos' },
 ];
 
-const OBJECTIVE_OPTIONS = [
-  { value: 'Emagrecimento', label: 'Emagrecimento' },
-  { value: 'Hipertrofia', label: 'Hipertrofia' },
-  { value: 'Definição', label: 'Definição' },
-  { value: 'Condicionamento', label: 'Condicionamento' },
-  { value: 'Saúde', label: 'Saúde' },
-  { value: 'Performance', label: 'Performance' },
-];
-
-const LEVEL_OPTIONS = [
-  { value: 'Iniciante', label: 'Iniciante' },
-  { value: 'Intermediário', label: 'Intermediário' },
-  { value: 'Avançado', label: 'Avançado' },
-];
+const initialCreateForm = {
+  name: '',
+  email: '',
+  phone: '',
+  birthDate: '',
+  objective: '',
+  level: 'Iniciante',
+  weight: '',
+  height: '',
+  bodyFat: '',
+  targetBodyFat: '',
+  muscleMass: '',
+  waterIntake: '',
+  targetWeight: '',
+  weeklyFrequency: '',
+  notes: '',
+  createAppAccess: false,
+};
 
 function getStudentInitials(name?: string) {
   const safeName = String(name || 'Aluno').trim();
@@ -64,42 +50,6 @@ function getStudentInitials(name?: string) {
   }
 
   return safeName.slice(0, 2).toUpperCase();
-}
-
-function normalizeWhatsappPhone(value?: string) {
-  const digits = String(value || '').replace(/\D/g, '');
-
-  if (!digits) return '';
-
-  if (digits.length === 10 || digits.length === 11) {
-    return `55${digits}`;
-  }
-
-  return digits;
-}
-
-function buildAccessMessage(access: CreatedStudentAccess) {
-  return `Olá ${access.name}, seu acesso ao VSFit Personal foi criado:
-
-Email: ${access.email}
-Senha temporária: ${access.password || 'Senha não retornada. Solicite redefinição.'}
-
-Acesse o aplicativo e altere sua senha após o primeiro login.`;
-}
-
-function getCreatedPassword(result: any) {
-  return (
-    result?.credentials?.password ||
-    result?.credentials?.temporary_password ||
-    result?.password ||
-    result?.temporary_password ||
-    result?.temporaryPassword ||
-    result?.studentAccount?.temporary_password ||
-    result?.account?.temporary_password ||
-    result?.data?.credentials?.password ||
-    result?.data?.password ||
-    ''
-  );
 }
 
 function StudentAvatar({ student }: { student: any }) {
@@ -192,9 +142,6 @@ export function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trainerProfile, isAuthenticated } = useAuthStore();
 
-  const [fallbackTrainerProfile, setFallbackTrainerProfile] = useState<any>(null);
-  const activeTrainerProfile = trainerProfile || fallbackTrainerProfile;
-
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -207,22 +154,7 @@ export function StudentsPage() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalMessage, setPlanModalMessage] = useState('');
 
-  const [createdAccess, setCreatedAccess] = useState<CreatedStudentAccess | null>(null);
-  const [copiedAccess, setCopiedAccess] = useState(false);
-
-  const [createForm, setCreateForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    objective: '',
-    level: 'Iniciante',
-    weight: '',
-    height: '',
-    targetWeight: '',
-    weeklyFrequency: '',
-    notes: '',
-    createAppAccess: true,
-  });
+  const [createForm, setCreateForm] = useState(initialCreateForm);
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -232,70 +164,21 @@ export function StudentsPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    loadStudents();
+  }, [isAuthenticated, trainerProfile?.id]);
 
-    if (activeTrainerProfile?.id) {
-      loadStudents(activeTrainerProfile.id);
-      return;
-    }
-
-    resolveTrainerProfileFallback().then((profile) => {
-      if (profile?.id) {
-        loadStudents(profile.id);
-      } else {
-        setLoading(false);
-      }
-    });
-  }, [isAuthenticated, trainerProfile?.id, fallbackTrainerProfile?.id]);
-
-  async function resolveTrainerProfileFallback() {
-    if (trainerProfile?.id) {
-      setFallbackTrainerProfile(null);
-      return trainerProfile;
-    }
-
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const email = authData.user?.email;
-
-      if (!email) {
-        return null;
-      }
-
-      const { data, error: profileError } = await supabase
-        .from('trainer_profiles')
-        .select('*')
-        .ilike('email', email)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('[StudentsPage] Erro ao buscar personal pelo email:', profileError);
-        return null;
-      }
-
-      if (data) {
-        setFallbackTrainerProfile(data);
-        return data;
-      }
-
-      return null;
-    } catch (fallbackError) {
-      console.error('[StudentsPage] resolveTrainerProfileFallback error:', fallbackError);
-      return null;
-    }
-  }
-
-  async function loadStudents(forcedTrainerId?: string) {
+  async function loadStudents() {
     setLoading(true);
 
-    const tid = forcedTrainerId || activeTrainerProfile?.id;
+    const trainerId = trainerProfile?.id;
 
-    if (!tid) {
+    if (!trainerId) {
       setLoading(false);
       return;
     }
 
     try {
-      const data = await studentService.getStudentsByTrainer(tid);
+      const data = await studentService.getStudentsByTrainer(trainerId);
       setStudents(data || []);
     } catch (err) {
       console.error('[StudentsPage] loadStudents error:', err);
@@ -304,33 +187,16 @@ export function StudentsPage() {
     }
   }
 
-  function resetCreateForm() {
-    setCreateForm({
-      name: '',
-      email: '',
-      phone: '',
-      objective: '',
-      level: 'Iniciante',
-      weight: '',
-      height: '',
-      targetWeight: '',
-      weeklyFrequency: '',
-      notes: '',
-      createAppAccess: true,
-    });
-  }
-
   function closeCreateModal() {
     setIsCreateModalOpen(false);
     setError('');
-    resetCreateForm();
+    setCreateForm(initialCreateForm);
     setSearchParams({});
   }
 
   function openCreateModal() {
-    setCreatedAccess(null);
-    setError('');
     setIsCreateModalOpen(true);
+    setError('');
   }
 
   async function handleCreateStudent() {
@@ -339,16 +205,14 @@ export function StudentsPage() {
       return;
     }
 
-    const currentTrainer = activeTrainerProfile || (await resolveTrainerProfileFallback());
-
-    if (!currentTrainer?.id) {
+    if (!trainerProfile?.id) {
       setError('Perfil do personal não encontrado. Saia e entre novamente no app.');
       return;
     }
 
     const studentCount = students.length;
-    const currentPlanSlug = await subscriptionService.getCurrentPlanSlug(currentTrainer.id);
-    const canCreate = await subscriptionService.canCreateStudent(currentTrainer.id, studentCount);
+    const currentPlanSlug = await subscriptionService.getCurrentPlanSlug(trainerProfile.id);
+    const canCreate = await subscriptionService.canCreateStudent(trainerProfile.id, studentCount);
     const studentLimit = getPlanLimits(currentPlanSlug).students;
 
     if (!canCreate) {
@@ -372,82 +236,35 @@ export function StudentsPage() {
     setError('');
 
     try {
-      const result = await studentService.createStudent(currentTrainer.id, {
+      await studentService.createStudent(trainerProfile.id, {
         name: createForm.name.trim(),
-        email: createForm.email.trim(),
+        email: createForm.email.trim().toLowerCase(),
         phone: createForm.phone || undefined,
+        birthDate: createForm.birthDate || undefined,
         objective: createForm.objective || undefined,
         level: createForm.level,
         weight: createForm.weight ? Number(createForm.weight) : undefined,
         height: createForm.height ? Number(createForm.height) : undefined,
+        bodyFat: createForm.bodyFat ? Number(createForm.bodyFat) : undefined,
+        targetBodyFat: createForm.targetBodyFat ? Number(createForm.targetBodyFat) : undefined,
+        muscleMass: createForm.muscleMass ? Number(createForm.muscleMass) : undefined,
+        waterIntake: createForm.waterIntake ? Number(createForm.waterIntake) : undefined,
         targetWeight: createForm.targetWeight ? Number(createForm.targetWeight) : undefined,
-        weeklyFrequency: createForm.weeklyFrequency ? Number(createForm.weeklyFrequency) : undefined,
+        weeklyFrequency: createForm.weeklyFrequency
+          ? Number(createForm.weeklyFrequency)
+          : undefined,
         notes: createForm.notes || undefined,
         createAppAccess: createForm.createAppAccess,
       });
 
-      await loadStudents(currentTrainer.id);
-
-      if (createForm.createAppAccess) {
-        const password = getCreatedPassword(result);
-
-        setCreatedAccess({
-          name: createForm.name.trim(),
-          email: createForm.email.trim(),
-          phone: createForm.phone,
-          password,
-        });
-
-        resetCreateForm();
-        setSearchParams({});
-        return;
-      }
-
+      await loadStudents();
       closeCreateModal();
     } catch (err: any) {
-      console.error('[StudentsPage] createStudent error:', err);
+      console.error('[StudentsPage] create student error:', err);
       setError(err?.message || 'Erro ao criar aluno.');
     } finally {
       setSaving(false);
     }
-  }
-
-  function handleCopyAccess() {
-    if (!createdAccess) return;
-
-    const message = buildAccessMessage(createdAccess);
-
-    navigator.clipboard
-      .writeText(message)
-      .then(() => {
-        setCopiedAccess(true);
-        setTimeout(() => setCopiedAccess(false), 2000);
-      })
-      .catch(() => {
-        alert('Não foi possível copiar o acesso.');
-      });
-  }
-
-  function handleSendAccessWhatsApp() {
-    if (!createdAccess) return;
-
-    const phone = normalizeWhatsappPhone(createdAccess.phone);
-    const message = encodeURIComponent(buildAccessMessage(createdAccess));
-
-    if (!phone) {
-      navigator.clipboard
-        .writeText(buildAccessMessage(createdAccess))
-        .then(() => {
-          alert('Telefone não informado. A mensagem foi copiada para envio manual.');
-        })
-        .catch(() => {
-          alert('Telefone não informado.');
-        });
-
-      return;
-    }
-
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   }
 
   const filtered = students.filter((student) => {
@@ -480,7 +297,6 @@ export function StudentsPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
                 VSFit Personal
               </p>
-
               <h1 className="mt-0.5 text-2xl font-black tracking-tight">Alunos</h1>
             </div>
 
@@ -496,7 +312,6 @@ export function StudentsPage() {
 
           <div className="group relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition-colors group-focus-within:text-[#ff2a32]" />
-
             <input
               type="text"
               placeholder="Buscar por nome ou email..."
@@ -576,7 +391,6 @@ export function StudentsPage() {
                               <h3 className="truncate text-[15px] font-black tracking-[-0.02em] text-white">
                                 {student.name}
                               </h3>
-
                               <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400">
                                 {student.email || 'Sem email'}
                               </p>
@@ -614,396 +428,275 @@ export function StudentsPage() {
         <Plus className="h-6 w-6" />
       </button>
 
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/85 px-3 backdrop-blur-xl sm:items-center">
-          <button type="button" className="absolute inset-0" onClick={closeCreateModal} />
+      <Modal open={isCreateModalOpen} onClose={closeCreateModal} title="Novo Aluno">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Input
+                label="Nome *"
+                placeholder="Nome completo"
+                value={createForm.name}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, name: event.target.value })
+                }
+              />
+            </div>
 
-          <div className="relative flex max-h-[92vh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-[32px] border border-white/10 bg-[#080808] shadow-[0_30px_100px_rgba(0,0,0,0.9)] sm:rounded-[32px]">
-            <div className="shrink-0 border-b border-white/5 bg-[#080808] px-5 py-5">
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300"
+            <div className="col-span-2">
+              <Input
+                label="Email *"
+                type="email"
+                placeholder="email@exemplo.com"
+                value={createForm.email}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, email: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Input
+                label="Telefone"
+                placeholder="(11) 99999-9999"
+                value={createForm.phone}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, phone: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Input
+                label="Data de nascimento"
+                type="date"
+                value={createForm.birthDate}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, birthDate: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Select
+                label="Objetivo"
+                value={createForm.objective}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, objective: event.target.value })
+                }
+                options={[
+                  { value: 'Emagrecimento', label: 'Emagrecimento' },
+                  { value: 'Hipertrofia', label: 'Hipertrofia' },
+                  { value: 'Definição', label: 'Definição' },
+                  { value: 'Condicionamento', label: 'Condicionamento' },
+                  { value: 'Saúde', label: 'Saúde' },
+                  { value: 'Performance', label: 'Performance' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <Select
+                label="Nível"
+                value={createForm.level}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, level: event.target.value })
+                }
+                options={[
+                  { value: 'Iniciante', label: 'Iniciante' },
+                  { value: 'Intermediário', label: 'Intermediário' },
+                  { value: 'Avançado', label: 'Avançado' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Frequência semanal"
+                type="number"
+                placeholder="ex: 5"
+                value={createForm.weeklyFrequency}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, weeklyFrequency: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Peso (kg)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 75"
+                value={createForm.weight}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, weight: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Altura (cm)"
+                type="number"
+                placeholder="ex: 175"
+                value={createForm.height}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, height: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Gordura (%)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 22"
+                value={createForm.bodyFat}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, bodyFat: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Massa muscular (kg)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 38"
+                value={createForm.muscleMass}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, muscleMass: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Meta gordura (%)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 18"
+                value={createForm.targetBodyFat}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, targetBodyFat: event.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Água (L)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 3"
+                value={createForm.waterIntake}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, waterIntake: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Input
+                label="Peso meta (kg)"
+                type="number"
+                step="0.1"
+                placeholder="ex: 70"
+                value={createForm.targetWeight}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, targetWeight: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Textarea
+                label="Observações"
+                placeholder="Anotações sobre o aluno..."
+                value={createForm.notes}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, notes: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="col-span-2 flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3">
+              <input
+                type="checkbox"
+                id="createAppAccess"
+                checked={createForm.createAppAccess}
+                onChange={(event) =>
+                  setCreateForm({
+                    ...createForm,
+                    createAppAccess: event.target.checked,
+                  })
+                }
+                className="h-5 w-5 rounded border-white/10 bg-white/5 accent-[#ff2a32]"
+              />
+              <label
+                htmlFor="createAppAccess"
+                className="cursor-pointer text-sm font-medium text-zinc-300"
               >
-                <X className="h-5 w-5" />
-              </button>
-
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
-                Cadastro manual
-              </p>
-
-              <h2 className="mt-1 text-[22px] font-black uppercase italic tracking-tight text-white">
-                Novo Aluno
-              </h2>
-
-              <p className="mt-1 pr-12 text-[12px] font-medium text-zinc-500">
-                Cadastre o aluno e, se desejar, gere o acesso ao app automaticamente.
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-5 py-5">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <Input
-                    label="Nome *"
-                    placeholder="Nome completo"
-                    value={createForm.name}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, name: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <Input
-                    label="Email *"
-                    type="email"
-                    placeholder="email@exemplo.com"
-                    value={createForm.email}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, email: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <Input
-                    label="Telefone"
-                    placeholder="(11) 99999-9999"
-                    value={createForm.phone}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, phone: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2 space-y-2">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
-                    Objetivo
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {OBJECTIVE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          setCreateForm({ ...createForm, objective: option.value })
-                        }
-                        className={cn(
-                          'min-h-11 rounded-2xl border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                          createForm.objective === option.value
-                            ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                            : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="col-span-2 space-y-2">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
-                    Nível
-                  </span>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {LEVEL_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          setCreateForm({ ...createForm, level: option.value })
-                        }
-                        className={cn(
-                          'h-11 rounded-2xl border px-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                          createForm.level === option.value
-                            ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                            : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Input
-                    label="Frequência semanal"
-                    type="number"
-                    placeholder="ex: 5"
-                    value={createForm.weeklyFrequency}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, weeklyFrequency: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    label="Peso (kg)"
-                    type="number"
-                    step="0.1"
-                    placeholder="ex: 75"
-                    value={createForm.weight}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, weight: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    label="Altura (cm)"
-                    type="number"
-                    placeholder="ex: 175"
-                    value={createForm.height}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, height: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    label="Peso meta (kg)"
-                    type="number"
-                    step="0.1"
-                    placeholder="ex: 70"
-                    value={createForm.targetWeight}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, targetWeight: event.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <Textarea
-                    label="Observações"
-                    placeholder="Anotações sobre o aluno..."
-                    value={createForm.notes}
-                    onChange={(event) =>
-                      setCreateForm({ ...createForm, notes: event.target.value })
-                    }
-                  />
-                </div>
-
-                <label
-                  htmlFor="createAppAccess"
-                  className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.045] p-3"
-                >
-                  <input
-                    type="checkbox"
-                    id="createAppAccess"
-                    checked={createForm.createAppAccess}
-                    onChange={(event) =>
-                      setCreateForm({
-                        ...createForm,
-                        createAppAccess: event.target.checked,
-                      })
-                    }
-                    className="h-5 w-5 rounded border-white/10 bg-white/5 accent-[#ff2a32]"
-                  />
-
-                  <span className="text-sm font-medium text-zinc-300">
-                    Criar acesso ao app para o aluno
-                  </span>
-                </label>
-              </div>
-
-              {error && (
-                <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-400">
-                  {error}
-                </div>
-              )}
-            </div>
-
-            <div className="shrink-0 border-t border-white/10 bg-[#080808] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={closeCreateModal}
-                  className="flex-1 rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-4 text-[13px] font-black text-white transition-all active:scale-[0.98]"
-                >
-                  CANCELAR
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCreateStudent}
-                  disabled={saving}
-                  className="flex-1 rounded-[18px] bg-[#ff2a32] px-4 py-4 text-[13px] font-black text-white transition-all disabled:opacity-50 active:scale-[0.98]"
-                >
-                  {saving ? 'SALVANDO...' : 'SALVAR ALUNO'}
-                </button>
-              </div>
+                Criar acesso ao app para o aluno
+              </label>
             </div>
           </div>
-        </div>
-      )}
 
-      {createdAccess && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/95 px-4 backdrop-blur-2xl">
-          <div className="relative w-full max-w-[380px] overflow-hidden rounded-[36px] border border-white/10 bg-[#080808] shadow-[0_35px_100px_rgba(0,0,0,1)]">
-            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-emerald-500/20 to-transparent" />
-
-            <div className="relative p-7 pt-10">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-500/15 text-emerald-400">
-                <KeyRound className="h-10 w-10" />
-              </div>
-
-              <h2 className="mt-6 text-center text-[24px] font-black uppercase italic tracking-tight text-white">
-                Acesso Criado!
-              </h2>
-
-              <p className="mt-2 text-center text-[13px] leading-relaxed text-zinc-400">
-                Envie estes dados para o aluno acessar o aplicativo.
-              </p>
-
-              <div className="mt-8 rounded-[22px] border border-white/10 bg-white/[0.045] p-4">
-                <div className="space-y-3">
-                  <div>
-                    <p className="pl-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                      Aluno
-                    </p>
-
-                    <p className="text-[15px] font-black uppercase italic text-white">
-                      {createdAccess.name}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="pl-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                      Email
-                    </p>
-
-                    <p className="truncate text-[13px] font-medium text-white">
-                      {createdAccess.email}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/70">
-                      Senha Temporária
-                    </p>
-
-                    <p className="text-2xl font-black tracking-widest text-emerald-400">
-                      {createdAccess.password || '---'}
-                    </p>
-
-                    {!createdAccess.password && (
-                      <p className="mt-2 text-[11px] font-bold text-yellow-300">
-                        A senha não foi retornada pelo serviço. Use redefinir senha no perfil do aluno.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopyAccess}
-                  className="h-14 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white transition-all active:scale-95"
-                >
-                  {copiedAccess ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Check className="h-4 w-4 text-emerald-400" />
-                      COPIADO
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Copy className="h-4 w-4" />
-                      COPIAR
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSendAccessWhatsApp}
-                  className="h-14 rounded-[20px] bg-emerald-600 text-[13px] font-black text-white transition-all active:scale-95"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <Send className="h-4 w-4" />
-                    WHATSAPP
-                  </span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCreatedAccess(null);
-                  closeCreateModal();
-                }}
-                className="mt-4 h-12 w-full rounded-[20px] border border-white/5 text-[12px] font-black uppercase tracking-widest text-zinc-500 transition-all active:scale-95"
-              >
-                FECHAR
-              </button>
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              {error}
             </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" onClick={closeCreateModal} className="flex-1">
+              Cancelar
+            </Button>
+
+            <Button onClick={handleCreateStudent} loading={saving} className="flex-1">
+              Salvar Aluno
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {showPlanModal && (
-        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/95 px-4 backdrop-blur-2xl">
-          <button
-            type="button"
-            onClick={() => setShowPlanModal(false)}
-            className="absolute inset-0"
-          />
+      <Modal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        title="Limite do plano"
+      >
+        <div className="space-y-5 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-yellow-500/30 bg-yellow-500/15">
+            <Users className="h-7 w-7 text-yellow-400" />
+          </div>
 
-          <div className="relative w-full max-w-[360px] overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] shadow-[0_35px_100px_rgba(0,0,0,1)]">
-            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-yellow-500/20 to-transparent" />
+          <p className="px-4 text-sm leading-relaxed text-zinc-300">
+            {planModalMessage}
+          </p>
 
-            <button
-              type="button"
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              className="flex-1"
               onClick={() => setShowPlanModal(false)}
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300"
             >
-              <X className="h-5 w-5" />
-            </button>
+              Fechar
+            </Button>
 
-            <div className="relative p-7 pt-10 text-center">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-yellow-500/15 text-yellow-400">
-                <AlertTriangle className="h-10 w-10" />
-              </div>
-
-              <h2 className="mt-6 text-center text-[24px] font-black uppercase italic tracking-tight text-white">
-                Limite do plano
-              </h2>
-
-              <p className="mt-2 px-4 text-center text-[13px] leading-relaxed text-zinc-400">
-                {planModalMessage}
-              </p>
-
-              <div className="mt-8 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPlanModal(false)}
-                  className="h-14 flex-1 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white transition-all active:scale-95"
-                >
-                  FECHAR
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPlanModal(false);
-                    navigate('/personal/subscription');
-                  }}
-                  className="h-14 flex-1 rounded-[20px] bg-[#ff2a32] text-[13px] font-black text-white transition-all active:scale-95"
-                >
-                  VER PLANOS
-                </button>
-              </div>
-            </div>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                setShowPlanModal(false);
+                navigate('/personal/subscription');
+              }}
+            >
+              Ver planos
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

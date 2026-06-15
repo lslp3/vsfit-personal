@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Apple,
   BarChart3,
+  BellRing,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -32,6 +33,7 @@ type StudentHomeState = {
   workoutLogs: any[];
   nutritionPlans: any[];
   unreadMessages: number;
+  unreadNotifications: number;
 };
 
 function getStudentInitials(name?: string) {
@@ -204,6 +206,74 @@ function getNutritionTitle(plan: any) {
   return cleanedName || 'Disponível';
 }
 
+async function getUnreadNotificationsCount(studentId: string, trainerId?: string | null) {
+  const ids = new Set<string>();
+
+  const queries = [
+    () =>
+      supabase
+        .from('notifications')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('read', false)
+        .limit(100),
+
+    () =>
+      supabase
+        .from('notifications')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('is_read', false)
+        .limit(100),
+
+    () =>
+      supabase
+        .from('notifications')
+        .select('id')
+        .eq('studentid', studentId)
+        .eq('read', false)
+        .limit(100),
+
+    () =>
+      supabase
+        .from('notifications')
+        .select('id')
+        .eq('recipient_id', studentId)
+        .eq('read', false)
+        .limit(100),
+  ];
+
+  if (trainerId) {
+    queries.push(() =>
+      supabase
+        .from('notifications')
+        .select('id')
+        .eq('trainer_id', trainerId)
+        .eq('student_id', studentId)
+        .eq('read', false)
+        .limit(100)
+    );
+  }
+
+  for (const runQuery of queries) {
+    try {
+      const { data, error } = await runQuery();
+
+      if (error) continue;
+
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          if (item?.id) ids.add(String(item.id));
+        });
+      }
+    } catch {
+      // Ignora variações de coluna que não existirem no banco.
+    }
+  }
+
+  return ids.size;
+}
+
 export function StudentHomePage() {
   const navigate = useNavigate();
 
@@ -217,6 +287,7 @@ export function StudentHomePage() {
     workoutLogs: [],
     nutritionPlans: [],
     unreadMessages: 0,
+    unreadNotifications: 0,
   });
 
   useEffect(() => {
@@ -262,6 +333,7 @@ export function StudentHomePage() {
         logsResponse,
         nutritionResponse,
         unreadResponse,
+        unreadNotificationsResponse,
       ] = await Promise.allSettled([
         trainerId
           ? supabase.from('trainer_profiles').select('*').eq('id', trainerId).maybeSingle()
@@ -291,6 +363,8 @@ export function StudentHomePage() {
               .eq('sender_role', 'personal')
               .eq('read', false)
           : Promise.resolve({ count: 0, error: null }),
+
+        getUnreadNotificationsCount(studentData.id, trainerId),
       ]);
 
       const trainer =
@@ -316,6 +390,11 @@ export function StudentHomePage() {
           ? Number((unreadResponse.value as any)?.count || 0)
           : 0;
 
+      const unreadNotifications =
+        unreadNotificationsResponse.status === 'fulfilled'
+          ? Number(unreadNotificationsResponse.value || 0)
+          : 0;
+
       setData({
         student: studentData,
         trainer,
@@ -323,6 +402,7 @@ export function StudentHomePage() {
         workoutLogs,
         nutritionPlans,
         unreadMessages,
+        unreadNotifications,
       });
     } catch (err: any) {
       console.error('[StudentHomePage] loadHome error:', err);
@@ -349,6 +429,8 @@ export function StudentHomePage() {
   const streak = useMemo(() => {
     return calculateStreak(data.workoutLogs);
   }, [data.workoutLogs]);
+
+  const notificationBadgeCount = data.unreadNotifications + data.unreadMessages;
 
   function handleStartWorkout() {
     if (mainWorkout?.id) {
@@ -444,6 +526,21 @@ export function StudentHomePage() {
                 Personal: {getTrainerName(data.trainer)}
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/student/notifications')}
+              className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] border border-white/10 bg-black/25 text-white transition-all active:scale-95"
+              aria-label="Notificações"
+            >
+              <BellRing className="h-5 w-5 text-[#ff2a32]" />
+
+              {notificationBadgeCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#ff2a32] px-1.5 text-[10px] font-black text-white ring-4 ring-[#050505]">
+                  {notificationBadgeCount > 99 ? '99+' : notificationBadgeCount}
+                </span>
+              )}
+            </button>
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-2">
@@ -580,7 +677,11 @@ export function StudentHomePage() {
           </button>
         </div>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <button
+          type="button"
+          onClick={() => navigate('/student/nutrition')}
+          className="w-full rounded-[30px] border border-white/10 bg-white/[0.035] p-5 text-left transition-all active:scale-[0.98]"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div
@@ -615,7 +716,7 @@ export function StudentHomePage() {
 
             <ChevronRight className="h-5 w-5 shrink-0 text-zinc-700" />
           </div>
-        </section>
+        </button>
 
         <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
           <div className="mb-4 flex items-center justify-between">

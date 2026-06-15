@@ -4,6 +4,7 @@ import type { CreateStudentData } from '../types/student';
 import { generatePassword } from '../lib/utils';
 
 type CreateStudentInput = CreateStudentData & {
+  birthDate?: string | null;
   bodyFat?: number | string | null;
   bodyfat?: number | string | null;
   targetBodyFat?: number | string | null;
@@ -12,7 +13,22 @@ type CreateStudentInput = CreateStudentData & {
   musclemass?: number | string | null;
   waterIntake?: number | string | null;
   waterintake?: number | string | null;
+  temporary_password?: string | null;
 };
+
+type StudentAccountCacheResult = {
+  account: StudentAccount | null;
+  student: Student | null;
+};
+
+type StudentAccountCacheRecord = StudentAccountCacheResult & {
+  savedAt: number;
+};
+
+const STUDENT_ACCOUNT_CACHE_TTL = 1000 * 60 * 5;
+const STUDENT_ACCOUNT_CACHE_PREFIX = 'vsfit_student_account_cache:';
+
+const studentAccountMemoryCache = new Map<string, StudentAccountCacheRecord>();
 
 function mapStudentFromDb(db: any): Student {
   return db;
@@ -28,6 +44,106 @@ function toNullableNumber(value: unknown) {
 
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getStudentAccountCacheKey(authUserId: string) {
+  return `${STUDENT_ACCOUNT_CACHE_PREFIX}${authUserId}`;
+}
+
+function isStudentAccountCacheValid(record?: StudentAccountCacheRecord | null) {
+  if (!record) return false;
+
+  return Date.now() - Number(record.savedAt || 0) < STUDENT_ACCOUNT_CACHE_TTL;
+}
+
+function canUseSessionStorage() {
+  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined';
+}
+
+function readStudentAccountCache(authUserId: string): StudentAccountCacheResult | null {
+  const memoryRecord = studentAccountMemoryCache.get(authUserId);
+
+  if (isStudentAccountCacheValid(memoryRecord)) {
+    return {
+      account: memoryRecord?.account || null,
+      student: memoryRecord?.student || null,
+    };
+  }
+
+  if (!canUseSessionStorage()) return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getStudentAccountCacheKey(authUserId));
+
+    if (!raw) return null;
+
+    const record = JSON.parse(raw) as StudentAccountCacheRecord;
+
+    if (!isStudentAccountCacheValid(record)) {
+      window.sessionStorage.removeItem(getStudentAccountCacheKey(authUserId));
+      return null;
+    }
+
+    studentAccountMemoryCache.set(authUserId, record);
+
+    return {
+      account: record.account || null,
+      student: record.student || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStudentAccountCache(authUserId: string, value: StudentAccountCacheResult) {
+  const record: StudentAccountCacheRecord = {
+    account: value.account || null,
+    student: value.student || null,
+    savedAt: Date.now(),
+  };
+
+  studentAccountMemoryCache.set(authUserId, record);
+
+  if (!canUseSessionStorage()) return;
+
+  try {
+    window.sessionStorage.setItem(
+      getStudentAccountCacheKey(authUserId),
+      JSON.stringify(record)
+    );
+  } catch {
+    // Ignora erro de storage.
+  }
+}
+
+export function clearStudentAccountCache(authUserId?: string) {
+  if (authUserId) {
+    studentAccountMemoryCache.delete(authUserId);
+
+    if (canUseSessionStorage()) {
+      try {
+        window.sessionStorage.removeItem(getStudentAccountCacheKey(authUserId));
+      } catch {
+        // Ignora erro de storage.
+      }
+    }
+
+    return;
+  }
+
+  studentAccountMemoryCache.clear();
+
+  if (!canUseSessionStorage()) return;
+
+  try {
+    Object.keys(window.sessionStorage).forEach((key) => {
+      if (key.startsWith(STUDENT_ACCOUNT_CACHE_PREFIX)) {
+        window.sessionStorage.removeItem(key);
+      }
+    });
+  } catch {
+    // Ignora erro de storage.
+  }
 }
 
 export async function getStudentsByTrainer(trainerId: string): Promise<Student[]> {
@@ -76,8 +192,8 @@ export async function getStudentById(id: string): Promise<Student | null> {
   }
 }
 
-export async function createStudent(trainerId: string, data: CreateStudentData) {
-  const input = data as CreateStudentInput;
+export async function createStudent(trainerId: string, data: CreateStudentInput) {
+  const input = data;
 
   const weight = toNullableNumber(input.weight);
   const height = toNullableNumber(input.height);
@@ -86,6 +202,7 @@ export async function createStudent(trainerId: string, data: CreateStudentData) 
   const muscleMass = toNullableNumber(input.muscleMass ?? input.musclemass);
   const waterIntake = toNullableNumber(input.waterIntake ?? input.waterintake);
   const targetWeight = toNullableNumber(input.targetWeight);
+  let temporaryPassword = '';
 
   const { data: student, error } = await supabase
     .from('students')
@@ -95,6 +212,7 @@ export async function createStudent(trainerId: string, data: CreateStudentData) 
       email: input.email,
       phone: input.phone || null,
       birth_date: input.birthDate || null,
+      status: 'active',
     })
     .select()
     .single();
@@ -113,27 +231,44 @@ export async function createStudent(trainerId: string, data: CreateStudentData) 
     console.error('[StudentService] createStudent goal error:', goalError);
   }
 
-  const { error: metricError } = await supabase.from('student_metrics').insert({
-    student_id: student.id,
-    date: getTodayDate(),
-    weight,
-    height,
-    body_fat: bodyFat,
-    target_body_fat: targetBodyFat,
-    muscle_mass: muscleMass,
-    water_intake: waterIntake,
-  });
+  const hasMetricData =
+    weight !== null ||
+    height !== null ||
+    bodyFat !== null ||
+    targetBodyFat !== null ||
+    muscleMass !== null ||
+    waterIntake !== null;
 
-  if (metricError) {
-    console.error('[StudentService] createStudent metric error:', metricError);
+  if (hasMetricData) {
+    const { error: metricError } = await supabase.from('student_metrics').insert({
+      student_id: student.id,
+      date: getTodayDate(),
+      weight,
+      height,
+      body_fat: bodyFat,
+      target_body_fat: targetBodyFat,
+      muscle_mass: muscleMass,
+      water_intake: waterIntake,
+    });
+
+    if (metricError) {
+      console.error('[StudentService] createStudent metric error:', metricError);
+    }
   }
 
   if (input.createAppAccess) {
-    const tempPassword = generatePassword();
+    temporaryPassword = generatePassword();
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: input.email,
-      password: tempPassword,
+      password: temporaryPassword,
+      options: {
+        data: {
+          role: 'student',
+          student_id: student.id,
+          name: input.name,
+        },
+      },
     });
 
     if (!authError && authData.user) {
@@ -148,7 +283,9 @@ export async function createStudent(trainerId: string, data: CreateStudentData) 
         student_id: student.id,
         auth_user_id: authData.user.id,
         email: input.email,
-        temporary_password: tempPassword,
+        temporary_password: temporaryPassword,
+        must_change_password: true,
+        is_active: true,
       });
 
       await supabase
@@ -159,10 +296,17 @@ export async function createStudent(trainerId: string, data: CreateStudentData) 
           login_enabled: true,
         })
         .eq('id', student.id);
+    } else if (authError) {
+      console.error('[StudentService] createStudent auth error:', authError);
     }
   }
 
-  return student;
+  clearStudentAccountCache();
+
+  return {
+    ...student,
+    temporary_password: temporaryPassword || null,
+  };
 }
 
 export async function updateStudent(id: string, data: any) {
@@ -175,53 +319,36 @@ export async function updateStudent(id: string, data: any) {
 
   if (error) throw error;
 
+  clearStudentAccountCache();
+
   return mapStudentFromDb(student);
 }
 
-export async function getStudentByAuthUser(authUserId: string): Promise<Student | null> {
-  try {
-    const { data: account, error: accountError } = await supabase
-      .from('student_accounts')
-      .select(`
-        *,
-        student:students(*)
-      `)
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (accountError) {
-      console.error('[StudentService] getStudentByAuthUser account error:', accountError);
-    }
-
-    if (account?.student) {
-      const student = Array.isArray(account.student) ? account.student[0] : account.student;
-
-      if (student?.id) return student;
-    }
-
-    const { data: legacyStudent, error: legacyError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (legacyError) {
-      console.error('[StudentService] getStudentByAuthUser legacy error:', legacyError);
-    }
-
-    if (legacyStudent) return legacyStudent;
-
-    return null;
-  } catch (error) {
-    console.error('[StudentService] getStudentByAuthUser exception:', error);
-    return null;
-  }
+export async function getStudentByAuthUser(
+  authUserId: string,
+  options: { force?: boolean } = {}
+): Promise<Student | null> {
+  const result = await getStudentAccountByAuthUser(authUserId, options);
+  return result.student || null;
 }
 
 export async function getStudentAccountByAuthUser(
-  authUserId: string
+  authUserId: string,
+  options: { force?: boolean } = {}
 ): Promise<{ account: StudentAccount | null; student: Student | null }> {
   try {
+    if (!authUserId) {
+      return { account: null, student: null };
+    }
+
+    if (!options.force) {
+      const cached = readStudentAccountCache(authUserId);
+
+      if (cached?.student?.id) {
+        return cached;
+      }
+    }
+
     const { data: account, error } = await supabase
       .from('student_accounts')
       .select(`
@@ -233,14 +360,64 @@ export async function getStudentAccountByAuthUser(
 
     if (error) {
       console.error('[StudentService] getStudentAccountByAuthUser error:', error);
-      return { account: null, student: null };
     }
 
-    if (!account) return { account: null, student: null };
+    if (account?.student) {
+      const student = Array.isArray(account.student) ? account.student[0] : account.student;
 
-    const student = Array.isArray(account.student) ? account.student[0] : account.student;
+      const result = {
+        account: account as StudentAccount,
+        student: student ? mapStudentFromDb(student) : null,
+      };
 
-    return { account, student: student || null };
+      writeStudentAccountCache(authUserId, result);
+
+      return result;
+    }
+
+    const { data: legacyStudent, error: legacyError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
+
+    if (legacyError) {
+      console.error(
+        '[StudentService] getStudentAccountByAuthUser legacy student error:',
+        legacyError
+      );
+    }
+
+    if (legacyStudent?.id) {
+      let linkedAccount: StudentAccount | null = null;
+
+      try {
+        const { data: accountByStudent } = await supabase
+          .from('student_accounts')
+          .select('*')
+          .eq('student_id', legacyStudent.id)
+          .maybeSingle();
+
+        linkedAccount = (accountByStudent as StudentAccount) || null;
+      } catch {
+        linkedAccount = null;
+      }
+
+      const result = {
+        account: linkedAccount,
+        student: mapStudentFromDb(legacyStudent),
+      };
+
+      writeStudentAccountCache(authUserId, result);
+
+      return result;
+    }
+
+    const emptyResult = { account: null, student: null };
+
+    writeStudentAccountCache(authUserId, emptyResult);
+
+    return emptyResult;
   } catch (error) {
     console.error('[StudentService] getStudentAccountByAuthUser exception:', error);
     return { account: null, student: null };

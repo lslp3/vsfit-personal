@@ -1,24 +1,22 @@
-import { useEffect, useState, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  MessageSquare,
-  Send,
-  Loader2,
+  AlertCircle,
+  ArrowLeft,
   Check,
   CheckCheck,
-  ArrowLeft,
+  Loader2,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 
-import { LoadingScreen } from '../../components/ui/LoadingScreen';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
-import { getTrainerProfile } from '../../services/trainerService';
-import { getMessages, sendMessage } from '../../services/messageService';
 import { cn, getInitials } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
-import type { Message, TrainerProfile } from '../../types/database';
+import * as studentService from '../../services/studentService';
+import { getTrainerProfile } from '../../services/trainerService';
+import { getMessages, sendMessage } from '../../services/messageService';
 
 type PresenceUser = {
   type: 'personal' | 'student';
@@ -60,6 +58,25 @@ function getStudentAvatarUrl(student: any) {
     student?.image_url ||
     null
   );
+}
+
+function getTrainerAvatarUrl(trainer: any) {
+  return (
+    trainer?.avatar_url ||
+    trainer?.photo_url ||
+    trainer?.profile_photo_url ||
+    trainer?.image_url ||
+    trainer?.avatar ||
+    null
+  );
+}
+
+function getStudentName(student: any) {
+  return student?.name || student?.full_name || student?.email || 'Aluno';
+}
+
+function getTrainerName(trainer: any) {
+  return trainer?.name || trainer?.full_name || trainer?.email || 'Personal';
 }
 
 function AvatarWithStatus({
@@ -118,14 +135,17 @@ function AvatarWithStatus({
 
 export function StudentChatPage() {
   const navigate = useNavigate();
-  const { user, student: storeStudent, studentAccount, isLoading } = useAuthStore();
 
-  const [trainer, setTrainer] = useState<TrainerProfile | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [authUserId, setAuthUserId] = useState('');
+  const [student, setStudent] = useState<any | null>(null);
+  const [trainer, setTrainer] = useState<any | null>(null);
+
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
 
   const [trainerOnline, setTrainerOnline] = useState(false);
   const [trainerLastSeen, setTrainerLastSeen] = useState<string | null>(null);
@@ -133,9 +153,11 @@ export function StudentChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const studentId = storeStudent?.id || studentAccount?.student_id;
-  const studentName = storeStudent?.name || studentAccount?.email || 'Aluno';
-  const studentAvatarUrl = getStudentAvatarUrl(storeStudent);
+  const studentId = student?.id || '';
+  const studentName = getStudentName(student);
+  const studentAvatarUrl = getStudentAvatarUrl(student);
+  const trainerName = trainer ? getTrainerName(trainer) : 'Personal';
+  const trainerAvatarUrl = getTrainerAvatarUrl(trainer);
 
   function handleBack() {
     if (window.history.length > 1) {
@@ -143,7 +165,7 @@ export function StudentChatPage() {
       return;
     }
 
-    navigate('/student/dashboard');
+    navigate('/student/home');
   }
 
   useEffect(() => {
@@ -187,20 +209,18 @@ export function StudentChatPage() {
   }, []);
 
   useEffect(() => {
-    if (!user?.id || !studentId) return;
-
     loadData();
-  }, [user?.id, studentId]);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (!trainer?.id || !studentId || !user?.id) return;
+    if (!trainer?.id || !studentId || !authUserId) return;
 
     const trainerId = trainer.id;
-    const currentUserId = user.id;
+    const currentUserId = authUserId;
 
     async function updateMyPresence() {
       try {
@@ -217,8 +237,8 @@ export function StudentChatPage() {
           },
           { onConflict: 'user_id' }
         );
-      } catch (error) {
-        console.warn('[StudentChatPage] update presence warning:', error);
+      } catch (presenceError) {
+        console.warn('[StudentChatPage] update presence warning:', presenceError);
       }
     }
 
@@ -230,7 +250,7 @@ export function StudentChatPage() {
       window.clearInterval(timer);
       updateMyPresence();
     };
-  }, [trainer?.id, studentId, user?.id, studentName, studentAvatarUrl]);
+  }, [trainer?.id, studentId, authUserId, studentName, studentAvatarUrl]);
 
   useEffect(() => {
     if (!trainer?.id || !studentId) return;
@@ -279,19 +299,23 @@ export function StudentChatPage() {
     const trainerId = trainer.id;
 
     async function loadTrainerPresence() {
-      const { data, error } = await supabase
-        .from('app_presence')
-        .select('last_seen_at')
-        .eq('role', 'personal')
-        .eq('trainer_id', trainerId)
-        .maybeSingle();
+      try {
+        const { data, error: presenceError } = await supabase
+          .from('app_presence')
+          .select('last_seen_at')
+          .eq('role', 'personal')
+          .eq('trainer_id', trainerId)
+          .maybeSingle();
 
-      if (error) {
-        console.warn('[StudentChatPage] trainer presence warning:', error);
-        return;
+        if (presenceError) {
+          console.warn('[StudentChatPage] trainer presence warning:', presenceError);
+          return;
+        }
+
+        setTrainerLastSeen(data?.last_seen_at || null);
+      } catch (presenceError) {
+        console.warn('[StudentChatPage] trainer presence exception:', presenceError);
       }
-
-      setTrainerLastSeen(data?.last_seen_at || null);
     }
 
     loadTrainerPresence();
@@ -317,7 +341,7 @@ export function StudentChatPage() {
           filter: `student_id=eq.${studentId}`,
         },
         async (payload) => {
-          const newMsg = payload.new as Message;
+          const newMsg = payload.new as any;
 
           if (newMsg.trainer_id !== trainerId) return;
 
@@ -340,7 +364,7 @@ export function StudentChatPage() {
           filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
-          const updatedMsg = payload.new as Message;
+          const updatedMsg = payload.new as any;
 
           if (updatedMsg.trainer_id !== trainerId) return;
 
@@ -358,7 +382,7 @@ export function StudentChatPage() {
 
   async function markTrainerMessagesAsRead(trainerId: string, currentStudentId: string) {
     try {
-      const { error } = await supabase
+      const { error: readError } = await supabase
         .from('messages')
         .update({ read: true })
         .eq('trainer_id', trainerId)
@@ -366,37 +390,63 @@ export function StudentChatPage() {
         .eq('sender_role', 'personal')
         .eq('read', false);
 
-      if (error) {
-        console.warn('[StudentChatPage] mark personal messages read warning:', error);
+      if (readError) {
+        console.warn('[StudentChatPage] mark personal messages read warning:', readError);
       }
-    } catch (error) {
-      console.warn('[StudentChatPage] mark personal messages read exception:', error);
+    } catch (readError) {
+      console.warn('[StudentChatPage] mark personal messages read exception:', readError);
     }
   }
 
   async function loadData() {
-    if (!studentId) return;
-
     setLoading(true);
+    setError('');
 
     try {
-      let trainerId = storeStudent?.trainer_id || null;
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+
+      const authUser = authData.user;
+
+      if (!authUser?.id) {
+        setError('Sessão do aluno não encontrada. Faça login novamente.');
+        return;
+      }
+
+      setAuthUserId(authUser.id);
+
+      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
+      let studentData = accountResult?.student || null;
+
+      if (!studentData) {
+        studentData = await studentService.getStudentByAuthUser(authUser.id);
+      }
+
+      if (!studentData?.id) {
+        setError('Perfil do aluno não encontrado.');
+        return;
+      }
+
+      setStudent(studentData);
+
+      let trainerId = studentData?.trainer_id || null;
 
       if (!trainerId) {
-        const { data: studentData } = await supabase
+        const { data: fallbackStudent } = await supabase
           .from('students')
           .select('trainer_id')
-          .eq('id', studentId)
+          .eq('id', studentData.id)
           .maybeSingle();
 
-        trainerId = studentData?.trainer_id || null;
+        trainerId = fallbackStudent?.trainer_id || null;
       }
 
       if (!trainerId) {
         const { data: plans } = await supabase
           .from('workout_plans')
           .select('trainer_id')
-          .eq('student_id', studentId)
+          .eq('student_id', studentData.id)
           .limit(1);
 
         if (plans && plans.length > 0) {
@@ -407,20 +457,22 @@ export function StudentChatPage() {
       if (!trainerId) {
         setTrainer(null);
         setMessages([]);
+        setError('Personal não encontrado para este aluno.');
         return;
       }
 
       const [trainerData, msgs] = await Promise.all([
         getTrainerProfile(trainerId),
-        getMessages(trainerId, studentId),
+        getMessages(trainerId, studentData.id),
       ]);
 
       setTrainer(trainerData);
-      setMessages(msgs);
+      setMessages(Array.isArray(msgs) ? msgs : []);
 
-      await markTrainerMessagesAsRead(trainerId, studentId);
-    } catch (err) {
-      console.error('[StudentChatPage] loadData error:', err);
+      await markTrainerMessagesAsRead(trainerId, studentData.id);
+    } catch (loadError: any) {
+      console.error('[StudentChatPage] loadData error:', loadError);
+      setError(loadError?.message || 'Erro ao carregar chat.');
     } finally {
       setLoading(false);
     }
@@ -429,7 +481,7 @@ export function StudentChatPage() {
   async function handleSend() {
     const text = newMessage.trim();
 
-    if (!text || !studentId || !user || !trainer || sending) return;
+    if (!text || !studentId || !authUserId || !trainer || sending) return;
 
     setSending(true);
 
@@ -438,7 +490,7 @@ export function StudentChatPage() {
         trainer_id: trainer.id,
         student_id: studentId,
         sender_role: 'student',
-        sender_id: user.id,
+        sender_id: authUserId,
         content: text,
       });
 
@@ -448,8 +500,9 @@ export function StudentChatPage() {
       });
 
       setNewMessage('');
-    } catch (err) {
-      console.error('[StudentChatPage] send error:', err);
+    } catch (sendError) {
+      console.error('[StudentChatPage] send error:', sendError);
+      alert('Erro ao enviar mensagem.');
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -463,20 +516,43 @@ export function StudentChatPage() {
     }
   }
 
-  if (loading || isLoading || !studentId) return <LoadingScreen />;
-
-  if (!trainer) {
+  if (loading) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-[#050505] px-4 text-white">
-        <EmptyState
-          icon={
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/5 bg-white/[0.03]">
-              <MessageSquare className="h-10 w-10 text-zinc-700" />
-            </div>
-          }
-          title="Chat não disponível"
-          description="Não foi possível carregar suas mensagens."
-        />
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
+            <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
+          </div>
+
+          <div>
+            <p className="text-sm font-black text-white">Carregando chat...</p>
+            <p className="mt-1 text-xs text-zinc-500">Buscando mensagens.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !trainer) {
+    return (
+      <div className="flex h-[100dvh] items-center justify-center bg-[#050505] px-4 text-white">
+        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-300" />
+
+          <h1 className="mt-4 text-xl font-black text-white">Chat indisponível</h1>
+
+          <p className="mt-2 text-sm leading-relaxed text-red-100/80">
+            {error || 'Não foi possível carregar seu personal.'}
+          </p>
+
+          <button
+            type="button"
+            onClick={loadData}
+            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+          >
+            TENTAR NOVAMENTE
+          </button>
+        </div>
       </div>
     );
   }
@@ -503,18 +579,23 @@ export function StudentChatPage() {
           </button>
 
           <AvatarWithStatus
-            src={trainer.avatar_url || null}
-            name={trainer.name || 'Personal'}
+            src={trainerAvatarUrl}
+            name={trainerName}
             online={trainerOnline}
             accent
           />
 
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-sm font-black text-white">
-              {trainer.name}
+              {trainerName}
             </h2>
 
-            <p className="truncate text-[11px] font-medium text-zinc-500">
+            <p
+              className={cn(
+                'truncate text-[11px] font-medium',
+                trainerOnline ? 'text-emerald-400' : 'text-zinc-500'
+              )}
+            >
               {trainerOnline ? 'online agora' : formatLastSeen(trainerLastSeen)}
             </p>
           </div>
@@ -541,20 +622,15 @@ export function StudentChatPage() {
                 </p>
 
                 <p className="mt-1 text-xs text-zinc-600">
-                  Envie uma mensagem para seu personal trainer.
+                  Envie uma mensagem para seu personal.
                 </p>
               </div>
             ) : (
               messages.map((msg) => {
                 const isStudent = msg.sender_role === 'student';
 
-                const avatarSrc = isStudent
-                  ? studentAvatarUrl
-                  : trainer.avatar_url || null;
-
-                const avatarName = isStudent
-                  ? studentName
-                  : trainer.name || 'Personal';
+                const avatarSrc = isStudent ? studentAvatarUrl : trainerAvatarUrl;
+                const avatarName = isStudent ? studentName : trainerName;
 
                 return (
                   <motion.div

@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
-  ChevronLeft,
-  Clock,
+  ChevronRight,
+  Clock3,
   Dumbbell,
   Flame,
   Loader2,
-  SkipForward,
+  Target,
   Timer,
   Trophy,
   Zap,
@@ -18,35 +19,216 @@ import {
 import { supabase } from '../../lib/supabase';
 import * as studentService from '../../services/studentService';
 import { getWorkoutPlanById, saveWorkoutLog } from '../../services/workoutService';
-import { formatTime } from '../../lib/formatters';
-import type { WorkoutPlan, WorkoutPlanExercise } from '../../types/database';
 
-interface CompletedExercise {
+type CompletedExercise = {
   exerciseName: string;
   setsCompleted: number;
   repsCompleted: string;
   weightUsed: string;
+};
+
+type RestMode = 'set' | 'exercise';
+
+function formatDuration(seconds: number) {
+  const safeSeconds = Math.max(0, Number(seconds || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  const restSeconds = safeSeconds % 60;
+
+  return `${String(minutes).padStart(2, '0')}:${String(restSeconds).padStart(2, '0')}`;
 }
 
-interface PlanWithExercises extends WorkoutPlan {
-  workout_plan_exercises?: WorkoutPlanExercise[];
+function isUuid(value: any) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || '').trim()
+  );
 }
 
-type RestTarget =
-  | { type: 'next-set' }
-  | { type: 'next-exercise' }
-  | { type: 'finish' }
-  | null;
+function pickUuid(...values: any[]) {
+  for (const value of values) {
+    const uuid = String(value || '').trim();
+
+    if (isUuid(uuid)) {
+      return uuid;
+    }
+  }
+
+  return '';
+}
+
+function pickEmail(...values: any[]) {
+  for (const value of values) {
+    const email = String(value || '').trim().toLowerCase();
+
+    if (email && email.includes('@')) {
+      return email;
+    }
+  }
+
+  return '';
+}
+
+function createUuid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0;
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+
+    return value.toString(16);
+  });
+}
+
+function getStudentName(student: any) {
+  return (
+    student?.name ||
+    student?.full_name ||
+    student?.student_name ||
+    student?.email ||
+    'Aluno'
+  );
+}
+
+function getWorkoutName(plan: any) {
+  return (
+    plan?.name ||
+    plan?.title ||
+    plan?.plan_name ||
+    plan?.workout_name ||
+    'Treino personalizado'
+  );
+}
+
+function getWorkoutObjective(plan: any) {
+  return plan?.objective || plan?.goal || plan?.focus || 'Execução guiada';
+}
+
+function getTrainerId(student: any, plan: any) {
+  return (
+    student?.trainer_id ||
+    student?.trainerId ||
+    student?.coach_id ||
+    student?.coachId ||
+    plan?.trainer_id ||
+    plan?.trainerId ||
+    plan?.coach_id ||
+    plan?.coachId ||
+    ''
+  );
+}
+
+function getTrainerUserIdFromObjects(student: any, plan: any) {
+  return pickUuid(
+    student?.trainer_user_id,
+    student?.trainerUserId,
+    student?.coach_user_id,
+    student?.coachUserId,
+    student?.personal_user_id,
+    student?.personalUserId,
+    student?.trainer_auth_user_id,
+    student?.coach_auth_user_id,
+    student?.trainer?.user_id,
+    student?.trainer?.auth_user_id,
+    student?.coach?.user_id,
+    student?.coach?.auth_user_id,
+    plan?.trainer_user_id,
+    plan?.trainerUserId,
+    plan?.coach_user_id,
+    plan?.coachUserId,
+    plan?.personal_user_id,
+    plan?.personalUserId,
+    plan?.trainer_auth_user_id,
+    plan?.coach_auth_user_id,
+    plan?.trainer?.user_id,
+    plan?.trainer?.auth_user_id,
+    plan?.coach?.user_id,
+    plan?.coach?.auth_user_id
+  );
+}
+
+function getTrainerEmailFromObjects(student: any, plan: any) {
+  return pickEmail(
+    student?.coach_email,
+    student?.coachEmail,
+    student?.trainer_email,
+    student?.trainerEmail,
+    student?.personal_email,
+    student?.personalEmail,
+    student?.trainer?.email,
+    student?.trainer?.coach_email,
+    student?.coach?.email,
+    plan?.coach_email,
+    plan?.coachEmail,
+    plan?.trainer_email,
+    plan?.trainerEmail,
+    plan?.personal_email,
+    plan?.personalEmail,
+    plan?.trainer?.email,
+    plan?.coach?.email
+  );
+}
 
 function getExerciseName(exercise: any) {
   return exercise?.name || exercise?.exercise_name || exercise?.title || 'Exercício';
 }
 
-function getExerciseObservation(exercise: any) {
-  return exercise?.observation || exercise?.notes || exercise?.instructions || '';
+function getExerciseReps(exercise: any) {
+  return exercise?.reps || exercise?.repetitions || exercise?.repeticoes || '—';
 }
 
-function getExerciseImage(exercise: any) {
+function getExerciseSets(exercise: any) {
+  const value = exercise?.sets || exercise?.series || exercise?.set_count || 1;
+  const parsed = parseInt(String(value), 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function getExerciseWeight(exercise: any) {
+  return (
+    exercise?.suggested_weight ||
+    exercise?.weight ||
+    exercise?.carga ||
+    exercise?.load ||
+    '—'
+  );
+}
+
+function getExerciseRestSeconds(exercise: any) {
+  const value =
+    exercise?.rest_seconds ||
+    exercise?.restSeconds ||
+    exercise?.rest ||
+    exercise?.descanso ||
+    0;
+
+  const parsed = parseInt(String(value), 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function getExerciseObservation(exercise: any) {
+  return (
+    exercise?.observation ||
+    exercise?.observacao ||
+    exercise?.notes ||
+    exercise?.description ||
+    ''
+  );
+}
+
+function getExerciseVideoUrl(exercise: any) {
+  return (
+    exercise?.video_url ||
+    exercise?.videoUrl ||
+    exercise?.video ||
+    exercise?.exercise?.video_url ||
+    exercise?.exercise?.videoUrl ||
+    ''
+  );
+}
+
+function getExerciseImageUrl(exercise: any) {
   return (
     exercise?.image_url ||
     exercise?.imageUrl ||
@@ -54,48 +236,321 @@ function getExerciseImage(exercise: any) {
     exercise?.thumbnailUrl ||
     exercise?.exercise?.image_url ||
     exercise?.exercise?.imageUrl ||
-    exercise?.exercise?.thumbnail_url ||
-    exercise?.exercise?.thumbnailUrl ||
     ''
   );
 }
 
-function getExerciseVideo(exercise: any) {
-  return (
-    exercise?.video_url ||
-    exercise?.videoUrl ||
-    exercise?.exercise?.video_url ||
-    exercise?.exercise?.videoUrl ||
-    ''
-  );
+function sortExercises(exercises: any[]) {
+  return [...exercises].sort((a, b) => {
+    const aOrder = Number(a?.order_index ?? a?.order ?? 0);
+    const bOrder = Number(b?.order_index ?? b?.order ?? 0);
+
+    return aOrder - bOrder;
+  });
 }
 
-function getExerciseSets(exercise: any) {
-  const parsed = Number.parseInt(String(exercise?.sets || '1'), 10);
+function getPlanExercises(plan: any) {
+  const candidates = [
+    plan?.workout_plan_exercises,
+    plan?.exercises,
+    plan?.workoutExercises,
+    plan?.items,
+  ];
 
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return sortExercises(candidate);
+  }
+
+  return [];
 }
 
-function getExercises(plan: PlanWithExercises | null) {
-  if (!plan?.workout_plan_exercises) return [];
+async function resolveLoggedStudent() {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
 
-  return [...plan.workout_plan_exercises]
-    .filter(Boolean)
-    .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
+  if (authError) throw authError;
+
+  const authUser = authData.user;
+
+  if (!authUser?.id) {
+    throw new Error('Sessão do aluno não encontrada. Faça login novamente.');
+  }
+
+  const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
+  let studentData = accountResult?.student || null;
+
+  if (!studentData) {
+    studentData = await studentService.getStudentByAuthUser(authUser.id);
+  }
+
+  if (!studentData?.id) {
+    throw new Error('Perfil do aluno não encontrado.');
+  }
+
+  return studentData;
 }
 
-function getNextExerciseName(exercises: WorkoutPlanExercise[], currentIndex: number) {
-  const nextExercise = exercises[currentIndex + 1];
+async function resolveTrainerEmail(student: any, plan: any) {
+  const directEmail = getTrainerEmailFromObjects(student, plan);
 
-  return nextExercise ? getExerciseName(nextExercise) : 'Finalizar treino';
+  if (directEmail) return directEmail;
+
+  const studentId = String(student?.id || '').trim();
+
+  if (studentId) {
+    try {
+      const { data: account, error } = await supabase
+        .from('student_accounts')
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (!error && account) {
+        const accountEmail = pickEmail(
+          account?.coach_email,
+          account?.coachEmail,
+          account?.trainer_email,
+          account?.trainerEmail,
+          account?.personal_email,
+          account?.personalEmail,
+          account?.owner_email,
+          account?.ownerEmail
+        );
+
+        if (accountEmail) return accountEmail;
+      }
+    } catch (error) {
+      console.warn('[WorkoutExecutionPage] student account trainer email exception:', error);
+    }
+  }
+
+  const trainerId = getTrainerId(student, plan);
+
+  if (!trainerId) return '';
+
+  try {
+    const { data, error } = await supabase
+      .from('trainer_profiles')
+      .select('*')
+      .eq('id', trainerId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const trainerEmail = pickEmail(
+        data?.email,
+        data?.coach_email,
+        data?.user_email,
+        data?.auth_email,
+        data?.login_email,
+        data?.personal_email
+      );
+
+      if (trainerEmail) return trainerEmail;
+    }
+  } catch (error) {
+    console.warn('[WorkoutExecutionPage] trainer_profiles email exception:', error);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', trainerId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const profileEmail = pickEmail(
+        data?.email,
+        data?.coach_email,
+        data?.user_email,
+        data?.auth_email,
+        data?.login_email,
+        data?.personal_email
+      );
+
+      if (profileEmail) return profileEmail;
+    }
+  } catch (error) {
+    console.warn('[WorkoutExecutionPage] user_profiles email exception:', error);
+  }
+
+  return '';
+}
+
+async function resolveTrainerUserId(student: any, plan: any) {
+  const directUserId = getTrainerUserIdFromObjects(student, plan);
+
+  if (directUserId) return directUserId;
+
+  const trainerId = getTrainerId(student, plan);
+  const trainerEmail = await resolveTrainerEmail(student, plan);
+
+  if (trainerEmail) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('email', trainerEmail)
+        .maybeSingle();
+
+      if (!error && data) {
+        const userId = pickUuid(data?.id, data?.user_id, data?.auth_user_id);
+
+        if (userId) return userId;
+      }
+    } catch (error) {
+      console.warn('[WorkoutExecutionPage] user_profiles by email exception:', error);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('trainer_profiles')
+        .select('*')
+        .eq('email', trainerEmail)
+        .maybeSingle();
+
+      if (!error && data) {
+        const userId = pickUuid(
+          data?.auth_user_id,
+          data?.user_id,
+          data?.profile_id,
+          data?.owner_id,
+          data?.id
+        );
+
+        if (userId) return userId;
+      }
+    } catch (error) {
+      console.warn('[WorkoutExecutionPage] trainer_profiles by email exception:', error);
+    }
+  }
+
+  if (isUuid(trainerId)) {
+    try {
+      const { data, error } = await supabase
+        .from('trainer_profiles')
+        .select('*')
+        .eq('id', trainerId)
+        .maybeSingle();
+
+      if (!error && data) {
+        const email = pickEmail(data?.email, data?.user_email, data?.auth_email);
+
+        if (email) {
+          const { data: profileByEmail } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+
+          const userIdByEmail = pickUuid(
+            profileByEmail?.id,
+            profileByEmail?.user_id,
+            profileByEmail?.auth_user_id
+          );
+
+          if (userIdByEmail) return userIdByEmail;
+        }
+
+        const userId = pickUuid(
+          data?.auth_user_id,
+          data?.user_id,
+          data?.profile_id,
+          data?.owner_id,
+          data?.id
+        );
+
+        if (userId) return userId;
+      }
+    } catch (error) {
+      console.warn('[WorkoutExecutionPage] trainer_profiles by id exception:', error);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', trainerId)
+        .maybeSingle();
+
+      if (!error && data) {
+        return trainerId;
+      }
+    } catch (error) {
+      console.warn('[WorkoutExecutionPage] user_profiles by id exception:', error);
+    }
+  }
+
+  return '';
+}
+
+function getSavedLogId(log: any) {
+  if (Array.isArray(log)) return log[0]?.id || '';
+  return log?.id || '';
+}
+
+async function createTrainerWorkoutCompletedNotification({
+  student,
+  plan,
+  completedAt,
+  durationSeconds,
+  completedExercises,
+}: {
+  student: any;
+  plan: any;
+  completedAt: string;
+  durationSeconds: number;
+  completedExercises: CompletedExercise[];
+}) {
+  try {
+    const trainerUserId = await resolveTrainerUserId(student, plan);
+
+    if (!trainerUserId) {
+      console.warn('[WorkoutExecutionPage] Notificação não criada: user_id do personal não encontrado.', {
+        student,
+        plan,
+      });
+
+      return;
+    }
+
+    const studentName = getStudentName(student);
+    const workoutName = getWorkoutName(plan);
+    const durationMinutes = Math.max(1, Math.round(durationSeconds / 60));
+    const completedCount = completedExercises.length;
+    const exerciseWord = completedCount === 1 ? 'exercício' : 'exercícios';
+
+    const title = `${studentName} finalizou o treino`;
+    const message = `${studentName} finalizou o treino "${workoutName}" — ${completedCount} ${exerciseWord} em ${durationMinutes} min.`;
+
+    const payload = {
+      id: createUuid(),
+      user_id: trainerUserId,
+      title,
+      message,
+      type: 'trainer_student_workout_completed',
+      read: false,
+      created_at: completedAt,
+    };
+
+    const { error } = await supabase.from('notifications').insert(payload as any);
+
+    if (error) {
+      console.error('[WorkoutExecutionPage] erro ao criar notificação do personal:', error);
+      return;
+    }
+
+    console.log('[WorkoutExecutionPage] notificação do personal criada:', payload);
+  } catch (error) {
+    console.warn('[WorkoutExecutionPage] notification exception:', error);
+  }
 }
 
 export function WorkoutExecutionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [plan, setPlan] = useState<PlanWithExercises | null>(null);
   const [student, setStudent] = useState<any | null>(null);
+  const [plan, setPlan] = useState<any | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,239 +558,269 @@ export function WorkoutExecutionPage() {
 
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-
   const [isResting, setIsResting] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState(0);
-  const [restTotal, setRestTotal] = useState(0);
-  const [restTarget, setRestTarget] = useState<RestTarget>(null);
-
+  const [restMode, setRestMode] = useState<RestMode>('exercise');
   const [isCompleted, setIsCompleted] = useState(false);
   const [startedAt] = useState(new Date().toISOString());
   const [completedExercises, setCompletedExercises] = useState<CompletedExercise[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  useEffect(() => {
-    if (!id) return;
+  const exercisesRef = useRef<any[]>([]);
 
-    loadData();
+  useEffect(() => {
+    loadExecutionData();
   }, [id]);
 
   useEffect(() => {
-    if (isCompleted) return;
+    if (!isCompleted && !isResting) {
+      const interval = window.setInterval(() => {
+        setElapsedSeconds(
+          Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+        );
+      }, 1000);
 
-    const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isCompleted, startedAt]);
+      return () => window.clearInterval(interval);
+    }
+  }, [isCompleted, isResting, startedAt]);
 
   useEffect(() => {
     if (!isResting) return;
 
-    if (restTimeLeft <= 0) {
-      finishRest();
-      return;
-    }
+    const interval = window.setInterval(() => {
+      setRestTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsResting(false);
 
-    const timeout = setTimeout(() => {
-      setRestTimeLeft((prev) => Math.max(prev - 1, 0));
+          if (restMode === 'set') {
+            setCurrentSet((current) => current + 1);
+            return 0;
+          }
+
+          const exercises = exercisesRef.current;
+          const nextIdx = currentExerciseIndex + 1;
+
+          if (nextIdx < exercises.length) {
+            setCurrentExerciseIndex(nextIdx);
+            setCurrentSet(1);
+          } else {
+            setIsCompleted(true);
+          }
+
+          return 0;
+        }
+
+        return prev - 1;
+      });
     }, 1000);
 
-    return () => clearTimeout(timeout);
-  }, [isResting, restTimeLeft]);
+    return () => window.clearInterval(interval);
+  }, [isResting, currentExerciseIndex, restMode]);
 
-  async function loadData() {
+  async function loadExecutionData() {
     setLoading(true);
     setError('');
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-
-      if (authError) throw authError;
-
-      const authUser = authData.user;
-
-      if (!authUser?.id) {
-        setError('Sessão do aluno não encontrada.');
-        return;
+      if (!id) {
+        throw new Error('Treino não encontrado.');
       }
 
-      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
-      let studentData = accountResult?.student || null;
+      const [studentData, planData] = await Promise.all([
+        resolveLoggedStudent(),
+        getWorkoutPlanById(id),
+      ]);
 
-      if (!studentData) {
-        studentData = await studentService.getStudentByAuthUser(authUser.id);
-      }
+      const exercises = getPlanExercises(planData);
 
-      if (!studentData?.id) {
-        setError('Perfil do aluno não encontrado.');
-        return;
-      }
-
-      const planData = (await getWorkoutPlanById(id!)) as PlanWithExercises;
+      exercisesRef.current = exercises;
 
       setStudent(studentData);
       setPlan(planData);
-    } catch (err: any) {
-      console.error('[WorkoutExecutionPage] loadData error:', err);
-      setError(err?.message || 'Erro ao carregar execução do treino.');
+    } catch (loadError: any) {
+      console.error('[WorkoutExecutionPage] load error:', loadError);
+      setError(loadError?.message || 'Erro ao carregar execução do treino.');
     } finally {
       setLoading(false);
     }
   }
 
-  const exercises = useMemo(() => getExercises(plan), [plan]);
+  const exercises = useMemo(() => getPlanExercises(plan), [plan]);
 
-  const currentExercise = exercises[currentExerciseIndex];
-  const safeTotalSets = getExerciseSets(currentExercise);
+  const currentExercise = exercises[currentExerciseIndex] || null;
+  const safeTotalSets = currentExercise ? getExerciseSets(currentExercise) : 1;
+  const exerciseName = currentExercise ? getExerciseName(currentExercise) : 'Exercício';
+  const exerciseReps = currentExercise ? getExerciseReps(currentExercise) : '—';
+  const exerciseWeight = currentExercise ? getExerciseWeight(currentExercise) : '—';
+  const exerciseRest = currentExercise ? getExerciseRestSeconds(currentExercise) : 0;
+  const exerciseObservation = currentExercise ? getExerciseObservation(currentExercise) : '';
+  const videoUrl = currentExercise ? getExerciseVideoUrl(currentExercise) : '';
+  const imageUrl = currentExercise ? getExerciseImageUrl(currentExercise) : '';
 
   const progressPercent =
     exercises.length > 0
       ? ((currentExerciseIndex + (currentSet - 1) / safeTotalSets) / exercises.length) * 100
       : 0;
 
-  function startRest(target: RestTarget, seconds: number) {
-    if (seconds <= 0 || !target) {
-      finishAction(target);
-      return;
-    }
-
-    setRestTarget(target);
-    setRestTotal(seconds);
-    setRestTimeLeft(seconds);
-    setIsResting(true);
-  }
-
-  function finishRest() {
-    const target = restTarget;
-
-    setIsResting(false);
-    setRestTimeLeft(0);
-    setRestTotal(0);
-    setRestTarget(null);
-
-    finishAction(target);
-  }
-
-  function finishAction(target: RestTarget) {
-    if (!target) return;
-
-    if (target.type === 'next-set') {
-      setCurrentSet((prev) => prev + 1);
-      return;
-    }
-
-    if (target.type === 'next-exercise') {
-      setCurrentExerciseIndex((prev) => prev + 1);
-      setCurrentSet(1);
-      return;
-    }
-
-    if (target.type === 'finish') {
-      setIsCompleted(true);
-    }
-  }
-
-  function handleSkipRest() {
-    finishRest();
-  }
+  const completedPercent =
+    exercises.length > 0
+      ? Math.round((completedExercises.length / exercises.length) * 100)
+      : 0;
 
   function handleCompleteSet() {
     if (!currentExercise) return;
 
-    const restSeconds = Number(currentExercise.rest_seconds || 0);
-
     if (currentSet < safeTotalSets) {
-      startRest({ type: 'next-set' }, restSeconds);
+      if (exerciseRest > 0) {
+        setRestMode('set');
+        setRestTimeLeft(exerciseRest);
+        setIsResting(true);
+        return;
+      }
+
+      setCurrentSet((prev) => prev + 1);
       return;
     }
 
-    const completedRecord: CompletedExercise = {
-      exerciseName: getExerciseName(currentExercise),
-      setsCompleted: safeTotalSets,
-      repsCompleted: currentExercise.reps || '',
-      weightUsed: currentExercise.suggested_weight || '',
-    };
+    const newCompleted = [
+      ...completedExercises,
+      {
+        exerciseName,
+        setsCompleted: safeTotalSets,
+        repsCompleted: String(exerciseReps || ''),
+        weightUsed: String(exerciseWeight || ''),
+      },
+    ];
 
-    setCompletedExercises((prev) => [...prev, completedRecord]);
+    setCompletedExercises(newCompleted);
 
-    const nextIndex = currentExerciseIndex + 1;
+    const nextIdx = currentExerciseIndex + 1;
 
-    if (nextIndex >= exercises.length) {
+    if (nextIdx < exercises.length) {
+      if (exerciseRest > 0) {
+        setRestMode('exercise');
+        setCurrentSet(1);
+        setRestTimeLeft(exerciseRest);
+        setIsResting(true);
+        return;
+      }
+
+      setCurrentExerciseIndex(nextIdx);
+      setCurrentSet(1);
+      return;
+    }
+
+    setIsCompleted(true);
+  }
+
+  function handleRestComplete() {
+    setIsResting(false);
+    setRestTimeLeft(0);
+
+    if (restMode === 'set') {
+      setCurrentSet((prev) => prev + 1);
+      return;
+    }
+
+    const nextIdx = currentExerciseIndex + 1;
+
+    if (nextIdx < exercises.length) {
+      setCurrentExerciseIndex(nextIdx);
+      setCurrentSet(1);
+    } else {
       setIsCompleted(true);
-      return;
     }
-
-    startRest({ type: 'next-exercise' }, restSeconds);
   }
 
   async function handleSave() {
-    if (!student || !plan) return;
+    if (!student || !plan || saving) return;
 
     setSaving(true);
 
     try {
-      const totalSeconds = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+      const completedAt = new Date().toISOString();
+
+      const totalSeconds = Math.floor(
+        (Date.now() - new Date(startedAt).getTime()) / 1000
+      );
 
       const logData = {
         student_id: student.id,
-        trainer_id: student.trainer_id,
+        trainer_id: getTrainerId(student, plan),
         workout_plan_id: plan.id,
         started_at: startedAt,
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt,
         duration_seconds: totalSeconds,
         status: 'completed',
-        exercises_data: completedExercises.map((exercise) => ({
-          exercise_name: exercise.exerciseName,
-          sets_completed: exercise.setsCompleted,
-          reps_completed: exercise.repsCompleted,
-          weight_used: exercise.weightUsed,
+        exercises_data: completedExercises.map((ex) => ({
+          exercise_name: ex.exerciseName,
+          sets_completed: ex.setsCompleted,
+          reps_completed: ex.repsCompleted,
+          weight_used: ex.weightUsed,
         })),
       };
 
-      const log = await saveWorkoutLog(logData);
+      const log = await saveWorkoutLog(logData as any);
 
-      navigate(`/student/workout-completed/${log.id}`, { replace: true });
-    } catch (err: any) {
-      console.error('[WorkoutExecutionPage] save error:', err);
-      setError(err?.message || 'Erro ao salvar treino.');
+      await createTrainerWorkoutCompletedNotification({
+        student,
+        plan,
+        completedAt,
+        durationSeconds: totalSeconds,
+        completedExercises,
+      });
+
+      const logId = getSavedLogId(log);
+
+      navigate(`/student/workout-completed/${logId || plan.id}`, { replace: true });
+    } catch (saveError) {
+      console.error('[WorkoutExecutionPage] save error:', saveError);
+      alert('Erro ao salvar o treino. Tente novamente.');
       setSaving(false);
     }
   }
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-6 text-white">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15 shadow-[0_18px_45px_rgba(255,42,48,0.22)]">
             <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
           </div>
 
-          <p className="text-sm font-black text-white">Preparando treino...</p>
+          <div>
+            <p className="text-sm font-black text-white">Abrindo treino...</p>
+            <p className="mt-1 text-xs text-zinc-500">Preparando sua execução.</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error || !plan || !student || exercises.length === 0) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-white">
-        <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
+        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
             <AlertCircle className="h-8 w-8" />
           </div>
 
-          <h1 className="mt-5 text-xl font-black text-white">Não foi possível iniciar</h1>
+          <h1 className="mt-5 text-xl font-black text-white">Erro ao abrir treino</h1>
 
-          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
-            {error || 'Este treino não possui exercícios.'}
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-red-200/80">{error}</p>
+
+          <button
+            type="button"
+            onClick={loadExecutionData}
+            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+          >
+            TENTAR NOVAMENTE
+          </button>
 
           <button
             type="button"
             onClick={() => navigate('/student/workouts')}
-            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+            className="mt-3 h-12 w-full rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-black text-white"
           >
             VOLTAR
           </button>
@@ -344,79 +829,141 @@ export function WorkoutExecutionPage() {
     );
   }
 
-  const exerciseVideo = getExerciseVideo(currentExercise);
-  const exerciseImage = getExerciseImage(currentExercise);
-  const observation = getExerciseObservation(currentExercise);
+  if (!plan || !student || exercises.length === 0 || !currentExercise) {
+    return (
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
+        <div className="w-full max-w-sm rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-zinc-400">
+            <Dumbbell className="h-8 w-8" />
+          </div>
 
-  const restProgress = restTotal > 0 ? ((restTotal - restTimeLeft) / restTotal) * 100 : 0;
+          <h1 className="mt-5 text-xl font-black text-white">Treino vazio</h1>
 
-  const isLastSet = currentSet >= safeTotalSets;
-  const isLastExercise = currentExerciseIndex + 1 >= exercises.length;
+          <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+            Este treino não possui exercícios cadastrados.
+          </p>
 
-  const buttonLabel = !isLastSet
-    ? 'Concluir série e descansar'
-    : isLastExercise
-      ? 'Finalizar treino'
-      : 'Concluir exercício e descansar';
+          <button
+            type="button"
+            onClick={() => navigate('/student/workouts')}
+            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+          >
+            VOLTAR PARA TREINOS
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] text-white">
       <AnimatePresence mode="wait">
         {isCompleted ? (
-          <motion.div
+          <motion.main
             key="completed"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex min-h-screen flex-col justify-center px-5 py-10"
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.35 }}
+            className="flex min-h-screen flex-col px-4 py-6"
           >
-            <div className="mx-auto w-full max-w-lg">
-              <div className="rounded-[38px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/18 via-white/[0.045] to-white/[0.025] p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.55)]">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.15, type: 'spring', stiffness: 200 }}
-                  className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-[0_22px_60px_rgba(251,191,36,0.28)]"
-                >
-                  <Trophy className="h-12 w-12" />
-                </motion.div>
+            <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center">
+              <section className="relative overflow-hidden rounded-[36px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/15 via-white/[0.05] to-white/[0.025] p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
+                <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-yellow-400/20 to-transparent" />
 
-                <h1 className="mt-6 text-[30px] font-black uppercase italic leading-none tracking-[-0.06em] text-white">
-                  Treino concluído!
-                </h1>
+                <div className="relative">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.15, type: 'spring', stiffness: 190 }}
+                    className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-[0_24px_60px_rgba(251,191,36,0.25)]"
+                  >
+                    <Trophy className="h-12 w-12" />
+                  </motion.div>
 
-                <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                  Você concluiu {completedExercises.length} exercício
-                  {completedExercises.length === 1 ? '' : 's'} com sucesso.
-                </p>
+                  <p className="mt-6 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">
+                    Finalizado
+                  </p>
 
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-                    <Clock className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
-                    <p className="text-xl font-black text-white">
-                      {formatTime(elapsedSeconds)}
-                    </p>
-                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-                      Tempo
-                    </p>
-                  </div>
+                  <h1 className="mt-2 text-[32px] font-black uppercase italic leading-none tracking-[-0.08em] text-white">
+                    Treino concluído
+                  </h1>
 
-                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-                    <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-emerald-400" />
-                    <p className="text-xl font-black text-white">
-                      {completedExercises.length}
-                    </p>
-                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-                      Exercícios
-                    </p>
+                  <p className="mx-auto mt-3 max-w-[300px] text-sm font-medium leading-relaxed text-zinc-400">
+                    Parabéns, {getStudentName(student)}. Seu progresso foi registrado.
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-3 gap-2">
+                    <div className="rounded-[22px] border border-white/10 bg-black/25 p-3">
+                      <Clock3 className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
+                      <p className="text-lg font-black text-white">
+                        {formatDuration(elapsedSeconds)}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                        Tempo
+                      </p>
+                    </div>
+
+                    <div className="rounded-[22px] border border-white/10 bg-black/25 p-3">
+                      <Dumbbell className="mx-auto mb-2 h-4 w-4 text-emerald-400" />
+                      <p className="text-lg font-black text-white">
+                        {completedExercises.length}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                        Exercícios
+                      </p>
+                    </div>
+
+                    <div className="rounded-[22px] border border-white/10 bg-black/25 p-3">
+                      <Flame className="mx-auto mb-2 h-4 w-4 text-yellow-300" />
+                      <p className="text-lg font-black text-white">
+                        {completedPercent}%
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                        Feito
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </section>
 
+              <section className="mt-5 rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
+                  Exercícios concluídos
+                </p>
+
+                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {completedExercises.map((exercise, index) => (
+                    <div
+                      key={`${exercise.exerciseName}-${index}`}
+                      className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/20 p-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+                        <CheckCircle2 className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-white">
+                          {exercise.exerciseName}
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-zinc-500">
+                          {exercise.setsCompleted} série
+                          {exercise.setsCompleted > 1 ? 's' : ''} x{' '}
+                          {exercise.repsCompleted || '—'} reps
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <div className="mt-5 space-y-3">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="mt-7 flex h-[58px] w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-[14px] font-black uppercase tracking-wide text-white active:scale-[0.98] disabled:opacity-60"
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-sm font-black uppercase text-white shadow-[0_20px_50px_rgba(255,42,48,0.30)] active:scale-[0.98] disabled:opacity-70"
                 >
                   {saving ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -429,231 +976,277 @@ export function WorkoutExecutionPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/student/home')}
-                  className="mt-3 h-12 w-full rounded-[20px] border border-white/10 bg-white/[0.05] text-[13px] font-black text-zinc-300"
+                  className="flex h-14 w-full items-center justify-center rounded-[20px] border border-white/10 bg-white/[0.05] text-sm font-black uppercase text-white active:scale-[0.98]"
                 >
                   Voltar ao início
                 </button>
               </div>
             </div>
-          </motion.div>
+          </motion.main>
         ) : isResting ? (
-          <motion.div
-            key="rest"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex min-h-screen flex-col justify-center px-5 py-10"
+          <motion.main
+            key="resting"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 18 }}
+            transition={{ duration: 0.3 }}
+            className="flex min-h-screen flex-col px-4 py-6"
           >
-            <div className="mx-auto w-full max-w-lg text-center">
-              <div className="rounded-[38px] border border-white/10 bg-white/[0.04] p-7 shadow-[0_30px_100px_rgba(0,0,0,0.55)]">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ff2a32]">
-                  Descanso
-                </p>
+            <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center">
+              <section className="relative overflow-hidden rounded-[38px] border border-[#ff2a32]/20 bg-gradient-to-br from-[#ff2a32]/18 via-white/[0.04] to-white/[0.02] p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
+                <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#ff2a32]/25 to-transparent" />
 
-                <h1 className="mt-2 text-[30px] font-black uppercase italic tracking-[-0.06em] text-white">
-                  Respira
-                </h1>
-
-                <div className="relative mx-auto my-8 h-52 w-52">
-                  <svg className="h-full w-full -rotate-90" viewBox="0 0 180 180">
-                    <circle
-                      cx="90"
-                      cy="90"
-                      r="78"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.08)"
-                      strokeWidth="10"
-                    />
-
-                    <motion.circle
-                      cx="90"
-                      cy="90"
-                      r="78"
-                      fill="none"
-                      stroke="#ff2a32"
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 78}
-                      animate={{
-                        strokeDashoffset: 2 * Math.PI * 78 * (1 - restProgress / 100),
-                      }}
-                      transition={{ duration: 0.5, ease: 'linear' }}
-                    />
-                  </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <Timer className="mb-2 h-8 w-8 text-[#ff2a32]" />
-
-                    <span className="text-6xl font-black tabular-nums text-white">
-                      {restTimeLeft}
-                    </span>
-
-                    <span className="mt-1 text-xs font-black uppercase tracking-widest text-zinc-500">
-                      segundos
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                    {restTarget?.type === 'next-set' ? 'Próxima série' : 'Próximo exercício'}
+                <div className="relative">
+                  <p className="text-[10px] font-black uppercase tracking-[0.26em] text-[#ff2a32]">
+                    Descanso
                   </p>
 
-                  <p className="mt-2 text-lg font-black text-white">
-                    {restTarget?.type === 'next-set'
-                      ? `${getExerciseName(currentExercise)} • Série ${currentSet + 1}/${safeTotalSets}`
-                      : getNextExerciseName(exercises, currentExerciseIndex)}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSkipRest}
-                  className="mt-6 flex h-[54px] w-full items-center justify-center gap-2 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black uppercase tracking-wide text-white"
-                >
-                  <SkipForward className="h-4 w-4" />
-                  Pular descanso
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="execution"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen px-4 pb-[72px] pt-5"
-          >
-            <div className="mx-auto max-w-lg">
-              <div className="mb-5 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-zinc-300"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-
-                <div className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-black text-zinc-400">
-                  {formatTime(elapsedSeconds)}
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-wide text-zinc-500">
-                  <span>
-                    Exercício {currentExerciseIndex + 1} de {exercises.length}
-                  </span>
-
-                  <span>{Math.round(progressPercent)}%</span>
-                </div>
-
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <motion.div
-                    className="h-full rounded-full bg-[#ff2a32]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              <section className="overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.045] shadow-[0_18px_50px_rgba(0,0,0,0.5)]">
-                <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-black/40">
-                  {exerciseVideo ? (
-                    <video
-                      src={exerciseVideo}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="h-full w-full object-cover"
-                    />
-                  ) : exerciseImage ? (
-                    <img
-                      src={exerciseImage}
-                      alt={getExerciseName(currentExercise)}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center">
-                      <div className="flex h-24 w-24 items-center justify-center rounded-[32px] bg-[#ff2a32]/15 text-[#ff2a32]">
-                        <Dumbbell className="h-12 w-12" />
-                      </div>
-
-                      <p className="mt-4 text-xs font-bold text-zinc-600">
-                        Demonstração não disponível
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-white backdrop-blur">
-                    Série {currentSet}/{safeTotalSets}
-                  </div>
-                </div>
-
-                <div className="p-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ff2a32]">
-                    Exercício atual
-                  </p>
-
-                  <h1 className="mt-2 text-[26px] font-black uppercase italic leading-none tracking-[-0.06em] text-white">
-                    {getExerciseName(currentExercise)}
+                  <h1 className="mt-2 text-[30px] font-black uppercase italic tracking-[-0.08em] text-white">
+                    Respira
                   </h1>
 
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-center">
-                      <Zap className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
-                      <p className="text-2xl font-black text-white">
-                        {currentExercise.reps || '—'}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-                        Repetições
-                      </p>
-                    </div>
+                  <div className="relative mx-auto my-8 h-52 w-52">
+                    <svg className="h-full w-full -rotate-90" viewBox="0 0 220 220">
+                      <circle
+                        cx="110"
+                        cy="110"
+                        r="94"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.07)"
+                        strokeWidth="12"
+                      />
 
-                    <div className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-center">
-                      <Flame className="mx-auto mb-2 h-5 w-5 text-yellow-400" />
-                      <p className="text-2xl font-black text-white">
-                        {currentExercise.suggested_weight || '—'}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-                        Carga
-                      </p>
+                      <motion.circle
+                        cx="110"
+                        cy="110"
+                        r="94"
+                        fill="none"
+                        stroke="#ff2a32"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 94}
+                        initial={{ strokeDashoffset: 0 }}
+                        animate={{
+                          strokeDashoffset:
+                            2 * Math.PI * 94 * (1 - restTimeLeft / Math.max(1, exerciseRest)),
+                        }}
+                        transition={{ duration: 1, ease: 'linear' }}
+                      />
+                    </svg>
+
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Timer className="mb-2 h-8 w-8 text-[#ff2a32]" />
+
+                      <span className="text-6xl font-black tracking-[-0.08em] text-white">
+                        {restTimeLeft}
+                      </span>
+
+                      <span className="mt-1 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        segundos
+                      </span>
                     </div>
                   </div>
 
-                  {observation && (
-                    <div className="mt-4 rounded-[22px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-                        Observação
-                      </p>
+                  <div className="rounded-[26px] border border-white/10 bg-black/25 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
+                      {restMode === 'set' ? 'Próxima série' : 'Próximo exercício'}
+                    </p>
 
-                      <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                        {observation}
-                      </p>
-                    </div>
-                  )}
-
-                  {currentExercise.rest_seconds && currentExercise.rest_seconds > 0 && (
-                    <div className="mt-4 flex items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-bold text-zinc-400">
-                      <Timer className="h-4 w-4 text-[#ff2a32]" />
-                      {currentExercise.rest_seconds}s de descanso após concluir
-                    </div>
-                  )}
+                    <p className="mt-1 text-lg font-black text-white">
+                      {restMode === 'set'
+                        ? `${exerciseName} • Série ${currentSet + 1} de ${safeTotalSets}`
+                        : currentExerciseIndex + 1 < exercises.length
+                          ? getExerciseName(exercises[currentExerciseIndex + 1])
+                          : 'Finalizar treino'}
+                    </p>
+                  </div>
 
                   <button
                     type="button"
-                    onClick={handleCompleteSet}
-                    className="mt-5 flex h-[58px] w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] px-4 text-center text-[13px] font-black uppercase tracking-wide text-white transition-all active:scale-[0.98]"
+                    onClick={handleRestComplete}
+                    className="mt-5 flex h-14 w-full items-center justify-center rounded-[20px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase text-white active:scale-[0.98]"
                   >
-                    <CheckCircle2 className="h-5 w-5 shrink-0" />
-                    <span>{buttonLabel}</span>
+                    Pular descanso
                   </button>
                 </div>
               </section>
             </div>
-          </motion.div>
+          </motion.main>
+        ) : (
+          <motion.main
+            key="execution"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-5"
+          >
+            <header className="shrink-0">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/student/workouts')}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white active:scale-95"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="truncate text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
+                    {getWorkoutName(plan)}
+                  </p>
+
+                  <p className="mt-0.5 truncate text-xs font-medium text-zinc-500">
+                    {getWorkoutObjective(plan)}
+                  </p>
+                </div>
+
+                <div className="flex h-11 min-w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-xs font-black text-white">
+                  {formatDuration(elapsedSeconds)}
+                </div>
+              </div>
+
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-500">
+                  Exercício {currentExerciseIndex + 1} de {exercises.length}
+                </span>
+
+                <span className="text-xs font-black text-[#ff2a32]">
+                  {Math.round(progressPercent)}%
+                </span>
+              </div>
+
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <motion.div
+                  className="h-full rounded-full bg-[#ff2a32] shadow-[0_0_22px_rgba(255,42,48,0.45)]"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 0.35 }}
+                />
+              </div>
+            </header>
+
+            <section className="flex flex-1 flex-col justify-center py-6">
+              <motion.div
+                key={`${currentExerciseIndex}-${currentSet}`}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.28 }}
+                className="relative overflow-hidden rounded-[38px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.55)]"
+              >
+                <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#ff2a32]/16 to-transparent" />
+
+                <div className="relative">
+                  <div className="overflow-hidden rounded-[30px] border border-white/10 bg-black/35">
+                    {videoUrl ? (
+                      <video
+                        src={videoUrl}
+                        className="h-56 w-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={exerciseName}
+                        className="h-56 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-56 items-center justify-center">
+                        <div className="flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_20px_60px_rgba(255,42,48,0.18)]">
+                          <Dumbbell className="h-12 w-12" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 text-center">
+                    <div className="mb-3 flex items-center justify-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ff2a32]/20 bg-[#ff2a32]/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#ff2a32]">
+                        <Zap className="h-3.5 w-3.5" />
+                        Série {currentSet} de {safeTotalSets}
+                      </span>
+                    </div>
+
+                    <h1 className="text-[28px] font-black leading-tight tracking-[-0.06em] text-white">
+                      {exerciseName}
+                    </h1>
+
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="rounded-[24px] border border-white/10 bg-black/25 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                          Repetições
+                        </p>
+
+                        <p className="mt-1 text-3xl font-black tracking-[-0.06em] text-white">
+                          {exerciseReps}
+                        </p>
+                      </div>
+
+                      <div className="rounded-[24px] border border-white/10 bg-black/25 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                          Carga
+                        </p>
+
+                        <p className="mt-1 text-3xl font-black tracking-[-0.06em] text-white">
+                          {exerciseWeight}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-zinc-400">
+                          <Timer className="h-4 w-4 text-[#ff2a32]" />
+                          {exerciseRest > 0 ? `${exerciseRest}s descanso` : 'Sem descanso'}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-zinc-400">
+                          <Target className="h-4 w-4 text-emerald-400" />
+                          {completedExercises.length}/{exercises.length} feitos
+                        </div>
+                      </div>
+                    </div>
+
+                    {exerciseObservation && (
+                      <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.035] p-4 text-left">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-[#ff2a32]">
+                          Observação
+                        </p>
+
+                        <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                          {exerciseObservation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </section>
+
+            <footer className="shrink-0 pb-[max(12px,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={handleCompleteSet}
+                className="flex h-16 w-full items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase text-white shadow-[0_22px_55px_rgba(255,42,48,0.34)] transition-all active:scale-[0.98]"
+              >
+                <CheckCircle2 className="h-6 w-6" />
+
+                {currentSet < safeTotalSets ? (
+                  <span>Concluir série</span>
+                ) : currentExerciseIndex + 1 < exercises.length ? (
+                  <span>Próximo exercício</span>
+                ) : (
+                  <span>Finalizar treino</span>
+                )}
+
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </footer>
+          </motion.main>
         )}
       </AnimatePresence>
     </div>
