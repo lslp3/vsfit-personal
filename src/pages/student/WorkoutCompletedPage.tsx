@@ -1,195 +1,318 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, Clock, CheckCircle2, Home, BarChart3 } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { LoadingScreen } from '../../components/ui/LoadingScreen';
-import { EmptyState } from '../../components/ui/EmptyState';
+import {
+  AlertCircle,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Dumbbell,
+  Flame,
+  Home,
+  Loader2,
+  Share2,
+  Trophy,
+} from 'lucide-react';
+
 import { supabase } from '../../lib/supabase';
 import { formatTime, formatDateTime } from '../../lib/formatters';
 import type { WorkoutLog } from '../../types/database';
 
+function normalizeExercises(value: any) {
+  return Array.isArray(value) ? value : [];
+}
+
 export function WorkoutCompletedPage() {
-  const { logId } = useParams<{ logId: string }>();
+  const params = useParams<{ id?: string; logId?: string }>();
   const navigate = useNavigate();
+
+  const logId = params.id || params.logId || '';
 
   const [log, setLog] = useState<WorkoutLog | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!logId) return;
+    if (!logId) {
+      setError('ID do treino concluído não encontrado.');
+      setLoading(false);
+      return;
+    }
+
     loadLog();
   }, [logId]);
 
   async function loadLog() {
+    setLoading(true);
+    setError('');
+
     try {
-      const { data, error } = await supabase
+      const { data, error: logError } = await supabase
         .from('workout_logs')
         .select('*')
         .eq('id', logId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (logError) throw logError;
+
+      if (!data) {
+        setError('Registro do treino não encontrado.');
+        setLog(null);
+        return;
+      }
+
       setLog(data);
-    } catch (err) {
-      console.error('Load log error:', err);
+    } catch (err: any) {
+      console.error('[WorkoutCompletedPage] loadLog error:', err);
+      setError(err?.message || 'Erro ao carregar resumo do treino.');
+      setLog(null);
     } finally {
       setLoading(false);
     }
   }
 
-  if (loading) return <LoadingScreen />;
+  const exercises = useMemo(() => normalizeExercises((log as any)?.exercises_data), [log]);
 
-  if (!log) {
+  const totalSets = useMemo(() => {
+    return exercises.reduce((sum: number, exercise: any) => {
+      const parsed = Number(exercise?.sets_completed || 0);
+
+      return sum + (Number.isFinite(parsed) ? parsed : 0);
+    }, 0);
+  }, [exercises]);
+
+  function handleShareSummary() {
+    if (!log) return;
+
+    const text = [
+      'Treino concluído no VSFit Personal!',
+      log.duration_seconds ? `Tempo total: ${formatTime(log.duration_seconds)}` : '',
+      exercises.length ? `Exercícios: ${exercises.length}` : '',
+      totalSets ? `Séries concluídas: ${totalSets}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {});
+  }
+
+  if (loading) {
     return (
-      <EmptyState
-        icon={<Trophy className="w-8 h-8 text-vs-muted" />}
-        title="Registro não encontrado"
-        action={
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/student/home')}
-          >
-            Voltar ao Início
-          </Button>
-        }
-      />
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
+            <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
+          </div>
+
+          <p className="text-sm font-black text-white">Carregando resumo...</p>
+        </div>
+      </div>
     );
   }
 
-  const exercises = log.exercises_data || [];
+  if (error || !log) {
+    return (
+      <div className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-white">
+        <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+
+          <h1 className="mt-5 text-xl font-black text-white">Registro não encontrado</h1>
+
+          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
+            {error || 'Não encontramos o resumo desse treino.'}
+          </p>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={loadLog}
+              className="h-12 rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-black text-white"
+            >
+              TENTAR
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/student/home')}
+              className="h-12 rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+            >
+              INÍCIO
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-vs-dark flex flex-col">
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center mb-6 shadow-lg shadow-yellow-500/20"
-        >
-          <Trophy className="w-12 h-12 text-white" />
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
+    <div className="min-h-screen bg-[#050505] px-4 pb-10 pt-8 text-white">
+      <div className="mx-auto max-w-lg">
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-          className="text-3xl font-bold text-white text-center mb-2"
+          className="overflow-hidden rounded-[38px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/18 via-white/[0.045] to-white/[0.025] p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.55)]"
         >
-          Treino Concluído!
-        </motion.h1>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.15, type: 'spring', stiffness: 200 }}
+            className="mx-auto flex h-28 w-28 items-center justify-center rounded-[36px] bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-[0_24px_70px_rgba(251,191,36,0.3)]"
+          >
+            <Trophy className="h-14 w-14" />
+          </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-          className="text-vs-muted text-sm text-center mb-10"
-        >
-          {exercises.length > 0
-            ? `${exercises.length} exercício${exercises.length > 1 ? 's' : ''} realizado${exercises.length > 1 ? 's' : ''}`
-            : 'Ótimo trabalho!'}
-        </motion.p>
+          <p className="mt-6 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">
+            Parabéns
+          </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-          className="w-full max-w-sm space-y-4"
-        >
-          {log.duration_seconds !== null && log.duration_seconds !== undefined && (
-            <Card>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-vs-primary/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-vs-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-vs-muted">Tempo total</p>
-                  <p className="text-2xl font-bold text-white">
-                    {formatTime(log.duration_seconds)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          )}
+          <h1 className="mt-2 text-[34px] font-black uppercase italic leading-none tracking-[-0.07em] text-white">
+            Treino concluído!
+          </h1>
 
-          {log.completed_at && (
-            <Card>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-vs-muted">Finalizado em</p>
-                  <p className="text-sm font-semibold text-white">
-                    {formatDateTime(log.completed_at)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          )}
+          <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            Você finalizou seu treino com sucesso. Continue firme na sua evolução.
+          </p>
 
-          {exercises.length > 0 && (
-            <Card>
-              <h3 className="text-sm font-semibold text-white mb-3">
-                Exercícios Concluídos
-              </h3>
-              <div className="space-y-2">
-                {exercises.map((ex, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-3 py-2 border-b border-vs-border last:border-0"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {ex.exercise_name}
-                      </p>
-                      <p className="text-xs text-vs-muted">
-                        {ex.sets_completed} série{ex.sets_completed > 1 ? 's' : ''}
-                        {ex.reps_completed
-                          ? ` x ${ex.reps_completed} reps`
-                          : ''}
-                        {ex.weight_used ? ` — ${ex.weight_used}` : ''}
-                      </p>
-                    </div>
+          <div className="mt-7 grid grid-cols-3 gap-2">
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-3 text-center">
+              <Clock className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
+
+              <p className="text-sm font-black text-white">
+                {log.duration_seconds ? formatTime(log.duration_seconds) : '--'}
+              </p>
+
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                Tempo
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-3 text-center">
+              <Dumbbell className="mx-auto mb-2 h-5 w-5 text-emerald-400" />
+
+              <p className="text-sm font-black text-white">{exercises.length}</p>
+
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                Exerc.
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-3 text-center">
+              <Flame className="mx-auto mb-2 h-5 w-5 text-yellow-400" />
+
+              <p className="text-sm font-black text-white">{totalSets}</p>
+
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                Séries
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        <section className="mt-5 rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/12 text-emerald-400">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                Finalizado em
+              </p>
+
+              <p className="text-sm font-black text-white">
+                {log.completed_at ? formatDateTime(log.completed_at) : 'Agora'}
+              </p>
+            </div>
+          </div>
+
+          {exercises.length > 0 ? (
+            <div className="space-y-2">
+              {exercises.map((exercise: any, index: number) => (
+                <div
+                  key={`${exercise.exercise_name || 'exercise'}-${index}`}
+                  className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/20 p-3"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
-                ))}
-              </div>
-            </Card>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-black text-white">
+                      {exercise.exercise_name || 'Exercício'}
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {exercise.sets_completed || 0} série
+                      {Number(exercise.sets_completed || 0) === 1 ? '' : 's'}
+                      {exercise.reps_completed ? ` • ${exercise.reps_completed} reps` : ''}
+                      {exercise.weight_used ? ` • ${exercise.weight_used}` : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center text-sm text-zinc-500">
+              Exercícios não registrados nesse resumo.
+            </p>
           )}
-        </motion.div>
+        </section>
+
+        <section className="mt-5 rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">
+                Próximo passo
+              </p>
+
+              <h2 className="mt-1 text-lg font-black text-white">Continue evoluindo</h2>
+            </div>
+
+            <CalendarDays className="h-5 w-5 text-[#ff2a32]" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/student/home')}
+              className="flex h-14 items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-[13px] font-black uppercase tracking-wide text-white shadow-[0_18px_45px_rgba(255,42,48,0.34)] active:scale-[0.98]"
+            >
+              <Home className="h-5 w-5" />
+              Início
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/student/progress')}
+              className="flex h-14 items-center justify-center gap-2 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black uppercase tracking-wide text-white active:scale-[0.98]"
+            >
+              <BarChart3 className="h-5 w-5" />
+              Progresso
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleShareSummary}
+            className="mt-3 flex h-15 w-full items-center justify-center gap-2 rounded-[20px] border border-white/10 bg-white/[0.04] text-[13px] font-black uppercase tracking-wide text-zinc-300 active:scale-[0.98]"
+          >
+            <Share2 className="h-5 w-5" />
+            {copied ? 'Resumo copiado' : 'Copiar resumo'}
+          </button>
+        </section>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.4 }}
-        className="px-6 pb-8 pt-4 space-y-3 max-w-sm mx-auto w-full"
-      >
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          onClick={() => navigate('/student/home')}
-        >
-          <Home className="w-5 h-5" />
-          Voltar ao Início
-        </Button>
-
-        <Button
-          variant="secondary"
-          size="lg"
-          className="w-full"
-          onClick={() => navigate('/student/progress')}
-        >
-          <BarChart3 className="w-5 h-5" />
-          Ver Progresso
-        </Button>
-      </motion.div>
     </div>
   );
 }
+
+export default WorkoutCompletedPage;

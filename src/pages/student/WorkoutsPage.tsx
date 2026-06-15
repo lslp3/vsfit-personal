@@ -61,13 +61,7 @@ function getTodayDayKey() {
 }
 
 function getWorkoutName(workout: any) {
-  return (
-    workout?.name ||
-    workout?.title ||
-    workout?.workout_name ||
-    workout?.plan_name ||
-    'Treino personalizado'
-  );
+  return workout?.name || workout?.title || workout?.workout_name || workout?.plan_name || 'Treino personalizado';
 }
 
 function getWorkoutObjective(workout: any) {
@@ -113,7 +107,6 @@ function normalizeArray(value: any) {
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
@@ -124,10 +117,6 @@ function normalizeArray(value: any) {
 }
 
 function getWorkoutExercises(workout: any) {
-  const planExercises = normalizeArray(workout?.workout_plan_exercises);
-
-  if (planExercises.length > 0) return planExercises;
-
   const directExercises = normalizeArray(workout?.exercises);
 
   if (directExercises.length > 0) return directExercises;
@@ -138,26 +127,6 @@ function getWorkoutExercises(workout: any) {
 }
 
 function getWorkoutDayGroups(workout: any) {
-  const planExercises = normalizeArray(workout?.workout_plan_exercises);
-
-  if (planExercises.length > 0) {
-    const grouped = planExercises.reduce<Record<string, any[]>>((acc, exercise: any) => {
-      const key = exercise?.day_key || exercise?.dayKey || '_default';
-
-      if (!acc[key]) acc[key] = [];
-
-      acc[key].push(exercise);
-
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).map(([dayKey, exercises]) => ({
-      dayKey,
-      dayLabel: DAY_LABELS[dayKey] || 'DIA',
-      exercises,
-    }));
-  }
-
   const dayGroups = normalizeArray(workout?.dayGroups || workout?.day_groups);
 
   if (dayGroups.length > 0) return dayGroups;
@@ -262,29 +231,7 @@ function getStudentName(student: any) {
   return student?.name || student?.full_name || 'Aluno';
 }
 
-async function hydrateWorkoutWithExercises(workout: any) {
-  if (getWorkoutExercises(workout).length > 0) return workout;
-
-  try {
-    const detail = await workoutService.getWorkoutPlanById(workout.id);
-
-    return {
-      ...workout,
-      ...detail,
-      id: workout.id,
-      workout_plan_exercises:
-        (detail as any)?.workout_plan_exercises ||
-        workout?.workout_plan_exercises ||
-        [],
-    };
-  } catch (err) {
-    console.error('[StudentWorkoutsPage] hydrate workout error:', err);
-
-    return workout;
-  }
-}
-
-export function StudentWorkoutsPage() {
+export function WorkoutsPage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -319,8 +266,9 @@ export function StudentWorkoutsPage() {
         return;
       }
 
-      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
-      let studentData = accountResult?.student || null;
+      const { student } = await studentService.getStudentAccountByAuthUser(authUser.id);
+
+      let studentData = student;
 
       if (!studentData) {
         studentData = await studentService.getStudentByAuthUser(authUser.id);
@@ -331,32 +279,28 @@ export function StudentWorkoutsPage() {
         return;
       }
 
-      const [workoutsData, logsData] = await Promise.all([
-        workoutService.getWorkoutPlansByStudent(studentData.id).catch((err: any) => {
-          console.error('[StudentWorkoutsPage] workouts error:', err);
-          return [];
-        }),
-        workoutService.getWorkoutLogsByStudent(studentData.id).catch((err: any) => {
-          console.error('[StudentWorkoutsPage] logs error:', err);
-          return [];
-        }),
+      const [workoutsData, logsResponse] = await Promise.allSettled([
+        workoutService.getWorkoutPlansByStudent(studentData.id),
+        workoutService.getWorkoutLogsByStudent(studentData.id),
       ]);
 
-      const visibleWorkouts = Array.isArray(workoutsData)
-        ? workoutsData.filter(isVisibleWorkout)
-        : [];
+      const workouts =
+        workoutsData.status === 'fulfilled' && Array.isArray(workoutsData.value)
+          ? workoutsData.value.filter(isVisibleWorkout)
+          : [];
 
-      const hydratedWorkouts = await Promise.all(
-        visibleWorkouts.map((workout) => hydrateWorkoutWithExercises(workout))
-      );
+      const logs =
+        logsResponse.status === 'fulfilled' && Array.isArray(logsResponse.value)
+          ? logsResponse.value
+          : [];
 
       setData({
         student: studentData,
-        workouts: hydratedWorkouts,
-        logs: Array.isArray(logsData) ? logsData : [],
+        workouts,
+        logs,
       });
     } catch (err: any) {
-      console.error('[StudentWorkoutsPage] loadData error:', err);
+      console.error('[WorkoutsPage] loadData error:', err);
       setError(err?.message || 'Erro ao carregar treinos.');
     } finally {
       setLoading(false);
@@ -572,12 +516,12 @@ export function StudentWorkoutsPage() {
                   key={workout.id}
                   type="button"
                   onClick={() => handleOpenWorkout(workout)}
-                  className="w-full rounded-[30px] border border-white/10 bg-white/[0.045] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition-all active:scale-[0.98]"
+                  className="w-full overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-start gap-4">
                     <div
                       className={cn(
-                        'mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]',
+                        'flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]',
                         completed
                           ? 'border border-emerald-400/20 bg-emerald-400/12 text-emerald-400'
                           : today
@@ -601,7 +545,7 @@ export function StudentWorkoutsPage() {
                             {today ? 'Treino de hoje' : completed ? 'Concluído' : 'Treino liberado'}
                           </p>
 
-                          <h3 className="mt-1 truncate text-[20px] font-black tracking-[-0.03em] text-white">
+                          <h3 className="mt-1 truncate text-[17px] font-black tracking-[-0.03em] text-white">
                             {getWorkoutName(workout)}
                           </h3>
                         </div>
@@ -609,33 +553,9 @@ export function StudentWorkoutsPage() {
                         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-zinc-700" />
                       </div>
 
-                      <p className="mt-2 text-[14px] font-medium text-zinc-400">
+                      <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-zinc-400">
                         {getWorkoutObjective(workout)}
                       </p>
-
-                      {days.length > 0 && (
-                        <div className="mt-3">
-                          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
-                            Dias do treino
-                          </p>
-
-                          <div className="flex flex-wrap gap-1.5">
-                            {days.slice(0, 7).map((day: string) => (
-                              <span
-                                key={`${workout.id}-${day}`}
-                                className={cn(
-                                  'rounded-full border px-2.5 py-1 text-[10px] font-black',
-                                  day === getTodayDayKey()
-                                    ? 'border-[#ff2a32]/30 bg-[#ff2a32]/15 text-[#ff2a32]'
-                                    : 'border-white/10 bg-white/[0.04] text-zinc-400'
-                                )}
-                              >
-                                {DAY_LABELS[day] || String(day).slice(0, 3).toUpperCase()}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
                       <div className="mt-4 flex flex-wrap gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
@@ -650,9 +570,27 @@ export function StudentWorkoutsPage() {
 
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
                           <Dumbbell className="h-3.5 w-3.5" />
-                          {exercises.length} exercício{exercises.length === 1 ? '' : 's'}
+                          {exercises.length} exercícios
                         </span>
                       </div>
+
+                      {days.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {days.slice(0, 7).map((day: string) => (
+                            <span
+                              key={`${workout.id}-${day}`}
+                              className={cn(
+                                'rounded-full border px-2.5 py-1 text-[9px] font-black',
+                                day === getTodayDayKey()
+                                  ? 'border-[#ff2a32]/30 bg-[#ff2a32]/15 text-[#ff2a32]'
+                                  : 'border-white/10 bg-white/[0.04] text-zinc-500'
+                              )}
+                            >
+                              {DAY_LABELS[day] || String(day).slice(0, 3).toUpperCase()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="mt-4 flex items-center justify-between gap-3">
                         <p className="text-[11px] font-bold text-zinc-500">
@@ -662,7 +600,9 @@ export function StudentWorkoutsPage() {
                                   lastCompleted.created_at ||
                                   lastCompleted.date
                               )}`
-                            : 'Toque para abrir'}
+                            : pendingCount > 0
+                              ? 'Toque para iniciar'
+                              : 'Pronto para executar'}
                         </p>
 
                         <span
@@ -728,4 +668,4 @@ export function StudentWorkoutsPage() {
   );
 }
 
-export default StudentWorkoutsPage;
+export default WorkoutsPage;

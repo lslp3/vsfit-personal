@@ -1,9 +1,33 @@
 import { supabase } from '../lib/supabase';
 import type { Student, StudentAccount } from '../types/database';
 import type { CreateStudentData } from '../types/student';
+import { generatePassword } from '../lib/utils';
+
+type CreateStudentInput = CreateStudentData & {
+  bodyFat?: number | string | null;
+  bodyfat?: number | string | null;
+  targetBodyFat?: number | string | null;
+  targetbodyfat?: number | string | null;
+  muscleMass?: number | string | null;
+  musclemass?: number | string | null;
+  waterIntake?: number | string | null;
+  waterintake?: number | string | null;
+};
 
 function mapStudentFromDb(db: any): Student {
   return db;
+}
+
+function toNullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+
+  const parsed = Number(String(value).replace(',', '.'));
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export async function getStudentsByTrainer(trainerId: string): Promise<Student[]> {
@@ -52,137 +76,93 @@ export async function getStudentById(id: string): Promise<Student | null> {
   }
 }
 
-async function createStudentAccess(params: {
-  studentId: string;
-  email: string;
-  name: string;
-}) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-
-  if (!accessToken) {
-    throw new Error('Sessão do personal não encontrada. Faça login novamente.');
-  }
-
-  const { data, error } = await supabase.functions.invoke('create-student-access', {
-    body: {
-      studentId: params.studentId,
-      email: params.email,
-      name: params.name,
-    },
-  });
-
-  if (error) {
-    console.error('[StudentService] createStudentAccess function error:', error);
-    throw new Error(error.message || 'Erro ao criar acesso do aluno.');
-  }
-
-  if (!data?.success) {
-    console.error('[StudentService] createStudentAccess response error:', data);
-    throw new Error(data?.error || 'Erro ao criar acesso do aluno.');
-  }
-
-  return data;
-}
-
 export async function createStudent(trainerId: string, data: CreateStudentData) {
-  const normalizedEmail = String(data.email || '').trim().toLowerCase();
-  const normalizedName = String(data.name || '').trim();
+  const input = data as CreateStudentInput;
 
-  if (!trainerId) {
-    throw new Error('Personal não encontrado.');
-  }
-
-  if (!normalizedName) {
-    throw new Error('Nome do aluno é obrigatório.');
-  }
-
-  if (!normalizedEmail) {
-    throw new Error('Email do aluno é obrigatório.');
-  }
+  const weight = toNullableNumber(input.weight);
+  const height = toNullableNumber(input.height);
+  const bodyFat = toNullableNumber(input.bodyFat ?? input.bodyfat);
+  const targetBodyFat = toNullableNumber(input.targetBodyFat ?? input.targetbodyfat);
+  const muscleMass = toNullableNumber(input.muscleMass ?? input.musclemass);
+  const waterIntake = toNullableNumber(input.waterIntake ?? input.waterintake);
+  const targetWeight = toNullableNumber(input.targetWeight);
 
   const { data: student, error } = await supabase
     .from('students')
     .insert({
       trainer_id: trainerId,
-      name: normalizedName,
-      email: normalizedEmail,
-      phone: data.phone || null,
-      birth_date: data.birthDate || null,
-      status: 'active',
+      name: input.name,
+      email: input.email,
+      phone: input.phone || null,
+      birth_date: input.birthDate || null,
     })
     .select()
     .single();
 
-  if (error) {
-    console.error('[StudentService] createStudent students error:', error);
-    throw error;
-  }
+  if (error) throw error;
 
   const { error: goalError } = await supabase.from('student_goals').insert({
     student_id: student.id,
-    objective: data.objective || null,
-    level: data.level || 'Iniciante',
-    weekly_frequency: data.weeklyFrequency || null,
-    target_weight: data.targetWeight || null,
+    objective: input.objective || null,
+    level: input.level || 'Iniciante',
+    weekly_frequency: input.weeklyFrequency || null,
+    target_weight: targetWeight,
   });
 
   if (goalError) {
-    console.warn('[StudentService] createStudent student_goals warning:', goalError);
+    console.error('[StudentService] createStudent goal error:', goalError);
   }
 
-  const { error: metricsError } = await supabase.from('student_metrics').insert({
+  const { error: metricError } = await supabase.from('student_metrics').insert({
     student_id: student.id,
-    weight: data.weight || null,
-    height: data.height || null,
+    date: getTodayDate(),
+    weight,
+    height,
+    body_fat: bodyFat,
+    target_body_fat: targetBodyFat,
+    muscle_mass: muscleMass,
+    water_intake: waterIntake,
   });
 
-  if (metricsError) {
-    console.warn('[StudentService] createStudent student_metrics warning:', metricsError);
+  if (metricError) {
+    console.error('[StudentService] createStudent metric error:', metricError);
   }
 
-  if (data.createAppAccess) {
-    const accessResult = await createStudentAccess({
-      studentId: student.id,
-      email: normalizedEmail,
-      name: normalizedName,
+  if (input.createAppAccess) {
+    const tempPassword = generatePassword();
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: input.email,
+      password: tempPassword,
     });
 
-    return {
-      student: mapStudentFromDb(accessResult.student || student),
-      credentials: {
-        email: accessResult.credentials?.email || normalizedEmail,
-        password: accessResult.credentials?.password || '',
-        temporary_password:
-          accessResult.credentials?.temporary_password ||
-          accessResult.credentials?.password ||
-          '',
-      },
-      password: accessResult.credentials?.password || '',
-      temporary_password:
-        accessResult.credentials?.temporary_password ||
-        accessResult.credentials?.password ||
-        '',
-      auth_user_id: accessResult.auth_user_id || '',
-    };
+    if (!authError && authData.user) {
+      await supabase.from('user_profiles').insert({
+        id: authData.user.id,
+        email: input.email,
+        name: input.name,
+        role: 'student',
+      });
+
+      await supabase.from('student_accounts').insert({
+        student_id: student.id,
+        auth_user_id: authData.user.id,
+        email: input.email,
+        temporary_password: tempPassword,
+      });
+
+      await supabase
+        .from('students')
+        .update({
+          auth_user_id: authData.user.id,
+          app_access_status: 'invited',
+          login_enabled: true,
+        })
+        .eq('id', student.id);
+    }
   }
 
-  const { data: createdStudentWithRelations } = await supabase
-    .from('students')
-    .select(`
-      *,
-      student_accounts(*)
-    `)
-    .eq('id', student.id)
-    .maybeSingle();
-
-  return {
-    student: mapStudentFromDb(createdStudentWithRelations || student),
-    credentials: null,
-    password: '',
-    temporary_password: '',
-    auth_user_id: '',
-  };
+  return student;
 }
 
 export async function updateStudent(id: string, data: any) {
@@ -215,6 +195,7 @@ export async function getStudentByAuthUser(authUserId: string): Promise<Student 
 
     if (account?.student) {
       const student = Array.isArray(account.student) ? account.student[0] : account.student;
+
       if (student?.id) return student;
     }
 
