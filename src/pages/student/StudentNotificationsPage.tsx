@@ -36,6 +36,46 @@ type NotificationItem = {
   raw?: any;
 };
 
+type NotificationRow = {
+  id: string;
+  user_id?: string | null;
+  title?: string | null;
+  message?: string | null;
+  type?: string | null;
+  read?: boolean | null;
+  created_at?: string | null;
+};
+
+function fixTextEncoding(value?: string | null) {
+  if (!value) return '';
+
+  return String(value)
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã /g, 'à')
+    .replace(/Ã¢/g, 'â')
+    .replace(/Ã£/g, 'ã')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ãª/g, 'ê')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ã´/g, 'ô')
+    .replace(/Ãµ/g, 'õ')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã§/g, 'ç')
+    .replace(/Ã/g, 'Á')
+    .replace(/Ã€/g, 'À')
+    .replace(/Ã‚/g, 'Â')
+    .replace(/Ãƒ/g, 'Ã')
+    .replace(/Ã‰/g, 'É')
+    .replace(/ÃŠ/g, 'Ê')
+    .replace(/Ã/g, 'Í')
+    .replace(/Ã“/g, 'Ó')
+    .replace(/Ã”/g, 'Ô')
+    .replace(/Ã•/g, 'Õ')
+    .replace(/Ãš/g, 'Ú')
+    .replace(/Ã‡/g, 'Ç');
+}
+
 function getStudentName(student: any) {
   return student?.name || student?.full_name || student?.email || 'Aluno';
 }
@@ -59,32 +99,27 @@ function getCreatedAt(item: any) {
 }
 
 function isReadNotification(item: any) {
-  if (typeof item?.read === 'boolean') return item.read;
-  if (typeof item?.is_read === 'boolean') return item.is_read;
-  if (typeof item?.seen === 'boolean') return item.seen;
-  if (typeof item?.viewed === 'boolean') return item.viewed;
-
-  return false;
+  return typeof item?.read === 'boolean' ? item.read : false;
 }
 
 function getNotificationTitle(item: any) {
-  return (
+  return fixTextEncoding(
     item?.title ||
-    item?.titulo ||
-    item?.name ||
-    item?.subject ||
-    'Notificação'
+      item?.titulo ||
+      item?.name ||
+      item?.subject ||
+      'Notificação'
   );
 }
 
 function getNotificationMessage(item: any) {
-  return (
+  return fixTextEncoding(
     item?.message ||
-    item?.mensagem ||
-    item?.description ||
-    item?.body ||
-    item?.content ||
-    'Você tem uma nova atualização.'
+      item?.mensagem ||
+      item?.description ||
+      item?.body ||
+      item?.content ||
+      'Você tem uma nova atualização.'
   );
 }
 
@@ -108,6 +143,18 @@ function getNotificationType(item: any): NotificationItem['type'] {
   }
 
   return 'system';
+}
+
+function isPersonalOnlyNotification(item: any) {
+  const type = String(item?.type || '').toLowerCase();
+  const title = String(item?.title || '').toLowerCase();
+  const message = String(item?.message || '').toLowerCase();
+
+  return (
+    type.includes('trainer_student_workout_completed') ||
+    title.includes('finalizou o treino') ||
+    message.includes('finalizou o treino')
+  );
 }
 
 function getActionUrlByType(type: NotificationItem['type']) {
@@ -262,65 +309,59 @@ export function StudentNotificationsPage() {
     navigate('/student/home');
   }
 
-  async function loadDatabaseNotifications(studentId: string, trainerId?: string | null) {
-    const results: any[] = [];
+  async function loadDatabaseNotifications(authUserId: string) {
+    try {
+      const { data, error: queryError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', authUserId)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    const queries = [
-      () =>
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('student_id', studentId)
-          .order('created_at', { ascending: false })
-          .limit(50),
-
-      () =>
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('studentid', studentId)
-          .order('created_at', { ascending: false })
-          .limit(50),
-
-      () =>
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('recipient_id', studentId)
-          .order('created_at', { ascending: false })
-          .limit(50),
-    ];
-
-    if (trainerId) {
-      queries.push(() =>
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('trainer_id', trainerId)
-          .eq('student_id', studentId)
-          .order('created_at', { ascending: false })
-          .limit(50)
-      );
-    }
-
-    for (const runQuery of queries) {
-      try {
-        const { data, error: queryError } = await runQuery();
-
-        if (queryError) {
-          console.warn('[StudentNotificationsPage] notifications query warning:', queryError);
-          continue;
-        }
-
-        if (Array.isArray(data)) {
-          results.push(...data);
-        }
-      } catch (queryError) {
-        console.warn('[StudentNotificationsPage] notifications query exception:', queryError);
+      if (queryError) {
+        console.warn('[StudentNotificationsPage] notifications query warning:', queryError);
+        return [];
       }
+
+      return ((data || []) as NotificationRow[]).filter(
+        (item) => !isPersonalOnlyNotification(item)
+      );
+    } catch (queryError) {
+      console.warn('[StudentNotificationsPage] notifications query exception:', queryError);
+      return [];
+    }
+  }
+
+  async function loadNutritionPlans(studentId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('nutrition_plans')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!error && Array.isArray(data)) return data;
+    } catch (error) {
+      console.warn('[StudentNotificationsPage] nutrition student_id warning:', error);
     }
 
-    return results;
+    try {
+      const { data, error } = await supabase
+        .from('nutrition_plans')
+        .select('*')
+        .eq('studentid', studentId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!error && Array.isArray(data)) return data;
+    } catch (error) {
+      console.warn('[StudentNotificationsPage] nutrition studentid warning:', error);
+    }
+
+    return [];
   }
 
   async function loadSmartNotifications(studentData: any) {
@@ -346,13 +387,7 @@ export function StudentNotificationsPage() {
 
       workoutService.getWorkoutPlansByStudent(studentId),
 
-      supabase
-        .from('nutrition_plans')
-        .select('*')
-        .or(`student_id.eq.${studentId},studentid.eq.${studentId}`)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(3),
+      loadNutritionPlans(studentId),
 
       supabase
         .from('workout_logs')
@@ -375,7 +410,7 @@ export function StudentNotificationsPage() {
         source: 'smart',
         type: 'message',
         title: 'Nova mensagem do personal',
-        description: message.content || 'Seu personal enviou uma nova mensagem.',
+        description: fixTextEncoding(message.content || 'Seu personal enviou uma nova mensagem.'),
         createdAt: getCreatedAt(message),
         read: Boolean(message.read),
         actionUrl: '/student/chat',
@@ -413,8 +448,8 @@ export function StudentNotificationsPage() {
     });
 
     const nutritionPlans =
-      nutritionResponse.status === 'fulfilled' && Array.isArray(nutritionResponse.value?.data)
-        ? nutritionResponse.value.data
+      nutritionResponse.status === 'fulfilled' && Array.isArray(nutritionResponse.value)
+        ? nutritionResponse.value
         : [];
 
     nutritionPlans.forEach((plan) => {
@@ -484,7 +519,7 @@ export function StudentNotificationsPage() {
       setStudent(studentData);
 
       const [databaseRows, smartRows] = await Promise.all([
-        loadDatabaseNotifications(studentData.id, studentData.trainer_id || null),
+        loadDatabaseNotifications(authUser.id),
         loadSmartNotifications(studentData),
       ]);
 
@@ -499,7 +534,7 @@ export function StudentNotificationsPage() {
           description: getNotificationMessage(row),
           createdAt: getCreatedAt(row),
           read: isReadNotification(row),
-          actionUrl: row?.action_url || row?.url || getActionUrlByType(type),
+          actionUrl: getActionUrlByType(type),
           raw: row,
         };
       });
@@ -543,13 +578,10 @@ export function StudentNotificationsPage() {
           .eq('id', item.id);
 
         if (readError) {
-          await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('id', item.id);
+          console.warn('[StudentNotificationsPage] mark one read warning:', readError);
         }
       } catch (readError) {
-        console.warn('[StudentNotificationsPage] mark one read warning:', readError);
+        console.warn('[StudentNotificationsPage] mark one read exception:', readError);
       }
     }
 
@@ -590,10 +622,7 @@ export function StudentNotificationsPage() {
           .in('id', databaseIds);
 
         if (readError) {
-          await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .in('id', databaseIds);
+          console.warn('[StudentNotificationsPage] mark all notifications warning:', readError);
         }
       }
 
