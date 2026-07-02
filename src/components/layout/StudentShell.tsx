@@ -22,7 +22,7 @@ export function StudentShell() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
+              className={({ isActive }: { isActive: boolean }) =>
                 cn(
                   'flex flex-col items-center gap-0.5 py-2 px-3 min-w-0 transition-colors',
                   isActive ? 'text-vs-primary' : 'text-vs-muted'
