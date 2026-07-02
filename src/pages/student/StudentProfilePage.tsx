@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Dumbbell,
+  Edit3,
   Goal,
   KeyRound,
   Loader2,
@@ -17,6 +18,7 @@ import {
   Mail,
   Phone,
   Ruler,
+  Save,
   Scale,
   ShieldCheck,
   Target,
@@ -41,8 +43,22 @@ type ProfileState = {
   trainer: any | null;
 };
 
+type ProfileFormState = {
+  name: string;
+  phone: string;
+  birthDate: string;
+};
+
 function getStudentName(student: any) {
   return student?.name || student?.full_name || 'Aluno';
+}
+
+function getStudentPhone(student: any) {
+  return student?.phone || student?.whatsapp || student?.cellphone || '';
+}
+
+function getStudentBirthDate(student: any) {
+  return student?.birth_date || student?.birthDate || student?.birthday || '';
 }
 
 function getFirstName(student: any) {
@@ -91,6 +107,22 @@ function toDisplay(value: any, fallback = '—') {
   return value;
 }
 
+function toDateInputValue(value: any) {
+  if (!value) return '';
+
+  const raw = String(value);
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    return raw.slice(0, 10);
+  }
+
+  try {
+    return new Date(raw).toISOString().slice(0, 10);
+  } catch {
+    return '';
+  }
+}
+
 function formatNumber(value: any, suffix = '') {
   if (value === null || value === undefined || value === '') return '—';
 
@@ -101,6 +133,20 @@ function formatNumber(value: any, suffix = '') {
   return `${parsed.toLocaleString('pt-BR', {
     maximumFractionDigits: 1,
   })}${suffix}`;
+}
+
+function formatHeight(value: any) {
+  if (value === null || value === undefined || value === '') return '—';
+
+  const parsed = Number(String(value).replace(',', '.'));
+
+  if (!Number.isFinite(parsed)) return '—';
+
+  const heightInCm = parsed > 0 && parsed <= 3 ? parsed * 100 : parsed;
+
+  return `${heightInCm.toLocaleString('pt-BR', {
+    maximumFractionDigits: 0,
+  })}cm`;
 }
 
 async function getTrainerProfile(trainerId?: string | null) {
@@ -125,6 +171,14 @@ async function getTrainerProfile(trainerId?: string | null) {
   return null;
 }
 
+function createProfileForm(student: any): ProfileFormState {
+  return {
+    name: getStudentName(student),
+    phone: getStudentPhone(student),
+    birthDate: toDateInputValue(getStudentBirthDate(student)),
+  };
+}
+
 export function StudentProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
@@ -134,6 +188,16 @@ export function StudentProfilePage() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('');
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    name: '',
+    phone: '',
+    birthDate: '',
+  });
 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -159,6 +223,8 @@ export function StudentProfilePage() {
   async function loadProfile() {
     setLoading(true);
     setError('');
+    setProfileError('');
+    setProfileSuccess('');
 
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -226,12 +292,83 @@ export function StudentProfilePage() {
         latestMetric,
         trainer,
       });
+
+      setProfileForm(createProfileForm(studentData));
     } catch (err: any) {
       console.error('[StudentProfilePage] loadProfile error:', err);
       setError(err?.message || 'Erro ao carregar perfil.');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSaveProfile() {
+    if (!state.student?.id || savingProfile) return;
+
+    setSavingProfile(true);
+    setProfileError('');
+    setProfileSuccess('');
+
+    const name = profileForm.name.trim();
+    const phone = profileForm.phone.trim();
+    const birthDate = profileForm.birthDate.trim();
+
+    if (name.length < 2) {
+      setProfileError('Informe seu nome corretamente.');
+      setSavingProfile(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        name,
+        phone: phone || null,
+        birth_date: birthDate || null,
+      };
+
+      const { data, error: updateError } = await supabase
+        .from('students')
+        .update(payload)
+        .eq('id', state.student.id)
+        .select('*')
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+
+      const updatedStudent = data || {
+        ...state.student,
+        ...payload,
+      };
+
+      setState((prev) => ({
+        ...prev,
+        student: updatedStudent,
+      }));
+
+      setProfileForm(createProfileForm(updatedStudent));
+      setEditingProfile(false);
+      setProfileSuccess('Dados atualizados com sucesso.');
+
+      if (typeof (studentService as any).clearStudentAccountCache === 'function') {
+        (studentService as any).clearStudentAccountCache();
+      }
+
+      window.setTimeout(() => {
+        setProfileSuccess('');
+      }, 3500);
+    } catch (err: any) {
+      console.error('[StudentProfilePage] save profile error:', err);
+      setProfileError(err?.message || 'Erro ao salvar dados do perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  function cancelEditProfile() {
+    setProfileForm(createProfileForm(state.student));
+    setEditingProfile(false);
+    setProfileError('');
+    setProfileSuccess('');
   }
 
   async function handleUploadAvatar(file: File) {
@@ -274,6 +411,10 @@ export function StudentProfilePage() {
           avatar_url: avatarUrl,
         },
       }));
+
+      if (typeof (studentService as any).clearStudentAccountCache === 'function') {
+        (studentService as any).clearStudentAccountCache();
+      }
     } catch (err) {
       console.error('[StudentProfilePage] upload avatar error:', err);
       alert('Erro ao salvar foto do perfil.');
@@ -323,7 +464,6 @@ export function StudentProfilePage() {
           .from('student_accounts')
           .update({
             must_change_password: false,
-            updated_at: new Date().toISOString(),
           })
           .eq('student_id', state.student.id);
       }
@@ -475,7 +615,7 @@ export function StudentProfilePage() {
           <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <Ruler className="mx-auto mb-2 h-5 w-5 text-yellow-400" />
             <p className="text-xl font-black text-white">
-              {formatNumber(latestMetric?.height, 'cm')}
+              {formatHeight(latestMetric?.height)}
             </p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
               Altura
@@ -494,18 +634,126 @@ export function StudentProfilePage() {
         </section>
 
         <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
-          <SectionTitle
-            kicker="Dados pessoais"
-            title="Informações"
-            icon={<UserRound className="h-5 w-5 text-[#ff2a32]" />}
-          />
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <SectionTitle
+              kicker="Dados pessoais"
+              title="Informações"
+              icon={<UserRound className="h-5 w-5 text-[#ff2a32]" />}
+            />
 
-          <div className="space-y-3">
-            <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={toDisplay(student.email)} />
-            <InfoRow icon={<Phone className="h-4 w-4" />} label="Telefone" value={student.phone ? formatPhone(student.phone) : '—'} />
-            <InfoRow icon={<Cake className="h-4 w-4" />} label="Data de nascimento" value={student.birth_date ? formatDate(student.birth_date) : '—'} />
-            <InfoRow icon={<ShieldCheck className="h-4 w-4" />} label="Status da conta" value={student.login_enabled ? 'Acesso liberado' : 'Acesso pendente'} />
+            {!editingProfile ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileForm(createProfileForm(student));
+                  setEditingProfile(true);
+                  setProfileError('');
+                  setProfileSuccess('');
+                }}
+                className="flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-3 text-[11px] font-black uppercase text-white active:scale-95"
+              >
+                <Edit3 className="h-4 w-4 text-[#ff2a32]" />
+                Editar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={cancelEditProfile}
+                className="flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-3 text-[11px] font-black uppercase text-white active:scale-95"
+              >
+                <X className="h-4 w-4 text-zinc-400" />
+                Cancelar
+              </button>
+            )}
           </div>
+
+          {!editingProfile ? (
+            <div className="space-y-3">
+              <InfoRow
+                icon={<Mail className="h-4 w-4" />}
+                label="Email"
+                value={toDisplay(student.email)}
+              />
+
+              <InfoRow
+                icon={<Phone className="h-4 w-4" />}
+                label="Telefone"
+                value={getStudentPhone(student) ? formatPhone(getStudentPhone(student)) : '—'}
+              />
+
+              <InfoRow
+                icon={<Cake className="h-4 w-4" />}
+                label="Data de nascimento"
+                value={getStudentBirthDate(student) ? formatDate(getStudentBirthDate(student)) : '—'}
+              />
+
+              <InfoRow
+                icon={<ShieldCheck className="h-4 w-4" />}
+                label="Status da conta"
+                value={student.login_enabled ? 'Acesso liberado' : 'Acesso pendente'}
+              />
+
+              {profileSuccess && (
+                <SuccessBox>{profileSuccess}</SuccessBox>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <FormField
+                label="Nome completo"
+                value={profileForm.name}
+                onChange={(value) => setProfileForm((prev) => ({ ...prev, name: value }))}
+                placeholder="Digite seu nome"
+                icon={<UserRound className="h-4 w-4" />}
+              />
+
+              <FormField
+                label="Telefone / WhatsApp"
+                value={profileForm.phone}
+                onChange={(value) => setProfileForm((prev) => ({ ...prev, phone: value }))}
+                placeholder="(00) 00000-0000"
+                icon={<Phone className="h-4 w-4" />}
+                inputMode="tel"
+              />
+
+              <FormField
+                label="Data de nascimento"
+                value={profileForm.birthDate}
+                onChange={(value) => setProfileForm((prev) => ({ ...prev, birthDate: value }))}
+                placeholder="Data de nascimento"
+                icon={<Cake className="h-4 w-4" />}
+                type="date"
+              />
+
+              <InfoRow
+                icon={<Mail className="h-4 w-4" />}
+                label="Email"
+                value={toDisplay(student.email)}
+              />
+
+              {profileError && (
+                <ErrorBox>{profileError}</ErrorBox>
+              )}
+
+              {profileSuccess && (
+                <SuccessBox>{profileSuccess}</SuccessBox>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="mt-2 flex h-[54px] w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-[13px] font-black uppercase tracking-wide text-white shadow-[0_18px_45px_rgba(255,42,48,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
+              >
+                {savingProfile ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+                Salvar dados
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
@@ -541,7 +789,7 @@ export function StudentProfilePage() {
           {latestMetric ? (
             <div className="grid grid-cols-2 gap-3">
               <MetricCard label="Peso" value={formatNumber(latestMetric.weight, 'kg')} />
-              <MetricCard label="Altura" value={formatNumber(latestMetric.height, 'cm')} />
+              <MetricCard label="Altura" value={formatHeight(latestMetric.height)} />
               <MetricCard label="Gordura" value={formatNumber(latestMetric.body_fat, '%')} />
               <MetricCard label="Massa muscular" value={formatNumber(latestMetric.muscle_mass, 'kg')} />
               <MetricCard label="Água" value={formatNumber(latestMetric.water_intake, 'L')} />
@@ -663,16 +911,11 @@ export function StudentProfilePage() {
               </div>
 
               {passwordError && (
-                <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-200">
-                  {passwordError}
-                </div>
+                <ErrorBox>{passwordError}</ErrorBox>
               )}
 
               {passwordSuccess && (
-                <div className="flex items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm font-bold text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Senha alterada com sucesso.
-                </div>
+                <SuccessBox>Senha alterada com sucesso.</SuccessBox>
               )}
             </div>
 
@@ -702,14 +945,14 @@ function SectionTitle({
   icon: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
-          {kicker}
-        </p>
-        <h2 className="mt-1 text-xl font-black text-white">{title}</h2>
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
+        {kicker}
+      </p>
+      <div className="mt-1 flex items-center gap-2">
+        <h2 className="text-xl font-black text-white">{title}</h2>
+        {icon}
       </div>
-      {icon}
     </div>
   );
 }
@@ -751,6 +994,42 @@ function InfoRow({
   );
 }
 
+function FormField({
+  icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  inputMode,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+}) {
+  return (
+    <label className="block rounded-2xl border border-white/5 bg-black/20 p-3">
+      <span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-zinc-500">
+        <span className="text-[#ff2a32]">{icon}</span>
+        {label}
+      </span>
+
+      <input
+        type={type}
+        inputMode={inputMode}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-11 w-full rounded-2xl border border-white/10 bg-[#070707] px-4 text-sm font-bold text-white outline-none placeholder:text-zinc-700 focus:border-[#ff2a32]/45"
+      />
+    </label>
+  );
+}
+
 function MetricCard({ label, value }: { label: string; value: any }) {
   return (
     <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
@@ -776,6 +1055,23 @@ function EmptyMini({
       <div className="mx-auto flex justify-center">{icon}</div>
       <p className="mt-3 text-sm font-black text-white">{title}</p>
       <p className="mt-1 text-xs leading-relaxed text-zinc-500">{description}</p>
+    </div>
+  );
+}
+
+function SuccessBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm font-bold text-emerald-300">
+      <CheckCircle2 className="h-4 w-4 shrink-0" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function ErrorBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 text-sm font-bold text-red-200">
+      {children}
     </div>
   );
 }

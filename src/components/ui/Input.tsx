@@ -20,7 +20,7 @@ export function Input({ label, error, icon, className, ...props }: InputProps) {
         )}
         <input
           className={cn(
-            'input-field',
+            'input-field input-autocomplete-fix',
             icon ? 'pl-10' : '',
             error && 'border-red-500/50 focus:border-red-500',
             className

@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -18,22 +23,45 @@ import {
 import { supabase } from '../../lib/supabase';
 import * as studentService from '../../services/studentService';
 
+type NutritionMeal = {
+  id?: string | null;
+  meal_name?: string | null;
+  meal_time?: string | null;
+  foods?: unknown;
+  portions?: string | null;
+  notes?: string | null;
+  calories?: number | string | null;
+  protein?: number | string | null;
+  carbs?: number | string | null;
+  fats?: number | string | null;
+  sort_order?: number | string | null;
+
+  name?: string | null;
+  title?: string | null;
+  time?: string | null;
+  hour?: string | null;
+  description?: string | null;
+  instructions?: string | null;
+  items?: unknown;
+  food_items?: unknown;
+  meal_items?: unknown;
+};
+
 type NutritionPlan = {
   id: string;
+  studentid?: string | null;
+  student_id?: string | null;
+  coach_email?: string | null;
   name?: string | null;
   objective?: string | null;
   status?: string | null;
   notes?: string | null;
   start_date?: string | null;
   dailycalories?: number | string | null;
-  dailyCalories?: number | string | null;
   dailyprotein?: number | string | null;
-  dailyProtein?: number | string | null;
   dailycarbs?: number | string | null;
-  dailyCarbs?: number | string | null;
   dailyfats?: number | string | null;
-  dailyFats?: number | string | null;
-  meals?: any;
+  meals?: unknown;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -49,20 +77,30 @@ function getStudentName(student: any) {
 
 function getFirstName(student: any) {
   const name = getStudentName(student);
-  const first = String(name || 'Aluno').trim().split(/\s+/)[0] || 'Aluno';
+  const first =
+    String(name || 'Aluno').trim().split(/\s+/)[0] || 'Aluno';
 
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  return (
+    first.charAt(0).toUpperCase() +
+    first.slice(1).toLowerCase()
+  );
 }
 
-function toNumber(value: any) {
-  if (value === null || value === undefined || value === '') return null;
+function toNumber(value: unknown) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return null;
+  }
 
   const parsed = Number(String(value).replace(',', '.'));
 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatNumber(value: any, suffix = '') {
+function formatNumber(value: unknown, suffix = '') {
   const parsed = toNumber(value);
 
   if (parsed === null) return '—';
@@ -79,6 +117,7 @@ function formatDateSafe(value?: string | null) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
     const [year, month, day] = dateOnly.split('-');
+
     return `${day}/${month}/${year}`;
   }
 
@@ -89,153 +128,280 @@ function formatDateSafe(value?: string | null) {
   return date.toLocaleDateString('pt-BR');
 }
 
-function parseMeals(value: any): any[] {
-  if (!value) return [];
+function getTimestamp(value?: string | null) {
+  if (!value) return 0;
 
-  if (Array.isArray(value)) return value;
+  const timestamp = new Date(value).getTime();
 
-  if (typeof value === 'string') {
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function parseMeals(value: unknown): NutritionMeal[] {
+  let meals: NutritionMeal[] = [];
+
+  if (Array.isArray(value)) {
+    meals = value as NutritionMeal[];
+  } else if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
 
-      if (Array.isArray(parsed)) return parsed;
-      if (Array.isArray(parsed?.meals)) return parsed.meals;
-
-      return [];
+      if (Array.isArray(parsed)) {
+        meals = parsed as NutritionMeal[];
+      } else if (Array.isArray(parsed?.meals)) {
+        meals = parsed.meals as NutritionMeal[];
+      }
     } catch {
-      return [];
+      meals = [];
     }
+  } else if (
+    value &&
+    typeof value === 'object' &&
+    Array.isArray((value as any).meals)
+  ) {
+    meals = (value as any).meals;
   }
 
-  if (Array.isArray(value?.meals)) return value.meals;
+  return [...meals].sort((mealA, mealB) => {
+    const orderA = toNumber(mealA?.sort_order) ?? 0;
+    const orderB = toNumber(mealB?.sort_order) ?? 0;
 
-  return [];
+    return orderA - orderB;
+  });
 }
 
-function getItemsFromMeal(meal: any): any[] {
+function getMealKey(meal: NutritionMeal, index: number) {
+  return String(meal?.id || `meal-${index}`);
+}
+
+function getStructuredItems(meal: NutritionMeal): any[] {
   const candidates = [
     meal?.items,
-    meal?.foods,
-    meal?.alimentos,
     meal?.food_items,
     meal?.meal_items,
   ];
 
+  if (Array.isArray(meal?.foods)) {
+    candidates.unshift(meal.foods);
+  }
+
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate;
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
   }
 
   return [];
 }
 
-function getMealTitle(meal: any, index: number) {
+function cleanFoodsText(value: unknown) {
+  if (typeof value !== 'string') return '';
+
+  return value
+    .split(/[;\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(' • ');
+}
+
+function getMealFoodsText(meal: NutritionMeal) {
+  return cleanFoodsText(meal?.foods);
+}
+
+function getMealPortions(meal: NutritionMeal) {
+  return String(
+    meal?.portions ||
+      (meal as any)?.portion ||
+      (meal as any)?.serving ||
+      ''
+  ).trim();
+}
+
+function getMealTitle(
+  meal: NutritionMeal,
+  index: number
+) {
   return (
+    meal?.meal_name ||
     meal?.name ||
     meal?.title ||
-    meal?.meal_name ||
-    meal?.label ||
-    meal?.tipo ||
+    (meal as any)?.label ||
+    (meal as any)?.tipo ||
     `Refeição ${index + 1}`
   );
 }
 
-function getMealTime(meal: any) {
-  return meal?.time || meal?.hour || meal?.horario || meal?.scheduled_time || '';
+function getMealTime(meal: NutritionMeal) {
+  return String(
+    meal?.meal_time ||
+      meal?.time ||
+      meal?.hour ||
+      (meal as any)?.horario ||
+      (meal as any)?.scheduled_time ||
+      ''
+  ).trim();
 }
 
-function getMealDescription(meal: any) {
-  return meal?.description || meal?.instructions || meal?.notes || meal?.observations || '';
+function getMealDescription(meal: NutritionMeal) {
+  return String(
+    meal?.notes ||
+      meal?.description ||
+      meal?.instructions ||
+      (meal as any)?.observations ||
+      ''
+  ).trim();
 }
 
 function getFoodName(item: any, index: number) {
-  return item?.name || item?.food || item?.food_name || item?.alimento || `Item ${index + 1}`;
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  return (
+    item?.name ||
+    item?.food ||
+    item?.food_name ||
+    item?.alimento ||
+    `Item ${index + 1}`
+  );
 }
 
 function getFoodQuantity(item: any) {
-  return item?.quantity || item?.amount || item?.portion || item?.porcao || item?.qty || '';
+  if (!item || typeof item === 'string') return '';
+
+  return (
+    item?.quantity ||
+    item?.amount ||
+    item?.portion ||
+    item?.porcao ||
+    item?.qty ||
+    ''
+  );
 }
 
 function getFoodCalories(item: any) {
-  return toNumber(item?.calories || item?.kcal || item?.energia);
+  return toNumber(
+    item?.calories ||
+      item?.kcal ||
+      item?.energia
+  );
 }
 
 function getFoodProtein(item: any) {
-  return toNumber(item?.protein || item?.proteina || item?.proteins);
+  return toNumber(
+    item?.protein ||
+      item?.proteina ||
+      item?.proteins
+  );
 }
 
 function getFoodCarbs(item: any) {
-  return toNumber(item?.carbs || item?.carbohydrates || item?.carboidratos);
+  return toNumber(
+    item?.carbs ||
+      item?.carbohydrates ||
+      item?.carboidratos
+  );
 }
 
 function getFoodFats(item: any) {
-  return toNumber(item?.fats || item?.fat || item?.gorduras || item?.lipids);
+  return toNumber(
+    item?.fats ||
+      item?.fat ||
+      item?.gorduras ||
+      item?.lipids
+  );
 }
 
-function sumItems(items: any[], getter: (item: any) => number | null) {
+function sumItems(
+  items: any[],
+  getter: (item: any) => number | null
+) {
   return items.reduce((total, item) => {
     const value = getter(item);
-    return total + (value || 0);
+
+    return total + (value ?? 0);
   }, 0);
 }
 
-function getMealCalories(meal: any) {
-  const direct = toNumber(meal?.calories || meal?.kcal || meal?.totalCalories);
+function getMealCalories(meal: NutritionMeal) {
+  const direct = toNumber(
+    meal?.calories ||
+      (meal as any)?.kcal ||
+      (meal as any)?.totalCalories
+  );
 
   if (direct !== null) return direct;
 
-  const items = getItemsFromMeal(meal);
+  const items = getStructuredItems(meal);
   const total = sumItems(items, getFoodCalories);
 
   return total > 0 ? total : null;
 }
 
-function getMealProtein(meal: any) {
-  const direct = toNumber(meal?.protein || meal?.proteins || meal?.proteina);
+function getMealProtein(meal: NutritionMeal) {
+  const direct = toNumber(
+    meal?.protein ||
+      (meal as any)?.proteins ||
+      (meal as any)?.proteina
+  );
 
   if (direct !== null) return direct;
 
-  const items = getItemsFromMeal(meal);
-  const total = sumItems(items, getFoodProtein);
+  const total = sumItems(
+    getStructuredItems(meal),
+    getFoodProtein
+  );
 
   return total > 0 ? total : null;
 }
 
-function getMealCarbs(meal: any) {
-  const direct = toNumber(meal?.carbs || meal?.carbohydrates || meal?.carboidratos);
+function getMealCarbs(meal: NutritionMeal) {
+  const direct = toNumber(
+    meal?.carbs ||
+      (meal as any)?.carbohydrates ||
+      (meal as any)?.carboidratos
+  );
 
   if (direct !== null) return direct;
 
-  const items = getItemsFromMeal(meal);
-  const total = sumItems(items, getFoodCarbs);
+  const total = sumItems(
+    getStructuredItems(meal),
+    getFoodCarbs
+  );
 
   return total > 0 ? total : null;
 }
 
-function getMealFats(meal: any) {
-  const direct = toNumber(meal?.fats || meal?.fat || meal?.gorduras);
+function getMealFats(meal: NutritionMeal) {
+  const direct = toNumber(
+    meal?.fats ||
+      (meal as any)?.fat ||
+      (meal as any)?.gorduras
+  );
 
   if (direct !== null) return direct;
 
-  const items = getItemsFromMeal(meal);
-  const total = sumItems(items, getFoodFats);
+  const total = sumItems(
+    getStructuredItems(meal),
+    getFoodFats
+  );
 
   return total > 0 ? total : null;
 }
 
 function getPlanCalories(plan: NutritionPlan | null) {
-  return toNumber(plan?.dailycalories ?? plan?.dailyCalories);
+  return toNumber(plan?.dailycalories);
 }
 
 function getPlanProtein(plan: NutritionPlan | null) {
-  return toNumber(plan?.dailyprotein ?? plan?.dailyProtein);
+  return toNumber(plan?.dailyprotein);
 }
 
 function getPlanCarbs(plan: NutritionPlan | null) {
-  return toNumber(plan?.dailycarbs ?? plan?.dailyCarbs);
+  return toNumber(plan?.dailycarbs);
 }
 
 function getPlanFats(plan: NutritionPlan | null) {
-  return toNumber(plan?.dailyfats ?? plan?.dailyFats);
+  return toNumber(plan?.dailyfats);
 }
 
 function getPlanStatusLabel(status?: string | null) {
@@ -249,27 +415,124 @@ function getPlanStatusLabel(status?: string | null) {
 }
 
 function getActivePlan(plans: NutritionPlan[]) {
-  const published = plans.find((plan) => {
-    const status = String(plan.status || '').toLowerCase();
-    return status === 'published' || status === 'active';
+  return (
+    plans.find((plan) => {
+      const status = String(
+        plan.status || ''
+      ).toLowerCase();
+
+      return (
+        status === 'published' ||
+        status === 'active'
+      );
+    }) || null
+  );
+}
+
+async function loadPlansByStudent(
+  studentId: string
+): Promise<NutritionPlan[]> {
+  const [modernResult, legacyResult] =
+    await Promise.allSettled([
+      supabase
+        .from('nutrition_plans')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('updated_at', { ascending: false }),
+
+      supabase
+        .from('nutrition_plans')
+        .select('*')
+        .eq('studentid', studentId)
+        .order('updated_at', { ascending: false }),
+    ]);
+
+  const plans: NutritionPlan[] = [];
+  const errors: any[] = [];
+  let successfulQuery = false;
+
+  for (const result of [modernResult, legacyResult]) {
+    if (result.status === 'rejected') {
+      errors.push(result.reason);
+      continue;
+    }
+
+    if (result.value.error) {
+      errors.push(result.value.error);
+      continue;
+    }
+
+    successfulQuery = true;
+
+    if (Array.isArray(result.value.data)) {
+      plans.push(
+        ...(result.value.data as NutritionPlan[])
+      );
+    }
+  }
+
+  if (!successfulQuery && errors.length > 0) {
+    throw errors[0];
+  }
+
+  const uniquePlans = new Map<
+    string,
+    NutritionPlan
+  >();
+
+  plans.forEach((plan) => {
+    if (!plan?.id) return;
+
+    const current = uniquePlans.get(plan.id);
+
+    if (!current) {
+      uniquePlans.set(plan.id, plan);
+      return;
+    }
+
+    const currentDate = getTimestamp(
+      current.updated_at || current.created_at
+    );
+
+    const newDate = getTimestamp(
+      plan.updated_at || plan.created_at
+    );
+
+    if (newDate > currentDate) {
+      uniquePlans.set(plan.id, plan);
+    }
   });
 
-  return published || plans[0] || null;
+  return [...uniquePlans.values()].sort(
+    (planA, planB) => {
+      const dateA = getTimestamp(
+        planA.updated_at || planA.created_at
+      );
+
+      const dateB = getTimestamp(
+        planB.updated_at || planB.created_at
+      );
+
+      return dateB - dateA;
+    }
+  );
 }
 
 export function StudentNutritionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [state, setState] = useState<NutritionState>({
-    student: null,
-    plans: [],
-  });
+  const [state, setState] =
+    useState<NutritionState>({
+      student: null,
+      plans: [],
+    });
 
-  const [openMealKey, setOpenMealKey] = useState('');
+  const [openMealKey, setOpenMealKey] =
+    useState('');
 
   useEffect(() => {
-    loadNutrition();
+    void loadNutrition();
   }, []);
 
   async function loadNutrition() {
@@ -277,38 +540,49 @@ export function StudentNutritionPage() {
     setError('');
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const {
+        data: authData,
+        error: authError,
+      } = await supabase.auth.getUser();
 
       if (authError) throw authError;
 
       const authUser = authData.user;
 
       if (!authUser?.id) {
-        setError('Sessão do aluno não encontrada. Faça login novamente.');
+        setError(
+          'Sessão do aluno não encontrada. Faça login novamente.'
+        );
+
         return;
       }
 
-      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
-      let studentData = accountResult?.student || null;
+      const accountResult =
+        await studentService.getStudentAccountByAuthUser(
+          authUser.id
+        );
+
+      let studentData =
+        accountResult?.student || null;
 
       if (!studentData) {
-        studentData = await studentService.getStudentByAuthUser(authUser.id);
+        studentData =
+          await studentService.getStudentByAuthUser(
+            authUser.id
+          );
       }
 
       if (!studentData?.id) {
-        setError('Perfil do aluno não encontrado.');
+        setError(
+          'Perfil do aluno não encontrado.'
+        );
+
         return;
       }
 
-      const { data: plansData, error: plansError } = await supabase
-        .from('nutrition_plans')
-        .select('*')
-        .or(`student_id.eq.${studentData.id},studentid.eq.${studentData.id}`)
-        .order('updated_at', { ascending: false });
-
-      if (plansError) throw plansError;
-
-      const plans = (plansData || []) as NutritionPlan[];
+      const plans = await loadPlansByStudent(
+        studentData.id
+      );
 
       setState({
         student: studentData,
@@ -316,27 +590,50 @@ export function StudentNutritionPage() {
       });
 
       const activePlan = getActivePlan(plans);
-      const meals = parseMeals(activePlan?.meals);
+      const planMeals = parseMeals(
+        activePlan?.meals
+      );
 
-      if (meals.length > 0) {
-        setOpenMealKey(`meal-0`);
+      if (planMeals.length > 0) {
+        setOpenMealKey(
+          getMealKey(planMeals[0], 0)
+        );
+      } else {
+        setOpenMealKey('');
       }
-    } catch (err: any) {
-      console.error('[StudentNutritionPage] loadNutrition error:', err);
-      setError(err?.message || 'Erro ao carregar nutrição.');
+    } catch (loadError: any) {
+      console.error(
+        '[StudentNutritionPage] loadNutrition error:',
+        loadError
+      );
+
+      setError(
+        loadError?.message ||
+          'Erro ao carregar nutrição.'
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  const activePlan = useMemo(() => getActivePlan(state.plans), [state.plans]);
+  const activePlan = useMemo(
+    () => getActivePlan(state.plans),
+    [state.plans]
+  );
 
-  const meals = useMemo(() => parseMeals(activePlan?.meals), [activePlan]);
+  const meals = useMemo(
+    () => parseMeals(activePlan?.meals),
+    [activePlan]
+  );
 
   const totalMeals = meals.length;
 
-  const planCalories = getPlanCalories(activePlan);
-  const planProtein = getPlanProtein(activePlan);
+  const planCalories =
+    getPlanCalories(activePlan);
+
+  const planProtein =
+    getPlanProtein(activePlan);
+
   const planCarbs = getPlanCarbs(activePlan);
   const planFats = getPlanFats(activePlan);
 
@@ -349,8 +646,13 @@ export function StudentNutritionPage() {
           </div>
 
           <div>
-            <p className="text-sm font-black text-white">Carregando nutrição...</p>
-            <p className="mt-1 text-xs text-zinc-500">Buscando seu plano alimentar.</p>
+            <p className="text-sm font-black text-white">
+              Carregando nutrição...
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+              Buscando seu plano alimentar.
+            </p>
           </div>
         </div>
       </div>
@@ -365,9 +667,13 @@ export function StudentNutritionPage() {
             <AlertCircle className="h-8 w-8" />
           </div>
 
-          <h1 className="mt-5 text-xl font-black text-white">Não foi possível carregar</h1>
+          <h1 className="mt-5 text-xl font-black text-white">
+            Não foi possível carregar
+          </h1>
 
-          <p className="mt-2 text-sm leading-relaxed text-red-200/80">{error}</p>
+          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
+            {error}
+          </p>
 
           <button
             type="button"
@@ -395,11 +701,13 @@ export function StudentNutritionPage() {
             </p>
 
             <h1 className="mt-2 text-[27px] font-black uppercase italic tracking-[-0.06em] text-white">
-              Sem plano ainda
+              Sem plano ativo
             </h1>
 
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-              Quando seu personal criar um plano alimentar, ele aparecerá aqui.
+              Quando seu personal publicar um
+              plano alimentar, ele aparecerá
+              aqui.
             </p>
           </section>
         </div>
@@ -429,7 +737,9 @@ export function StudentNutritionPage() {
                 </h1>
 
                 <p className="mt-1 text-[12px] font-medium text-zinc-500">
-                  {getFirstName(state.student)}, siga seu plano com consistência.
+                  {getFirstName(state.student)},
+                  siga seu plano com
+                  consistência.
                 </p>
               </div>
 
@@ -442,11 +752,14 @@ export function StudentNutritionPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-black text-white">
-                    {activePlan.name || 'Plano alimentar'}
+                    {activePlan.name ||
+                      'Plano alimentar'}
                   </h2>
 
                   <p className="mt-1 text-xs font-medium text-zinc-500">
-                    {getPlanStatusLabel(activePlan.status)}
+                    {getPlanStatusLabel(
+                      activePlan.status
+                    )}
                   </p>
                 </div>
 
@@ -457,13 +770,20 @@ export function StudentNutritionPage() {
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <SmallInfo
-                  icon={<CalendarDays className="h-4 w-4" />}
+                  icon={
+                    <CalendarDays className="h-4 w-4" />
+                  }
                   label="Início"
-                  value={formatDateSafe(activePlan.start_date || activePlan.created_at)}
+                  value={formatDateSafe(
+                    activePlan.start_date ||
+                      activePlan.created_at
+                  )}
                 />
 
                 <SmallInfo
-                  icon={<Utensils className="h-4 w-4" />}
+                  icon={
+                    <Utensils className="h-4 w-4" />
+                  }
                   label="Refeições"
                   value={`${totalMeals}`}
                 />
@@ -473,10 +793,12 @@ export function StudentNutritionPage() {
                 <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.035] p-3">
                   <div className="flex items-start gap-3">
                     <Target className="mt-0.5 h-4 w-4 shrink-0 text-[#ff2a32]" />
+
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
                         Objetivo
                       </p>
+
                       <p className="mt-1 text-sm font-semibold text-zinc-200">
                         {activePlan.objective}
                       </p>
@@ -492,28 +814,47 @@ export function StudentNutritionPage() {
           <MacroCard
             icon={<Flame className="h-5 w-5" />}
             label="Calorias"
-            value={planCalories !== null ? formatNumber(planCalories, ' kcal') : '—'}
+            value={
+              planCalories !== null
+                ? formatNumber(
+                    planCalories,
+                    ' kcal'
+                  )
+                : '—'
+            }
             accent="red"
           />
 
           <MacroCard
             icon={<Beef className="h-5 w-5" />}
             label="Proteína"
-            value={planProtein !== null ? formatNumber(planProtein, 'g') : '—'}
+            value={
+              planProtein !== null
+                ? formatNumber(planProtein, 'g')
+                : '—'
+            }
             accent="emerald"
           />
 
           <MacroCard
             icon={<Wheat className="h-5 w-5" />}
             label="Carboidratos"
-            value={planCarbs !== null ? formatNumber(planCarbs, 'g') : '—'}
+            value={
+              planCarbs !== null
+                ? formatNumber(planCarbs, 'g')
+                : '—'
+            }
             accent="yellow"
           />
 
           <MacroCard
             icon={<Salad className="h-5 w-5" />}
             label="Gorduras"
-            value={planFats !== null ? formatNumber(planFats, 'g') : '—'}
+            value={
+              planFats !== null
+                ? formatNumber(planFats, 'g')
+                : '—'
+            }
             accent="blue"
           />
         </section>
@@ -525,7 +866,9 @@ export function StudentNutritionPage() {
                 Refeições
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-white">Seu dia alimentar</h2>
+              <h2 className="mt-1 text-xl font-black text-white">
+                Seu dia alimentar
+              </h2>
             </div>
 
             <Utensils className="h-5 w-5 text-[#ff2a32]" />
@@ -534,14 +877,37 @@ export function StudentNutritionPage() {
           {meals.length > 0 ? (
             <div className="space-y-3">
               {meals.map((meal, index) => {
-                const key = `meal-${index}`;
-                const isOpen = openMealKey ? openMealKey === key : index === 0;
-                const items = getItemsFromMeal(meal);
-                const calories = getMealCalories(meal);
-                const protein = getMealProtein(meal);
-                const carbs = getMealCarbs(meal);
-                const fats = getMealFats(meal);
-                const description = getMealDescription(meal);
+                const key = getMealKey(
+                  meal,
+                  index
+                );
+
+                const isOpen =
+                  openMealKey === key;
+
+                const structuredItems =
+                  getStructuredItems(meal);
+
+                const foodsText =
+                  getMealFoodsText(meal);
+
+                const portions =
+                  getMealPortions(meal);
+
+                const calories =
+                  getMealCalories(meal);
+
+                const protein =
+                  getMealProtein(meal);
+
+                const carbs =
+                  getMealCarbs(meal);
+
+                const fats =
+                  getMealFats(meal);
+
+                const description =
+                  getMealDescription(meal);
 
                 return (
                   <div
@@ -550,7 +916,11 @@ export function StudentNutritionPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => setOpenMealKey(isOpen ? '' : key)}
+                      onClick={() =>
+                        setOpenMealKey(
+                          isOpen ? '' : key
+                        )
+                      }
                       className="flex w-full items-center justify-between gap-3 p-4 text-left"
                     >
                       <div className="flex min-w-0 items-center gap-3">
@@ -560,7 +930,10 @@ export function StudentNutritionPage() {
 
                         <div className="min-w-0">
                           <h3 className="truncate text-sm font-black text-white">
-                            {getMealTitle(meal, index)}
+                            {getMealTitle(
+                              meal,
+                              index
+                            )}
                           </h3>
 
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-zinc-500">
@@ -571,14 +944,23 @@ export function StudentNutritionPage() {
                               </span>
                             )}
 
-                            {calories !== null && <span>{formatNumber(calories, ' kcal')}</span>}
+                            {calories !== null && (
+                              <span>
+                                {formatNumber(
+                                  calories,
+                                  ' kcal'
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <ChevronDown
                         className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform ${
-                          isOpen ? 'rotate-180' : ''
+                          isOpen
+                            ? 'rotate-180'
+                            : ''
                         }`}
                       />
                     </button>
@@ -586,71 +968,210 @@ export function StudentNutritionPage() {
                     {isOpen && (
                       <div className="border-t border-white/10 px-4 pb-4 pt-3">
                         <div className="mb-3 grid grid-cols-4 gap-2">
-                          <MiniMacro label="Kcal" value={calories !== null ? formatNumber(calories) : '—'} />
-                          <MiniMacro label="Prot." value={protein !== null ? formatNumber(protein, 'g') : '—'} />
-                          <MiniMacro label="Carb." value={carbs !== null ? formatNumber(carbs, 'g') : '—'} />
-                          <MiniMacro label="Gord." value={fats !== null ? formatNumber(fats, 'g') : '—'} />
+                          <MiniMacro
+                            label="Kcal"
+                            value={
+                              calories !== null
+                                ? formatNumber(
+                                    calories
+                                  )
+                                : '—'
+                            }
+                          />
+
+                          <MiniMacro
+                            label="Prot."
+                            value={
+                              protein !== null
+                                ? formatNumber(
+                                    protein,
+                                    'g'
+                                  )
+                                : '—'
+                            }
+                          />
+
+                          <MiniMacro
+                            label="Carb."
+                            value={
+                              carbs !== null
+                                ? formatNumber(
+                                    carbs,
+                                    'g'
+                                  )
+                                : '—'
+                            }
+                          />
+
+                          <MiniMacro
+                            label="Gord."
+                            value={
+                              fats !== null
+                                ? formatNumber(
+                                    fats,
+                                    'g'
+                                  )
+                                : '—'
+                            }
+                          />
                         </div>
+
+                        {foodsText && (
+                          <div className="mb-3 rounded-2xl border border-white/5 bg-white/[0.035] p-4">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-[#ff2a32]">
+                              Alimentos
+                            </p>
+
+                            <p className="mt-2 text-sm font-semibold leading-relaxed text-white">
+                              {foodsText}
+                            </p>
+
+                            {portions && (
+                              <div className="mt-3 border-t border-white/5 pt-3">
+                                <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                                  Porção
+                                </p>
+
+                                <p className="mt-1 text-xs font-semibold text-zinc-400">
+                                  {portions}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {description && (
                           <div className="mb-3 rounded-2xl border border-white/5 bg-white/[0.035] p-3">
-                            <p className="text-xs leading-relaxed text-zinc-400">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                              Observação
+                            </p>
+
+                            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
                               {description}
                             </p>
                           </div>
                         )}
 
-                        {items.length > 0 ? (
+                        {structuredItems.length > 0 && (
                           <div className="space-y-2">
-                            {items.map((item, itemIndex) => {
-                              const itemCalories = getFoodCalories(item);
-                              const itemProtein = getFoodProtein(item);
-                              const itemCarbs = getFoodCarbs(item);
-                              const itemFats = getFoodFats(item);
+                            {structuredItems.map(
+                              (
+                                item,
+                                itemIndex
+                              ) => {
+                                const itemCalories =
+                                  getFoodCalories(
+                                    item
+                                  );
 
-                              return (
-                                <div
-                                  key={`${key}-item-${itemIndex}`}
-                                  className="rounded-2xl border border-white/5 bg-white/[0.035] p-3"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-black text-white">
-                                        {getFoodName(item, itemIndex)}
-                                      </p>
+                                const itemProtein =
+                                  getFoodProtein(
+                                    item
+                                  );
 
-                                      {getFoodQuantity(item) && (
-                                        <p className="mt-1 text-xs font-semibold text-zinc-500">
-                                          {getFoodQuantity(item)}
+                                const itemCarbs =
+                                  getFoodCarbs(
+                                    item
+                                  );
+
+                                const itemFats =
+                                  getFoodFats(item);
+
+                                return (
+                                  <div
+                                    key={`${key}-item-${itemIndex}`}
+                                    className="rounded-2xl border border-white/5 bg-white/[0.035] p-3"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-black text-white">
+                                          {getFoodName(
+                                            item,
+                                            itemIndex
+                                          )}
                                         </p>
+
+                                        {getFoodQuantity(
+                                          item
+                                        ) && (
+                                          <p className="mt-1 text-xs font-semibold text-zinc-500">
+                                            {getFoodQuantity(
+                                              item
+                                            )}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {itemCalories !==
+                                        null && (
+                                        <span className="shrink-0 rounded-full bg-[#ff2a32]/10 px-2.5 py-1 text-[10px] font-black text-[#ff2a32]">
+                                          {formatNumber(
+                                            itemCalories,
+                                            ' kcal'
+                                          )}
+                                        </span>
                                       )}
                                     </div>
 
-                                    {itemCalories !== null && (
-                                      <span className="shrink-0 rounded-full bg-[#ff2a32]/10 px-2.5 py-1 text-[10px] font-black text-[#ff2a32]">
-                                        {formatNumber(itemCalories, ' kcal')}
-                                      </span>
+                                    {(itemProtein !==
+                                      null ||
+                                      itemCarbs !==
+                                        null ||
+                                      itemFats !==
+                                        null) && (
+                                      <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-black text-zinc-500">
+                                        <span>
+                                          Prot:{' '}
+                                          {itemProtein !==
+                                          null
+                                            ? formatNumber(
+                                                itemProtein,
+                                                'g'
+                                              )
+                                            : '—'}
+                                        </span>
+
+                                        <span>
+                                          Carb:{' '}
+                                          {itemCarbs !==
+                                          null
+                                            ? formatNumber(
+                                                itemCarbs,
+                                                'g'
+                                              )
+                                            : '—'}
+                                        </span>
+
+                                        <span>
+                                          Gord:{' '}
+                                          {itemFats !==
+                                          null
+                                            ? formatNumber(
+                                                itemFats,
+                                                'g'
+                                              )
+                                            : '—'}
+                                        </span>
+                                      </div>
                                     )}
                                   </div>
-
-                                  {(itemProtein !== null || itemCarbs !== null || itemFats !== null) && (
-                                    <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-black text-zinc-500">
-                                      <span>Prot: {itemProtein !== null ? formatNumber(itemProtein, 'g') : '—'}</span>
-                                      <span>Carb: {itemCarbs !== null ? formatNumber(itemCarbs, 'g') : '—'}</span>
-                                      <span>Gord: {itemFats !== null ? formatNumber(itemFats, 'g') : '—'}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="rounded-2xl border border-white/5 bg-white/[0.035] p-4 text-center">
-                            <p className="text-xs font-semibold text-zinc-500">
-                              Nenhum alimento detalhado nessa refeição.
-                            </p>
+                                );
+                              }
+                            )}
                           </div>
                         )}
+
+                        {!foodsText &&
+                          structuredItems.length ===
+                            0 && (
+                            <div className="rounded-2xl border border-white/5 bg-white/[0.035] p-4 text-center">
+                              <p className="text-xs font-semibold text-zinc-500">
+                                Nenhum alimento
+                                detalhado nesta
+                                refeição.
+                              </p>
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
@@ -660,9 +1181,14 @@ export function StudentNutritionPage() {
           ) : (
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-6 text-center">
               <Utensils className="mx-auto h-10 w-10 text-zinc-700" />
-              <h3 className="mt-4 text-lg font-black text-white">Sem refeições cadastradas</h3>
+
+              <h3 className="mt-4 text-lg font-black text-white">
+                Sem refeições cadastradas
+              </h3>
+
               <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                O plano existe, mas ainda não possui refeições detalhadas.
+                O plano existe, mas ainda não
+                possui refeições detalhadas.
               </p>
             </div>
           )}
@@ -689,19 +1215,23 @@ function SmallInfo({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {
   return (
     <div className="rounded-2xl border border-white/5 bg-white/[0.035] p-3">
-      <div className="flex items-center gap-2 text-[#ff2a32]">{icon}</div>
+      <div className="flex items-center gap-2 text-[#ff2a32]">
+        {icon}
+      </div>
 
       <p className="mt-2 text-[10px] font-black uppercase tracking-wide text-zinc-600">
         {label}
       </p>
 
-      <p className="mt-1 text-sm font-black text-white">{value}</p>
+      <p className="mt-1 text-sm font-black text-white">
+        {value}
+      </p>
     </div>
   );
 }
@@ -712,10 +1242,14 @@ function MacroCard({
   value,
   accent,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
-  accent: 'red' | 'emerald' | 'yellow' | 'blue';
+  accent:
+    | 'red'
+    | 'emerald'
+    | 'yellow'
+    | 'blue';
 }) {
   const accentClass =
     accent === 'red'
@@ -728,11 +1262,15 @@ function MacroCard({
 
   return (
     <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4">
-      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${accentClass}`}>
+      <div
+        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${accentClass}`}
+      >
         {icon}
       </div>
 
-      <p className="text-2xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="text-2xl font-black tracking-[-0.04em] text-white">
+        {value}
+      </p>
 
       <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
         {label}
@@ -741,14 +1279,22 @@ function MacroCard({
   );
 }
 
-function MiniMacro({ label, value }: { label: string; value: string }) {
+function MiniMacro({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.035] p-2 text-center">
       <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
         {label}
       </p>
 
-      <p className="mt-1 text-[11px] font-black text-white">{value}</p>
+      <p className="mt-1 text-[11px] font-black text-white">
+        {value}
+      </p>
     </div>
   );
 }

@@ -1,24 +1,43 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import {
+  useState,
+  type FormEvent,
+} from 'react';
+import {
+  Link,
+  useNavigate,
+} from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Dumbbell, Loader2 } from 'lucide-react';
-import { Input } from '../../components/ui/Input';
+import {
+  Loader2,
+  Lock,
+  LogIn,
+  Mail,
+} from 'lucide-react';
+
+import { BrandMark } from '../../components/brand/BrandMark';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/authStore';
 import * as authService from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] =
+    useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const [error, setError] = useState('');
+  const [loading, setLoading] =
+    useState(false);
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
     setError('');
 
     if (!email.trim() || !password.trim()) {
@@ -29,9 +48,15 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await authService.login(email, password);
+      const data = await authService.login(
+        email,
+        password
+      );
 
-      const { data: profile, error: profileError } = await supabase
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', data.user!.id)
@@ -43,26 +68,41 @@ export function LoginPage() {
         return;
       }
 
-      const { data: trainerProfile } = await supabase
+      const {
+        data: trainerProfile,
+      } = await supabase
         .from('trainer_profiles')
         .select('*')
         .eq('id', data.user!.id)
         .single();
 
-      setUser(data.user, profile, trainerProfile);
+      setUser(
+        data.user,
+        profile,
+        trainerProfile
+      );
 
       if (profile.role === 'personal') {
-        navigate('/personal/dashboard', { replace: true });
+        navigate('/personal/dashboard', {
+          replace: true,
+        });
       } else if (profile.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
+        navigate('/admin/dashboard', {
+          replace: true,
+        });
       } else {
-        setError('Acesso não autorizado para esta área.');
+        setError(
+          'Acesso não autorizado para esta área.'
+        );
       }
-    } catch (err: any) {
+    } catch (loginError: any) {
       const message =
-        err?.message === 'Invalid login credentials'
+        loginError?.message ===
+        'Invalid login credentials'
           ? 'Email ou senha inválidos.'
-          : err?.message || 'Erro ao fazer login. Tente novamente.';
+          : loginError?.message ||
+            'Erro ao fazer login. Tente novamente.';
+
       setError(message);
     } finally {
       setLoading(false);
@@ -70,27 +110,58 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 py-10">
+      <div className="pointer-events-none absolute left-1/2 top-[-180px] h-[380px] w-[380px] -translate-x-1/2 rounded-full bg-[#ff2a32]/10 blur-[120px]" />
+
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-sm"
+        initial={{
+          opacity: 0,
+          y: 22,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.45,
+          ease: 'easeOut',
+        }}
+        className="relative w-full max-w-sm"
       >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-vs-primary to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-vs-primary/20">
-            <span className="text-white font-black text-2xl tracking-tight">VS</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">Acessar</h1>
-          <p className="text-vs-muted text-sm mt-1">Área do personal trainer</p>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandMark
+            size="xl"
+            className="rounded-[24px]"
+          />
+
+          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.28em] text-[#ff2a32]">
+            VSFit Personal
+          </p>
+
+          <h1 className="mt-3 text-[30px] font-black tracking-[-0.05em] text-white">
+            Bem-vindo
+          </h1>
+
+          <p className="mt-1 text-sm font-medium text-zinc-500">
+            Acesse sua conta para continuar
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-white/[0.035] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+        >
           {error && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400"
+              initial={{
+                opacity: 0,
+                height: 0,
+              }}
+              animate={{
+                opacity: 1,
+                height: 'auto',
+              }}
+              className="rounded-[14px] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
             >
               {error}
             </motion.div>
@@ -101,7 +172,9 @@ export function LoginPage() {
             type="email"
             placeholder="seu@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) =>
+              setEmail(event.target.value)
+            }
             icon={<Mail size={18} />}
             autoComplete="email"
           />
@@ -111,7 +184,9 @@ export function LoginPage() {
             type="password"
             placeholder="Sua senha"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
             icon={<Lock size={18} />}
             autoComplete="current-password"
           />
@@ -119,28 +194,47 @@ export function LoginPage() {
           <div className="text-right">
             <Link
               to="/auth/forgot-password"
-              className="text-sm text-vs-muted hover:text-vs-primary transition-colors"
+              className="text-xs font-semibold text-zinc-500 transition-colors hover:text-[#ff2a32]"
             >
               Esqueceu a senha?
             </Link>
           </div>
 
-          <Button type="submit" loading={loading} className="w-full">
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Dumbbell size={18} />}
-            Entrar
+          <Button
+            type="submit"
+            loading={loading}
+            className="h-14 w-full rounded-[16px] text-sm font-black"
+          >
+            {loading ? (
+              <Loader2
+                size={19}
+                className="animate-spin"
+              />
+            ) : (
+              <LogIn size={19} />
+            )}
+
+            <span>ENTRAR</span>
           </Button>
         </form>
 
-        <div className="mt-6 text-center space-y-3">
-          <p className="text-sm text-vs-muted">
+        <div className="mt-6 space-y-3 text-center">
+          <p className="text-sm text-zinc-500">
             Não tem conta?{' '}
-            <Link to="/auth/register" className="text-vs-primary font-medium hover:underline">
+            <Link
+              to="/auth/register"
+              className="font-bold text-[#ff2a32] hover:underline"
+            >
               Criar conta
             </Link>
           </p>
-          <p className="text-sm text-vs-muted">
+
+          <p className="text-sm text-zinc-500">
             É aluno?{' '}
-            <Link to="/auth/student-login" className="text-vs-primary font-medium hover:underline">
+            <Link
+              to="/auth/student-login"
+              className="font-bold text-[#ff2a32] hover:underline"
+            >
               Acessar como aluno
             </Link>
           </p>
@@ -149,3 +243,5 @@ export function LoginPage() {
     </div>
   );
 }
+
+export default LoginPage;
