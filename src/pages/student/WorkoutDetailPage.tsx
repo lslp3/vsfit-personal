@@ -18,8 +18,13 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { getWorkoutPlanById } from '../../services/workoutService';
 import { cn } from '../../lib/utils';
+import {
+  formatWorkoutPlanDate,
+  isWorkoutPlanExpired,
+  notifyTrainerAboutExpiredPlan,
+} from '../../services/workoutExpirationService';
+import { getWorkoutPlanById } from '../../services/workoutService';
 import type {
   CompleteWorkoutPlan,
   DropSetConfig,
@@ -117,10 +122,16 @@ function getDayPosition(dayKey: string) {
 function getEffectiveExerciseOrder(
   exercise: WorkoutPlanExercise
 ) {
-  return exercise.execution_order ?? exercise.order_index;
+  return (
+    exercise.execution_order ??
+    exercise.order_index ??
+    0
+  );
 }
 
-function getExerciseName(exercise: WorkoutPlanExercise) {
+function getExerciseName(
+  exercise: WorkoutPlanExercise
+) {
   return exercise.name || 'Exercício';
 }
 
@@ -150,47 +161,76 @@ function getDropSetConfig(
   return {};
 }
 
-function parseDateOnly(value?: string | null) {
+function parseDateOnly(
+  value?: string | null
+) {
   if (!value) return null;
 
-  const date = new Date(`${value}T12:00:00`);
+  const normalizedValue =
+    String(value).slice(0, 10);
 
-  return Number.isFinite(date.getTime()) ? date : null;
+  const date = new Date(
+    `${normalizedValue}T12:00:00`
+  );
+
+  return Number.isFinite(
+    date.getTime()
+  )
+    ? date
+    : null;
 }
 
-function formatDate(value?: string | null) {
+function formatDate(
+  value?: string | null
+) {
   const date = parseDateOnly(value);
 
   if (!date) return 'Não definida';
 
-  return date.toLocaleDateString('pt-BR');
+  return date.toLocaleDateString(
+    'pt-BR'
+  );
 }
 
-function getExpirationInfo(endDate?: string | null) {
+function getExpirationInfo(
+  endDate?: string | null
+) {
   const end = parseDateOnly(endDate);
 
   if (!end) {
     return {
       label: 'Sem vencimento',
-      description: 'Este plano não possui data final.',
+      description:
+        'Este plano não possui data final.',
       className:
         'border-white/10 bg-white/[0.05] text-zinc-400',
     };
   }
 
   const today = new Date();
-  today.setHours(12, 0, 0, 0);
+
+  today.setHours(
+    12,
+    0,
+    0,
+    0
+  );
 
   const difference = Math.ceil(
-    (end.getTime() - today.getTime()) /
+    (end.getTime() -
+      today.getTime()) /
       (1000 * 60 * 60 * 24)
   );
 
   if (difference < 0) {
     return {
       label: 'Vencido',
-      description: `Venceu há ${Math.abs(difference)} dia${
-        Math.abs(difference) === 1 ? '' : 's'
+      description: `Venceu há ${Math.abs(
+        difference
+      )} dia${
+        Math.abs(difference) === 1
+          ? ''
+          : 's'
       }.`,
       className:
         'border-red-400/25 bg-red-400/10 text-red-300',
@@ -203,9 +243,13 @@ function getExpirationInfo(endDate?: string | null) {
         difference === 0
           ? 'Vence hoje'
           : `Vence em ${difference} dia${
-              difference === 1 ? '' : 's'
+              difference === 1
+                ? ''
+                : 's'
             }`,
-      description: `Vencimento em ${formatDate(endDate)}.`,
+      description: `Vencimento em ${formatDate(
+        endDate
+      )}.`,
       className:
         'border-amber-400/25 bg-amber-400/10 text-amber-300',
     };
@@ -222,42 +266,70 @@ function getExpirationInfo(endDate?: string | null) {
 function buildDaySections(
   plan: CompleteWorkoutPlan
 ): DaySection[] {
-  const days = plan.workout_days || [];
-  const groups = plan.workout_exercise_groups || [];
-  const exercises = plan.workout_plan_exercises || [];
+  const days =
+    plan.workout_days || [];
+
+  const groups =
+    plan.workout_exercise_groups ||
+    [];
+
+  const exercises =
+    plan.workout_plan_exercises ||
+    [];
 
   const dayById = new Map(
-    days.map((day) => [day.id, day])
+    days.map((day) => [
+      day.id,
+      day,
+    ])
   );
 
-  const sections = new Map<string, DaySection>();
+  const sections = new Map<
+    string,
+    DaySection
+  >();
 
   for (const day of days) {
-    const key = normalizeDayKey(day.day_key);
+    const key = normalizeDayKey(
+      day.day_key
+    );
 
     sections.set(key, {
       key,
       day,
       exercises: [],
       groups: groups.filter(
-        (group) => group.workout_day_id === day.id
+        (group) =>
+          group.workout_day_id ===
+          day.id
       ),
     });
   }
 
   for (const exercise of exercises) {
-    const relatedDay = exercise.workout_day_id
-      ? dayById.get(exercise.workout_day_id) || null
-      : null;
+    const relatedDay =
+      exercise.workout_day_id
+        ? dayById.get(
+            exercise.workout_day_id
+          ) || null
+        : null;
 
     const key = relatedDay
-      ? normalizeDayKey(relatedDay.day_key)
-      : normalizeDayKey(exercise.day_key);
+      ? normalizeDayKey(
+          relatedDay.day_key
+        )
+      : normalizeDayKey(
+          exercise.day_key
+        );
 
-    const existing = sections.get(key);
+    const existing =
+      sections.get(key);
 
     if (existing) {
-      existing.exercises.push(exercise);
+      existing.exercises.push(
+        exercise
+      );
+
       continue;
     }
 
@@ -268,7 +340,8 @@ function buildDaySections(
       groups: relatedDay
         ? groups.filter(
             (group) =>
-              group.workout_day_id === relatedDay.id
+              group.workout_day_id ===
+              relatedDay.id
           )
         : [],
     });
@@ -277,17 +350,30 @@ function buildDaySections(
   return [...sections.values()]
     .filter(
       (section) =>
-        section.day || section.exercises.length > 0
+        section.day ||
+        section.exercises.length > 0
     )
     .map((section) => ({
       ...section,
-      exercises: [...section.exercises].sort(
+
+      exercises: [
+        ...section.exercises,
+      ].sort(
         (a, b) =>
-          getEffectiveExerciseOrder(a) -
-          getEffectiveExerciseOrder(b)
+          getEffectiveExerciseOrder(
+            a
+          ) -
+          getEffectiveExerciseOrder(
+            b
+          )
       ),
-      groups: [...section.groups].sort(
-        (a, b) => a.order_index - b.order_index
+
+      groups: [
+        ...section.groups,
+      ].sort(
+        (a, b) =>
+          a.order_index -
+          b.order_index
       ),
     }))
     .sort((a, b) => {
@@ -304,44 +390,84 @@ function buildDaySections(
 }
 
 export function WorkoutDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } =
+    useParams<{ id: string }>();
+
   const navigate = useNavigate();
 
   const [plan, setPlan] =
-    useState<CompleteWorkoutPlan | null>(null);
+    useState<CompleteWorkoutPlan | null>(
+      null
+    );
 
-  const [selectedDayKey, setSelectedDayKey] =
-    useState<string | null>(null);
+  const [
+    selectedDayKey,
+    setSelectedDayKey,
+  ] = useState<string | null>(
+    null
+  );
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState('');
 
   useEffect(() => {
     if (!id) {
-      setError('Identificador do treino não encontrado.');
+      setError(
+        'Identificador do treino não encontrado.'
+      );
+
       setLoading(false);
+
       return;
     }
 
     void loadPlan(id);
   }, [id]);
 
-  async function loadPlan(workoutId: string) {
+  useEffect(() => {
+    if (
+      !plan ||
+      !isWorkoutPlanExpired(
+        plan.end_date
+      )
+    ) {
+      return;
+    }
+
+    void notifyTrainerAboutExpiredPlan({
+      plan,
+    });
+  }, [plan]);
+
+  async function loadPlan(
+    workoutId: string
+  ) {
     setLoading(true);
     setError('');
 
     try {
       const data =
-        await getWorkoutPlanById(workoutId);
+        await getWorkoutPlanById(
+          workoutId
+        );
 
       if (!data) {
-        setError('Treino não encontrado.');
+        setError(
+          'Treino não encontrado.'
+        );
+
         setPlan(null);
+
         return;
       }
 
       setPlan(data);
-    } catch (loadError: unknown) {
+    } catch (
+      loadError: unknown
+    ) {
       const message =
         loadError instanceof Error
           ? loadError.message
@@ -357,60 +483,88 @@ export function WorkoutDetailPage() {
   const exercises = useMemo(() => {
     if (!plan) return [];
 
-    return [...plan.workout_plan_exercises].sort(
+    return [
+      ...plan.workout_plan_exercises,
+    ].sort(
       (a, b) =>
-        getEffectiveExerciseOrder(a) -
-        getEffectiveExerciseOrder(b)
+        getEffectiveExerciseOrder(
+          a
+        ) -
+        getEffectiveExerciseOrder(
+          b
+        )
     );
   }, [plan]);
 
-  const daySections = useMemo(() => {
-    if (!plan) return [];
+  const daySections =
+    useMemo(() => {
+      if (!plan) return [];
 
-    return buildDaySections(plan);
-  }, [plan]);
+      return buildDaySections(plan);
+    }, [plan]);
 
-  const selectedSection = useMemo(() => {
-    return (
-      daySections.find(
-        (section) =>
-          section.key === selectedDayKey
-      ) || null
-    );
-  }, [daySections, selectedDayKey]);
-
-  const totalSets = exercises.reduce(
-    (sum, exercise) => {
-      const parsed = Number.parseInt(
-        String(exercise.sets || '0'),
-        10
-      );
-
+  const selectedSection =
+    useMemo(() => {
       return (
-        sum +
-        (Number.isFinite(parsed) && parsed > 0
-          ? parsed
-          : 1)
+        daySections.find(
+          (section) =>
+            section.key ===
+            selectedDayKey
+        ) || null
       );
-    },
-    0
-  );
+    }, [
+      daySections,
+      selectedDayKey,
+    ]);
 
-  const todayDayKey = getTodayDayKey();
+  const totalSets =
+    exercises.reduce(
+      (sum, exercise) => {
+        const parsed =
+          Number.parseInt(
+            String(
+              exercise.sets || '0'
+            ),
+            10
+          );
 
-  const expirationInfo = getExpirationInfo(
-    plan?.end_date
-  );
+        return (
+          sum +
+          (Number.isFinite(parsed) &&
+          parsed > 0
+            ? parsed
+            : 1)
+        );
+      },
+      0
+    );
+
+  const todayDayKey =
+    getTodayDayKey();
+
+  const expirationInfo =
+    getExpirationInfo(
+      plan?.end_date
+    );
+
+  const planExpired =
+    isWorkoutPlanExpired(
+      plan?.end_date
+    );
 
   const totalBiSets =
     plan?.workout_exercise_groups.filter(
-      (group) => group.group_type === 'bi_set'
+      (group) =>
+        group.group_type ===
+        'bi_set'
     ).length || 0;
 
-  const totalDropSets = exercises.filter(
-    (exercise) =>
-      exercise.technique_type === 'drop_set'
-  ).length;
+  const totalDropSets =
+    exercises.filter(
+      (exercise) =>
+        exercise.technique_type ===
+        'drop_set'
+    ).length;
 
   if (loading) {
     return (
@@ -451,7 +605,9 @@ export function WorkoutDetailPage() {
           <button
             type="button"
             onClick={() =>
-              navigate('/student/workouts')
+              navigate(
+                '/student/workouts'
+              )
             }
             className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
           >
@@ -468,7 +624,9 @@ export function WorkoutDetailPage() {
         <div className="mb-5 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() =>
+              navigate(-1)
+            }
             className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -485,8 +643,14 @@ export function WorkoutDetailPage() {
         </div>
 
         <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{
+            opacity: 0,
+            y: 18,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
           className="rounded-[34px] border border-white/10 bg-gradient-to-br from-[#ff2a32]/16 via-white/[0.045] to-white/[0.025] p-5"
         >
           <div className="flex items-start justify-between gap-4">
@@ -513,7 +677,10 @@ export function WorkoutDetailPage() {
           <div className="mt-5 grid grid-cols-3 gap-2">
             <InfoCard
               icon={Layers}
-              value={plan.level || 'Livre'}
+              value={
+                plan.level ||
+                'Livre'
+              }
               label="Nível"
             />
 
@@ -529,7 +696,9 @@ export function WorkoutDetailPage() {
 
             <InfoCard
               icon={Target}
-              value={String(exercises.length)}
+              value={String(
+                exercises.length
+              )}
               label="Exercícios"
             />
           </div>
@@ -547,12 +716,16 @@ export function WorkoutDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             <DateCard
               label="Início"
-              value={formatDate(plan.start_date)}
+              value={formatDate(
+                plan.start_date
+              )}
             />
 
             <DateCard
               label="Vencimento"
-              value={formatDate(plan.end_date)}
+              value={formatDate(
+                plan.end_date
+              )}
             />
           </div>
 
@@ -566,69 +739,92 @@ export function WorkoutDetailPage() {
             <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
 
             <p className="text-[11px] font-black uppercase text-zinc-500">
-              Selecione o treino do dia
+              Selecione o treino
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {daySections.map((section) => {
-              const selected =
-                section.key === selectedDayKey;
+            {daySections.map(
+              (section) => {
+                const selected =
+                  section.key ===
+                  selectedDayKey;
 
-              const today =
-                section.key === todayDayKey;
+                const today =
+                  section.key ===
+                  todayDayKey;
 
-              return (
-                <button
-                  key={section.key}
-                  type="button"
-                  onClick={() =>
-                    setSelectedDayKey(section.key)
-                  }
-                  className={cn(
-                    'rounded-full border px-4 py-2 text-[11px] font-black transition-all',
-                    selected
-                      ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
-                      : today
-                        ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
-                        : 'border-white/10 bg-white/[0.05] text-zinc-400'
-                  )}
-                >
-                  {DAY_LABELS[section.key] ||
-                    section.key
-                      .slice(0, 3)
-                      .toUpperCase()}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={
+                      section.key
+                    }
+                    type="button"
+                    onClick={() =>
+                      setSelectedDayKey(
+                        section.key
+                      )
+                    }
+                    className={cn(
+                      'rounded-full border px-4 py-2 text-[11px] font-black transition-all',
+                      selected
+                        ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
+                        : today
+                          ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                          : 'border-white/10 bg-white/[0.05] text-zinc-400'
+                    )}
+                  >
+                    {DAY_LABELS[
+                      section.key
+                    ] ||
+                      section.key
+                        .slice(0, 3)
+                        .toUpperCase()}
+                  </button>
+                );
+              }
+            )}
           </div>
+
+          <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+            Você pode executar qualquer treino do plano em qualquer dia.
+          </p>
         </section>
 
         <section className="mt-5 grid grid-cols-2 gap-3">
           <StatisticCard
             icon={Flame}
-            value={String(totalSets)}
+            value={String(
+              totalSets
+            )}
             label="Séries totais"
           />
 
           <StatisticCard
             icon={Trophy}
-            value={String(daySections.length)}
+            value={String(
+              daySections.length
+            )}
             label="Dias"
           />
         </section>
 
-        {(totalDropSets > 0 || totalBiSets > 0) && (
+        {(totalDropSets > 0 ||
+          totalBiSets > 0) && (
           <section className="mt-3 grid grid-cols-2 gap-3">
             <StatisticCard
               icon={Zap}
-              value={String(totalDropSets)}
+              value={String(
+                totalDropSets
+              )}
               label="Drop-sets"
             />
 
             <StatisticCard
               icon={Layers2}
-              value={String(totalBiSets)}
+              value={String(
+                totalBiSets
+              )}
               label="Bi-sets"
             />
           </section>
@@ -642,7 +838,9 @@ export function WorkoutDetailPage() {
 
             <h2 className="mt-1 text-xl font-black">
               {selectedSection
-                ? DAY_NAMES[selectedSection.key] ||
+                ? DAY_NAMES[
+                    selectedSection.key
+                  ] ||
                   selectedSection.key
                 : 'Selecione um dia'}
             </h2>
@@ -653,17 +851,22 @@ export function WorkoutDetailPage() {
               <CalendarDays className="mx-auto h-10 w-10 text-zinc-700" />
 
               <h3 className="mt-4 text-lg font-black">
-                Escolha um dia do plano
+                Escolha um treino
               </h3>
 
               <p className="mt-2 text-sm text-zinc-500">
-                Selecione SEG, TER, QUA, QUI, SEX,
-                SÁB ou DOM para visualizar os
-                exercícios daquele dia.
+                Selecione SEG, TER, QUA,
+                QUI, SEX, SÁB ou DOM
+                para visualizar os
+                exercícios.
               </p>
             </div>
           ) : (
-            <DaySectionCard section={selectedSection} />
+            <DaySectionCard
+              section={
+                selectedSection
+              }
+            />
           )}
         </section>
       </div>
@@ -671,36 +874,43 @@ export function WorkoutDetailPage() {
       {selectedSection && (
         <div className="fixed inset-x-0 bottom-[50px] z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-3 pt-3 backdrop-blur-xl">
           <div className="mx-auto max-w-lg">
-            {selectedSection.key === todayDayKey ? (
+            {planExpired ? (
+              <div className="rounded-[22px] border border-red-400/25 bg-red-400/10 px-4 py-4 text-center">
+                <p className="text-xs font-black uppercase text-red-300">
+                  Plano vencido
+                </p>
+
+                <p className="mt-1 text-[11px] leading-relaxed text-red-100/75">
+                  Este plano venceu em{' '}
+                  {formatWorkoutPlanDate(
+                    plan.end_date
+                  )}
+                  . Nenhum treino pode
+                  ser executado até o
+                  personal editar o
+                  plano ou criar um
+                  novo.
+                </p>
+              </div>
+            ) : (
               <button
                 type="button"
                 disabled={
-                  selectedSection.exercises.length === 0
+                  selectedSection
+                    .exercises
+                    .length === 0
                 }
                 onClick={() =>
                   navigate(
                     `/student/workout-execution/${plan.id}?day=${selectedSection.key}`
                   )
                 }
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase text-white disabled:opacity-50"
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Play className="h-5 w-5" />
-                Executar treino de hoje
-              </button>
-            ) : (
-              <div className="rounded-[22px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-center">
-                <p className="text-xs font-black uppercase text-amber-300">
-                  Treino bloqueado para hoje
-                </p>
 
-                <p className="mt-1 text-[11px] text-amber-100/70">
-                  O treino de{' '}
-                  {DAY_NAMES[selectedSection.key] ||
-                    selectedSection.key}{' '}
-                  só poderá ser executado no dia
-                  correspondente.
-                </p>
-              </div>
+                Executar treino selecionado
+              </button>
             )}
           </div>
         </div>
@@ -714,21 +924,29 @@ function DaySectionCard({
 }: {
   section: DaySection;
 }) {
-  const groupedExerciseIds = new Set(
-    section.groups.flatMap((group) =>
-      section.exercises
-        .filter(
-          (exercise) =>
-            exercise.exercise_group_id === group.id
-        )
-        .map((exercise) => exercise.id)
-    )
-  );
+  const groupedExerciseIds =
+    new Set(
+      section.groups.flatMap(
+        (group) =>
+          section.exercises
+            .filter(
+              (exercise) =>
+                exercise.exercise_group_id ===
+                group.id
+            )
+            .map(
+              (exercise) =>
+                exercise.id
+            )
+      )
+    );
 
   const independentExercises =
     section.exercises.filter(
       (exercise) =>
-        !groupedExerciseIds.has(exercise.id)
+        !groupedExerciseIds.has(
+          exercise.id
+        )
     );
 
   const title =
@@ -742,8 +960,9 @@ function DaySectionCard({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-black uppercase text-[#ff2a32]">
-              {DAY_NAMES[section.key] ||
-                section.key}
+              {DAY_NAMES[
+                section.key
+              ] || section.key}
             </p>
 
             <h3 className="mt-1 text-lg font-black">
@@ -752,8 +971,10 @@ function DaySectionCard({
           </div>
 
           <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-black text-zinc-400">
-            {section.exercises.length} exercício
-            {section.exercises.length === 1
+            {section.exercises.length}{' '}
+            exercício
+            {section.exercises
+              .length === 1
               ? ''
               : 's'}
           </span>
@@ -761,36 +982,49 @@ function DaySectionCard({
 
         {section.day?.notes && (
           <p className="mt-3 text-xs text-zinc-400">
-            {section.day.notes}
+            {
+              section.day
+                .notes
+            }
           </p>
         )}
       </div>
 
-      {section.groups.map((group) => {
-        const groupedExercises =
-          section.exercises
-            .filter(
-              (exercise) =>
-                exercise.exercise_group_id === group.id
-            )
-            .sort(
-              (a, b) =>
-                (a.group_order ?? 0) -
-                (b.group_order ?? 0)
-            );
+      {section.groups.map(
+        (group) => {
+          const groupedExercises =
+            section.exercises
+              .filter(
+                (exercise) =>
+                  exercise.exercise_group_id ===
+                  group.id
+              )
+              .sort(
+                (a, b) =>
+                  (a.group_order ??
+                    0) -
+                  (b.group_order ??
+                    0)
+              );
 
-        if (groupedExercises.length === 0) {
-          return null;
+          if (
+            groupedExercises.length ===
+            0
+          ) {
+            return null;
+          }
+
+          return (
+            <BiSetCard
+              key={group.id}
+              group={group}
+              exercises={
+                groupedExercises
+              }
+            />
+          );
         }
-
-        return (
-          <BiSetCard
-            key={group.id}
-            group={group}
-            exercises={groupedExercises}
-          />
-        );
-      })}
+      )}
 
       {independentExercises.map(
         (exercise, index) => (
@@ -802,12 +1036,14 @@ function DaySectionCard({
         )
       )}
 
-      {section.exercises.length === 0 && (
+      {section.exercises.length ===
+        0 && (
         <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-6 text-center">
           <Dumbbell className="mx-auto h-9 w-9 text-zinc-700" />
 
           <p className="mt-3 text-sm text-zinc-500">
-            Nenhum exercício cadastrado neste dia.
+            Nenhum exercício
+            cadastrado neste dia.
           </p>
         </div>
       )}
@@ -832,58 +1068,71 @@ function BiSetCard({
           </span>
 
           <h3 className="mt-2 text-base font-black">
-            {group.name || 'Executar em sequência'}
+            {group.name ||
+              'Executar em sequência'}
           </h3>
         </div>
 
         {group.rounds && (
           <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-[10px] font-bold text-purple-200">
-            {group.rounds} rodadas
+            {group.rounds}{' '}
+            rodadas
           </span>
         )}
       </div>
 
       <div className="space-y-3">
-        {exercises.map((exercise, index) => (
-          <div
-            key={exercise.id}
-            className="rounded-[22px] border border-white/10 bg-black/20 p-3"
-          >
-            <p className="text-[9px] font-black uppercase text-purple-300">
-              Exercício {index + 1}
-            </p>
+        {exercises.map(
+          (exercise, index) => (
+            <div
+              key={exercise.id}
+              className="rounded-[22px] border border-white/10 bg-black/20 p-3"
+            >
+              <p className="text-[9px] font-black uppercase text-purple-300">
+                Exercício{' '}
+                {index + 1}
+              </p>
 
-            <p className="mt-1 text-sm font-black">
-              {getExerciseName(exercise)}
-            </p>
+              <p className="mt-1 text-sm font-black">
+                {getExerciseName(
+                  exercise
+                )}
+              </p>
 
-            <div className="mt-2 flex flex-wrap gap-2">
-              {exercise.sets && (
-                <SmallTag>
-                  {exercise.sets} séries
-                </SmallTag>
-              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {exercise.sets && (
+                  <SmallTag>
+                    {exercise.sets}{' '}
+                    séries
+                  </SmallTag>
+                )}
 
-              {exercise.reps && (
-                <SmallTag>
-                  {exercise.reps} reps
-                </SmallTag>
-              )}
+                {exercise.reps && (
+                  <SmallTag>
+                    {exercise.reps}{' '}
+                    reps
+                  </SmallTag>
+                )}
 
-              {exercise.suggested_weight && (
-                <SmallTag>
-                  {exercise.suggested_weight}
-                </SmallTag>
-              )}
+                {exercise.suggested_weight && (
+                  <SmallTag>
+                    {
+                      exercise.suggested_weight
+                    }
+                  </SmallTag>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        )}
       </div>
 
       <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 p-3">
         <p className="text-xs text-purple-100/80">
-          Execute os exercícios em sequência.
-          {group.rest_after_seconds !== null &&
+          Execute os exercícios em
+          sequência.
+          {group.rest_after_seconds !==
+            null &&
             ` Descanse ${group.rest_after_seconds}s depois de concluir o bi-set.`}
         </p>
 
@@ -905,18 +1154,27 @@ function ExerciseCard({
   index: number;
 }) {
   const technique =
-    exercise.technique_type || 'normal';
+    exercise.technique_type ||
+    'normal';
 
   const dropConfig =
     getDropSetConfig(exercise);
 
   const observation =
-    getExerciseObservation(exercise);
+    getExerciseObservation(
+      exercise
+    );
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{
+        opacity: 0,
+        x: -8,
+      }}
+      animate={{
+        opacity: 1,
+        x: 0,
+      }}
       transition={{
         duration: 0.25,
         delay: index * 0.04,
@@ -927,7 +1185,9 @@ function ExerciseCard({
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[22px] border border-white/10 bg-black/30">
           {exercise.video_url ? (
             <video
-              src={exercise.video_url}
+              src={
+                exercise.video_url
+              }
               muted
               loop
               autoPlay
@@ -936,8 +1196,12 @@ function ExerciseCard({
             />
           ) : exercise.image_url ? (
             <img
-              src={exercise.image_url}
-              alt={getExerciseName(exercise)}
+              src={
+                exercise.image_url
+              }
+              alt={getExerciseName(
+                exercise
+              )}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -948,56 +1212,76 @@ function ExerciseCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          {technique === 'drop_set' && (
+          {technique ===
+            'drop_set' && (
             <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-orange-400/15 px-2.5 py-1 text-[9px] font-black text-orange-300">
               <Zap className="h-3 w-3" />
+
               DROP-SET
             </span>
           )}
 
           <h3 className="text-[16px] font-black">
-            {getExerciseName(exercise)}
+            {getExerciseName(
+              exercise
+            )}
           </h3>
 
           <div className="mt-3 flex flex-wrap gap-2">
             {exercise.sets && (
               <SmallTag>
-                {exercise.sets} séries
+                {exercise.sets}{' '}
+                séries
               </SmallTag>
             )}
 
             {exercise.reps && (
               <SmallTag>
-                {exercise.reps} reps
+                {exercise.reps}{' '}
+                reps
               </SmallTag>
             )}
 
             {exercise.suggested_weight && (
               <SmallTag>
-                {exercise.suggested_weight}
+                {
+                  exercise.suggested_weight
+                }
               </SmallTag>
             )}
 
-            {exercise.rest_seconds !== null &&
-              exercise.rest_seconds > 0 && (
+            {exercise.rest_seconds !==
+              null &&
+              exercise.rest_seconds >
+                0 && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
                   <Timer className="h-3.5 w-3.5 text-[#ff2a32]" />
-                  {exercise.rest_seconds}s
+
+                  {
+                    exercise.rest_seconds
+                  }
+                  s
                 </span>
               )}
           </div>
 
-          {technique === 'drop_set' && (
+          {technique ===
+            'drop_set' && (
             <div className="mt-3 rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-3">
               <p className="text-[10px] font-black uppercase text-orange-300">
                 Configuração
               </p>
 
               <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-orange-100/80">
-                {dropConfig.drops !== undefined && (
+                {dropConfig.drops !==
+                  undefined && (
                   <span>
-                    {dropConfig.drops} queda
-                    {dropConfig.drops === 1
+                    {
+                      dropConfig.drops
+                    }{' '}
+                    queda
+                    {dropConfig.drops ===
+                    1
                       ? ''
                       : 's'}
                   </span>
@@ -1007,7 +1291,10 @@ function ExerciseCard({
                   undefined && (
                   <span>
                     • Redução de{' '}
-                    {dropConfig.reduction_percent}%
+                    {
+                      dropConfig.reduction_percent
+                    }
+                    %
                   </span>
                 )}
 
@@ -1025,7 +1312,9 @@ function ExerciseCard({
 
               {dropConfig.notes && (
                 <p className="mt-2 text-xs text-zinc-400">
-                  {dropConfig.notes}
+                  {
+                    dropConfig.notes
+                  }
                 </p>
               )}
             </div>
