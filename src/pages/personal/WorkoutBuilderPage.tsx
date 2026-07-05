@@ -65,27 +65,18 @@ const WEEKDAY_NUMBER: Record<WorkoutDayKey, number> = {
 };
 
 const OBJECTIVES = [
-  { value: 'Hipertrofia', label: 'Hipertrofia' },
-  { value: 'Emagrecimento', label: 'Emagrecimento' },
-  { value: 'Resistência', label: 'Resistência' },
-  { value: 'Força', label: 'Força' },
-  { value: 'Condicionamento', label: 'Condicionamento' },
-  { value: 'Reabilitação', label: 'Reabilitação' },
+  'Hipertrofia',
+  'Emagrecimento',
+  'Resistência',
+  'Força',
+  'Condicionamento',
+  'Reabilitação',
 ];
 
 const LEVELS = [
-  { value: 'Iniciante', label: 'Iniciante' },
-  { value: 'Intermediário', label: 'Intermediário' },
-  { value: 'Avançado', label: 'Avançado' },
-];
-
-const TECHNIQUES: {
-  value: WorkoutTechniqueType;
-  label: string;
-}[] = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'drop_set', label: 'Drop-set' },
-  { value: 'bi_set', label: 'Bi-set' },
+  'Iniciante',
+  'Intermediário',
+  'Avançado',
 ];
 
 interface DayExercise extends CreateExerciseInWorkout {
@@ -128,25 +119,10 @@ const EMPTY_BI_SET_FORM: BiSetForm = {
   notes: '',
 };
 
-function normalizeExercise(exercise: Exercise) {
-  const record = exercise as unknown as Record<string, string>;
-
-  return {
-    imageUrl: exercise.image_url || record.imageUrl || '',
-    videoUrl: exercise.video_url || record.videoUrl || '',
-    muscleGroup: exercise.muscle_group || record.muscleGroup || '',
-    category: exercise.category || record.category || '',
-    difficulty: exercise.difficulty || record.difficulty || '',
-    equipment: exercise.equipment || record.equipment || '',
-    instructions: exercise.instructions || record.instructions || '',
-    tips: exercise.tips || record.tips || '',
-  };
-}
-
 function createLocalId() {
   if (
     typeof crypto !== 'undefined' &&
-    'randomUUID' in crypto
+    crypto.randomUUID
   ) {
     return crypto.randomUUID();
   }
@@ -154,6 +130,46 @@ function createLocalId() {
   return `${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
+}
+
+function normalizeExercise(exercise: Exercise) {
+  const record =
+    exercise as unknown as Record<string, string>;
+
+  return {
+    imageUrl:
+      exercise.image_url ||
+      record.imageUrl ||
+      '',
+    videoUrl:
+      exercise.video_url ||
+      record.videoUrl ||
+      '',
+    muscleGroup:
+      exercise.muscle_group ||
+      record.muscleGroup ||
+      '',
+    category:
+      exercise.category ||
+      record.category ||
+      '',
+    difficulty:
+      exercise.difficulty ||
+      record.difficulty ||
+      '',
+    equipment:
+      exercise.equipment ||
+      record.equipment ||
+      '',
+    instructions:
+      exercise.instructions ||
+      record.instructions ||
+      '',
+    tips:
+      exercise.tips ||
+      record.tips ||
+      '',
+  };
 }
 
 function getDropSetConfig(
@@ -175,109 +191,194 @@ function getDropSetConfig(
 function getTechniqueLabel(
   technique?: WorkoutTechniqueType
 ) {
-  if (technique === 'drop_set') return 'DROP-SET';
-  if (technique === 'bi_set') return 'BI-SET';
+  if (technique === 'drop_set') {
+    return 'DROP-SET';
+  }
+
+  if (technique === 'bi_set') {
+    return 'BI-SET';
+  }
 
   return 'NORMAL';
 }
 
 export function WorkoutBuilderPage() {
   const [searchParams] = useSearchParams();
+
   const { trainerProfile } = useAuthStore();
-  const { students, fetchStudents } = useStudentStore();
+  const { students, fetchStudents } =
+    useStudentStore();
 
   const [studentId, setStudentId] = useState(
     searchParams.get('studentId') || ''
-  );
-  const [name, setName] = useState('');
-  const [objective, setObjective] = useState('');
-  const [level, setLevel] = useState('');
-  const [duration, setDuration] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  const [selectedDays, setSelectedDays] = useState<
-    Set<WorkoutDayKey>
-  >(new Set());
-
-  const [dayConfigurations, setDayConfigurations] =
-    useState<
-      Partial<Record<WorkoutDayKey, DayConfiguration>>
-    >({});
-
-  const [exercisesByDay, setExercisesByDay] =
-    useState<
-      Partial<Record<WorkoutDayKey, DayExercise[]>>
-    >({});
-
-  const [biSets, setBiSets] = useState<LocalBiSet[]>(
-    []
   );
 
   const [studentSearch, setStudentSearch] =
     useState('');
 
-  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [objective, setObjective] =
+    useState('');
+  const [level, setLevel] = useState('');
+  const [duration, setDuration] =
+    useState('');
+  const [startDate, setStartDate] =
+    useState('');
+  const [endDate, setEndDate] =
+    useState('');
+
+  const [selectedDays, setSelectedDays] =
+    useState<Set<WorkoutDayKey>>(
+      new Set()
+    );
+
+  const [
+    dayConfigurations,
+    setDayConfigurations,
+  ] = useState<
+    Partial<
+      Record<
+        WorkoutDayKey,
+        DayConfiguration
+      >
+    >
+  >({});
+
+  const [
+    exercisesByDay,
+    setExercisesByDay,
+  ] = useState<
+    Partial<
+      Record<
+        WorkoutDayKey,
+        DayExercise[]
+      >
+    >
+  >({});
+
+  const [biSets, setBiSets] = useState<
+    LocalBiSet[]
+  >([]);
+
+  const [error, setError] = useState('');
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState('');
+
+  const [saving, setSaving] =
+    useState(false);
+
   const [publishing, setPublishing] =
     useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] =
-    useState('');
-  const [createdPlanId, setCreatedPlanId] =
-    useState<string | null>(null);
 
-  const [showAddExercise, setShowAddExercise] =
-    useState(false);
+  const [
+    createdPlanId,
+    setCreatedPlanId,
+  ] = useState<string | null>(null);
+
+  const [
+    showAddExercise,
+    setShowAddExercise,
+  ] = useState(false);
+
   const [currentDay, setCurrentDay] =
     useState<WorkoutDayKey | null>(null);
-  const [exercises, setExercises] = useState<
-    Exercise[]
-  >([]);
-  const [exerciseSearch, setExerciseSearch] =
-    useState('');
-  const [loadingExercises, setLoadingExercises] =
-    useState(false);
 
-  const [showNewExercise, setShowNewExercise] =
-    useState(false);
-  const [newExName, setNewExName] = useState('');
+  const [exercises, setExercises] =
+    useState<Exercise[]>([]);
+
+  const [
+    exerciseSearch,
+    setExerciseSearch,
+  ] = useState('');
+
+  const [
+    loadingExercises,
+    setLoadingExercises,
+  ] = useState(false);
+
+  const [
+    showNewExercise,
+    setShowNewExercise,
+  ] = useState(false);
+
+  const [newExName, setNewExName] =
+    useState('');
+
   const [newExMuscle, setNewExMuscle] =
     useState('');
-  const [newExCategory, setNewExCategory] =
-    useState('');
-  const [newExDifficulty, setNewExDifficulty] =
-    useState('');
-  const [newExEquipment, setNewExEquipment] =
-    useState('');
-  const [newExInstructions, setNewExInstructions] =
-    useState('');
-  const [creatingExercise, setCreatingExercise] =
-    useState(false);
 
-  const [showBiSetModal, setShowBiSetModal] =
-    useState(false);
+  const [
+    newExCategory,
+    setNewExCategory,
+  ] = useState('');
+
+  const [
+    newExDifficulty,
+    setNewExDifficulty,
+  ] = useState('');
+
+  const [
+    newExEquipment,
+    setNewExEquipment,
+  ] = useState('');
+
+  const [
+    newExInstructions,
+    setNewExInstructions,
+  ] = useState('');
+
+  const [
+    creatingExercise,
+    setCreatingExercise,
+  ] = useState(false);
+
+  const [
+    showBiSetModal,
+    setShowBiSetModal,
+  ] = useState(false);
+
   const [biSetDay, setBiSetDay] =
     useState<WorkoutDayKey | null>(null);
+
   const [biSetForm, setBiSetForm] =
-    useState<BiSetForm>(EMPTY_BI_SET_FORM);
+    useState<BiSetForm>(
+      EMPTY_BI_SET_FORM
+    );
 
   useEffect(() => {
     if (!trainerProfile?.id) return;
 
-    fetchStudents(trainerProfile.id);
-  }, [trainerProfile?.id, fetchStudents]);
+    void fetchStudents(
+      trainerProfile.id
+    );
+  }, [
+    trainerProfile?.id,
+    fetchStudents,
+  ]);
 
   useEffect(() => {
-    if (!studentId || studentSearch) return;
+    if (!studentId || studentSearch) {
+      return;
+    }
 
-    const selectedStudent = students.find(
-      (student) => student.id === studentId
-    );
+    const selectedStudent =
+      students.find(
+        (student) =>
+          student.id === studentId
+      );
 
     if (selectedStudent) {
-      setStudentSearch(selectedStudent.name);
+      setStudentSearch(
+        selectedStudent.name
+      );
     }
-  }, [studentId, studentSearch, students]);
+  }, [
+    studentId,
+    studentSearch,
+    students,
+  ]);
 
   useEffect(() => {
     if (!currentDay) return;
@@ -286,114 +387,154 @@ export function WorkoutBuilderPage() {
 
     exerciseService
       .getExercises()
-      .then((data) => setExercises(data || []))
-      .catch((err) => {
+      .then((result) => {
+        setExercises(result || []);
+      })
+      .catch((loadError) => {
         console.error(
-          '[WorkoutBuilderPage] exercises error:',
-          err
+          '[WorkoutBuilderPage] exercises:',
+          loadError
         );
+
         setExercises([]);
       })
-      .finally(() => setLoadingExercises(false));
+      .finally(() => {
+        setLoadingExercises(false);
+      });
   }, [currentDay]);
 
-  const filteredStudents = useMemo(() => {
-    const query = studentSearch
-      .trim()
-      .toLowerCase();
-
-    if (!query) return students;
-
-    return students.filter((student) => {
-      const studentName = student.name || '';
-      const studentEmail = student.email || '';
-      const studentPhone = student.phone || '';
-
-      return (
-        studentName
-          .toLowerCase()
-          .includes(query) ||
-        studentEmail
-          .toLowerCase()
-          .includes(query) ||
-        studentPhone
-          .toLowerCase()
-          .includes(query)
-      );
-    });
-  }, [students, studentSearch]);
-
-  const filteredExercises = useMemo(() => {
-    const query = exerciseSearch
-      .trim()
-      .toLowerCase();
-
-    if (!query) return exercises;
-
-    return exercises.filter((exercise) => {
-      const normalized =
-        normalizeExercise(exercise);
-
-      return (
-        exercise.name
-          .toLowerCase()
-          .includes(query) ||
-        normalized.muscleGroup
-          .toLowerCase()
-          .includes(query) ||
-        normalized.category
-          .toLowerCase()
-          .includes(query) ||
-        normalized.equipment
-          .toLowerCase()
-          .includes(query)
-      );
-    });
-  }, [exercises, exerciseSearch]);
-
-  const selectedDaysArray = DAYS.filter((day) =>
-    selectedDays.has(day)
-  );
+  const selectedDaysArray =
+    useMemo(
+      () =>
+        DAYS.filter((day) =>
+          selectedDays.has(day)
+        ),
+      [selectedDays]
+    );
 
   const totalSelectedExercises =
-    selectedDaysArray.reduce((sum, day) => {
-      return (
-        sum + (exercisesByDay[day] || []).length
+    useMemo(() => {
+      return selectedDaysArray.reduce(
+        (total, day) =>
+          total +
+          (
+            exercisesByDay[day] || []
+          ).length,
+        0
       );
-    }, 0);
+    }, [
+      selectedDaysArray,
+      exercisesByDay,
+    ]);
+
+  const filteredStudents =
+    useMemo(() => {
+      const query = studentSearch
+        .trim()
+        .toLowerCase();
+
+      if (!query) return students;
+
+      return students.filter(
+        (student) => {
+          const studentName =
+            student.name || '';
+
+          const studentEmail =
+            student.email || '';
+
+          const studentPhone =
+            student.phone || '';
+
+          return (
+            studentName
+              .toLowerCase()
+              .includes(query) ||
+            studentEmail
+              .toLowerCase()
+              .includes(query) ||
+            studentPhone
+              .toLowerCase()
+              .includes(query)
+          );
+        }
+      );
+    }, [students, studentSearch]);
+
+  const filteredExercises =
+    useMemo(() => {
+      const query = exerciseSearch
+        .trim()
+        .toLowerCase();
+
+      if (!query) return exercises;
+
+      return exercises.filter(
+        (exercise) => {
+          const normalized =
+            normalizeExercise(exercise);
+
+          return (
+            exercise.name
+              .toLowerCase()
+              .includes(query) ||
+            normalized.muscleGroup
+              .toLowerCase()
+              .includes(query) ||
+            normalized.category
+              .toLowerCase()
+              .includes(query) ||
+            normalized.equipment
+              .toLowerCase()
+              .includes(query)
+          );
+        }
+      );
+    }, [exercises, exerciseSearch]);
 
   function resetMessages() {
     setError('');
     setSuccessMessage('');
   }
 
-  function ensureDayConfiguration(
+  function ensureDay(
     day: WorkoutDayKey
   ) {
-    setDayConfigurations((previous) => {
-      if (previous[day]) return previous;
+    setDayConfigurations(
+      (previous) => {
+        if (previous[day]) {
+          return previous;
+        }
 
-      return {
-        ...previous,
-        [day]: {
-          localId: createLocalId(),
-          name: '',
-          notes: '',
-        },
-      };
-    });
+        return {
+          ...previous,
+          [day]: {
+            localId:
+              createLocalId(),
+            name: '',
+            notes: '',
+          },
+        };
+      }
+    );
 
-    setExercisesByDay((previous) => {
-      if (previous[day]) return previous;
+    setExercisesByDay(
+      (previous) => {
+        if (previous[day]) {
+          return previous;
+        }
 
-      return {
-        ...previous,
-        [day]: [],
-      };
-    });
+        return {
+          ...previous,
+          [day]: [],
+        };
+      }
+    );
   }
 
-  function toggleDay(day: WorkoutDayKey) {
+  function toggleDay(
+    day: WorkoutDayKey
+  ) {
     resetMessages();
 
     if (selectedDays.has(day)) {
@@ -406,25 +547,29 @@ export function WorkoutBuilderPage() {
             day
           )} antes de desmarcar o dia.`
         );
+
         return;
       }
 
-      const dayHasBiSet = biSets.some(
-        (group) => group.dayKey === day
-      );
-
-      if (dayHasBiSet) {
+      if (
+        biSets.some(
+          (group) =>
+            group.dayKey === day
+        )
+      ) {
         setError(
           `Desfaça os bi-sets de ${getWeekdayName(
             day
           )} antes de desmarcar o dia.`
         );
+
         return;
       }
     }
 
     setSelectedDays((previous) => {
-      const next = new Set(previous);
+      const next =
+        new Set(previous);
 
       if (next.has(day)) {
         next.delete(day);
@@ -435,39 +580,65 @@ export function WorkoutBuilderPage() {
       return next;
     });
 
-    ensureDayConfiguration(day);
+    ensureDay(day);
   }
 
   function updateDayConfiguration(
     day: WorkoutDayKey,
-    data: Partial<
-      Pick<DayConfiguration, 'name' | 'notes'>
+    values: Partial<
+      Pick<
+        DayConfiguration,
+        'name' | 'notes'
+      >
     >
   ) {
-    ensureDayConfiguration(day);
+    ensureDay(day);
 
-    setDayConfigurations((previous) => ({
-      ...previous,
-      [day]: {
-        localId:
-          previous[day]?.localId ||
-          createLocalId(),
-        name:
-          data.name !== undefined
-            ? data.name
-            : previous[day]?.name || '',
-        notes:
-          data.notes !== undefined
-            ? data.notes
-            : previous[day]?.notes || '',
-      },
-    }));
+    setDayConfigurations(
+      (previous) => ({
+        ...previous,
+        [day]: {
+          localId:
+            previous[day]?.localId ||
+            createLocalId(),
+          name:
+            values.name !== undefined
+              ? values.name
+              : previous[day]
+                  ?.name || '',
+          notes:
+            values.notes !==
+            undefined
+              ? values.notes
+              : previous[day]
+                  ?.notes || '',
+        },
+      })
+    );
   }
 
-  function addExerciseToDay(exercise: Exercise) {
-    if (!currentDay) return;
+  function openAddExercise(
+    day: WorkoutDayKey
+  ) {
+    resetMessages();
+    ensureDay(day);
+    setCurrentDay(day);
+    setExerciseSearch('');
+    setShowNewExercise(false);
+    setShowAddExercise(true);
+  }
 
-    ensureDayConfiguration(currentDay);
+  function closeExerciseModal() {
+    setShowAddExercise(false);
+    setCurrentDay(null);
+    setExerciseSearch('');
+    setShowNewExercise(false);
+  }
+
+  function addExerciseToDay(
+    exercise: Exercise
+  ) {
+    if (!currentDay) return;
 
     const normalized =
       normalizeExercise(exercise);
@@ -485,31 +656,54 @@ export function WorkoutBuilderPage() {
       tempo: '2-0-2-0',
       technique_type: 'normal',
       technique_config: {},
-      exercise_group_local_id: null,
+      exercise_group_local_id:
+        null,
       group_order: null,
       execution_order:
-        (exercisesByDay[currentDay] || [])
-          .length,
-      image_url: normalized.imageUrl || null,
-      video_url: normalized.videoUrl || null,
+        (
+          exercisesByDay[
+            currentDay
+          ] || []
+        ).length,
+      image_url:
+        normalized.imageUrl ||
+        null,
+      video_url:
+        normalized.videoUrl ||
+        null,
       muscle_group:
-        normalized.muscleGroup || null,
-      category: normalized.category || null,
-      equipment: normalized.equipment || null,
+        normalized.muscleGroup ||
+        null,
+      category:
+        normalized.category ||
+        null,
+      equipment:
+        normalized.equipment ||
+        null,
       difficulty:
-        normalized.difficulty || null,
+        normalized.difficulty ||
+        null,
       instructions:
-        normalized.instructions || null,
-      tips: normalized.tips || null,
+        normalized.instructions ||
+        null,
+      tips:
+        normalized.tips ||
+        null,
     };
 
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [currentDay]: [
-        ...(previous[currentDay] || []),
-        newExercise,
-      ],
-    }));
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [currentDay]: [
+          ...(
+            previous[
+              currentDay
+            ] || []
+          ),
+          newExercise,
+        ],
+      })
+    );
 
     closeExerciseModal();
   }
@@ -517,114 +711,68 @@ export function WorkoutBuilderPage() {
   function updateExercise(
     day: WorkoutDayKey,
     localId: string,
-    data: Partial<DayExercise>
+    values: Partial<DayExercise>
   ) {
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [day]: (previous[day] || []).map(
-        (exercise) =>
-          exercise.localId === localId
-            ? { ...exercise, ...data }
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [day]: (
+          previous[day] || []
+        ).map((exercise) =>
+          exercise.localId ===
+          localId
+            ? {
+                ...exercise,
+                ...values,
+              }
             : exercise
-      ),
-    }));
-  }
-
-  function changeExerciseTechnique(
-    day: WorkoutDayKey,
-    exercise: DayExercise,
-    technique: WorkoutTechniqueType
-  ) {
-    if (
-      exercise.technique_type === 'bi_set' &&
-      technique !== 'bi_set'
-    ) {
-      const relatedGroup = biSets.find(
-        (group) =>
-          group.localId ===
-          exercise.exercise_group_local_id
-      );
-
-      if (relatedGroup) {
-        dissolveBiSet(relatedGroup.localId);
-        return;
-      }
-    }
-
-    if (technique === 'drop_set') {
-      updateExercise(day, exercise.localId, {
-        technique_type: 'drop_set',
-        technique_config: {
-          drops: 2,
-          reduction_percent: 20,
-          rest_between_drops_seconds: 0,
-          notes: '',
-        },
-        exercise_group_local_id: null,
-        group_order: null,
-      });
-
-      return;
-    }
-
-    if (technique === 'bi_set') {
-      setError(
-        'Use o botão “Criar bi-set” do dia para juntar dois exercícios.'
-      );
-      return;
-    }
-
-    updateExercise(day, exercise.localId, {
-      technique_type: 'normal',
-      technique_config: {},
-      exercise_group_local_id: null,
-      group_order: null,
-    });
-  }
-
-  function updateDropSetConfig(
-    day: WorkoutDayKey,
-    exercise: DayExercise,
-    data: Partial<DropSetConfig>
-  ) {
-    const previousConfig =
-      getDropSetConfig(exercise);
-
-    updateExercise(day, exercise.localId, {
-      technique_type: 'drop_set',
-      technique_config: {
-        ...previousConfig,
-        ...data,
-      },
-    });
+        ),
+      })
+    );
   }
 
   function removeExercise(
     day: WorkoutDayKey,
     localId: string
   ) {
-    const linkedBiSet = biSets.find(
-      (group) =>
-        group.firstExerciseLocalId === localId ||
-        group.secondExerciseLocalId === localId
-    );
+    const linkedGroup =
+      biSets.find(
+        (group) =>
+          group.firstExerciseLocalId ===
+            localId ||
+          group.secondExerciseLocalId ===
+            localId
+      );
 
-    if (linkedBiSet) {
-      dissolveBiSet(linkedBiSet.localId);
+    if (linkedGroup) {
+      dissolveBiSet(
+        linkedGroup.localId
+      );
     }
 
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [day]: (previous[day] || [])
-        .filter(
-          (exercise) =>
-            exercise.localId !== localId
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [day]: (
+          previous[day] || []
         )
-        .map((exercise, index) => ({
-          ...exercise,
-          execution_order: index,
-        })),
-    }));
+          .filter(
+            (exercise) =>
+              exercise.localId !==
+              localId
+          )
+          .map(
+            (
+              exercise,
+              index
+            ) => ({
+              ...exercise,
+              execution_order:
+                index,
+            })
+          ),
+      })
+    );
   }
 
   function moveExercise(
@@ -633,11 +781,14 @@ export function WorkoutBuilderPage() {
     direction: 'up' | 'down'
   ) {
     const list = [
-      ...(exercisesByDay[day] || []),
+      ...(exercisesByDay[day] ||
+        []),
     ];
 
     const newIndex =
-      direction === 'up' ? index - 1 : index + 1;
+      direction === 'up'
+        ? index - 1
+        : index + 1;
 
     if (
       newIndex < 0 ||
@@ -646,223 +797,382 @@ export function WorkoutBuilderPage() {
       return;
     }
 
-    [list[index], list[newIndex]] = [
+    [
+      list[index],
+      list[newIndex],
+    ] = [
       list[newIndex],
       list[index],
     ];
 
-    const reordered = list.map(
-      (exercise, exerciseIndex) => ({
-        ...exercise,
-        execution_order: exerciseIndex,
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [day]: list.map(
+          (exercise, position) => ({
+            ...exercise,
+            execution_order:
+              position,
+          })
+        ),
       })
     );
-
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [day]: reordered,
-    }));
   }
 
-  function openBiSetModal(day: WorkoutDayKey) {
-    const availableExercises = (
-      exercisesByDay[day] || []
-    ).filter(
-      (exercise) =>
-        !exercise.exercise_group_local_id
-    );
+  function changeExerciseTechnique(
+    day: WorkoutDayKey,
+    exercise: DayExercise,
+    technique: WorkoutTechniqueType
+  ) {
+    resetMessages();
 
-    if (availableExercises.length < 2) {
-      setError(
-        'Adicione pelo menos dois exercícios livres neste dia para criar um bi-set.'
+    if (
+      exercise.technique_type ===
+        'bi_set' &&
+      technique !== 'bi_set'
+    ) {
+      const linkedGroup =
+        biSets.find(
+          (group) =>
+            group.localId ===
+            exercise.exercise_group_local_id
+        );
+
+      if (linkedGroup) {
+        dissolveBiSet(
+          linkedGroup.localId
+        );
+
+        return;
+      }
+    }
+
+    if (technique === 'bi_set') {
+      openBiSetModal(
+        day,
+        exercise.localId
       );
+
       return;
     }
 
+    if (technique === 'drop_set') {
+      updateExercise(
+        day,
+        exercise.localId,
+        {
+          technique_type:
+            'drop_set',
+          technique_config: {
+            drops: 2,
+            reduction_percent: 20,
+            rest_between_drops_seconds:
+              0,
+            notes: '',
+          },
+          exercise_group_local_id:
+            null,
+          group_order: null,
+        }
+      );
+
+      return;
+    }
+
+    updateExercise(
+      day,
+      exercise.localId,
+      {
+        technique_type: 'normal',
+        technique_config: {},
+        exercise_group_local_id:
+          null,
+        group_order: null,
+      }
+    );
+  }
+
+  function updateDropSetConfig(
+    day: WorkoutDayKey,
+    exercise: DayExercise,
+    values: Partial<DropSetConfig>
+  ) {
+    updateExercise(
+      day,
+      exercise.localId,
+      {
+        technique_type:
+          'drop_set',
+        technique_config: {
+          ...getDropSetConfig(
+            exercise
+          ),
+          ...values,
+        },
+      }
+    );
+  }
+
+  function openBiSetModal(
+    day: WorkoutDayKey,
+    preferredFirstId?: string
+  ) {
+    resetMessages();
+
+    const available =
+      (
+        exercisesByDay[day] ||
+        []
+      ).filter(
+        (exercise) =>
+          !exercise.exercise_group_local_id
+      );
+
+    if (available.length < 2) {
+      setError(
+        'Adicione pelo menos dois exercícios livres neste dia para criar um bi-set.'
+      );
+
+      return;
+    }
+
+    const first =
+      available.find(
+        (exercise) =>
+          exercise.localId ===
+          preferredFirstId
+      ) || available[0];
+
+    const second =
+      available.find(
+        (exercise) =>
+          exercise.localId !==
+          first.localId
+      ) || available[1];
+
     setBiSetDay(day);
+
     setBiSetForm({
       ...EMPTY_BI_SET_FORM,
       firstExerciseLocalId:
-        availableExercises[0]?.localId || '',
+        first.localId,
       secondExerciseLocalId:
-        availableExercises[1]?.localId || '',
+        second.localId,
     });
+
     setShowBiSetModal(true);
-    resetMessages();
   }
 
   function closeBiSetModal() {
     setShowBiSetModal(false);
     setBiSetDay(null);
-    setBiSetForm(EMPTY_BI_SET_FORM);
+    setBiSetForm(
+      EMPTY_BI_SET_FORM
+    );
   }
 
   function createBiSet() {
     if (!biSetDay) return;
 
-    const {
-      firstExerciseLocalId,
-      secondExerciseLocalId,
-    } = biSetForm;
+    const firstId =
+      biSetForm.firstExerciseLocalId;
 
-    if (
-      !firstExerciseLocalId ||
-      !secondExerciseLocalId
-    ) {
+    const secondId =
+      biSetForm.secondExerciseLocalId;
+
+    if (!firstId || !secondId) {
       setError(
         'Selecione os dois exercícios do bi-set.'
       );
+
       return;
     }
 
-    if (
-      firstExerciseLocalId ===
-      secondExerciseLocalId
-    ) {
+    if (firstId === secondId) {
       setError(
-        'O primeiro e o segundo exercício precisam ser diferentes.'
+        'Selecione dois exercícios diferentes.'
       );
+
       return;
     }
 
-    const rounds = biSetForm.rounds
-      ? Number(biSetForm.rounds)
-      : null;
+    const rounds =
+      biSetForm.rounds
+        ? Number(
+            biSetForm.rounds
+          )
+        : null;
 
     const restAfterSeconds =
       biSetForm.restAfterSeconds
-        ? Number(biSetForm.restAfterSeconds)
+        ? Number(
+            biSetForm.restAfterSeconds
+          )
         : null;
 
     if (
       rounds !== null &&
-      (!Number.isFinite(rounds) || rounds <= 0)
+      (!Number.isFinite(
+        rounds
+      ) ||
+        rounds <= 0)
     ) {
       setError(
         'A quantidade de rodadas precisa ser maior que zero.'
       );
+
       return;
     }
 
     if (
       restAfterSeconds !== null &&
-      (!Number.isFinite(restAfterSeconds) ||
+      (!Number.isFinite(
+        restAfterSeconds
+      ) ||
         restAfterSeconds < 0)
     ) {
       setError(
-        'O descanso do bi-set não pode ser negativo.'
+        'O descanso não pode ser negativo.'
       );
+
       return;
     }
 
-    const groupLocalId = createLocalId();
-    const dayGroups = biSets.filter(
-      (group) => group.dayKey === biSetDay
-    );
+    const localId =
+      createLocalId();
 
-    const newGroup: LocalBiSet = {
-      localId: groupLocalId,
+    const group: LocalBiSet = {
+      localId,
       dayKey: biSetDay,
-      firstExerciseLocalId,
-      secondExerciseLocalId,
-      name: biSetForm.name.trim(),
+      firstExerciseLocalId:
+        firstId,
+      secondExerciseLocalId:
+        secondId,
+      name:
+        biSetForm.name.trim(),
       rounds,
       restAfterSeconds,
-      notes: biSetForm.notes.trim(),
-      orderIndex: dayGroups.length,
+      notes:
+        biSetForm.notes.trim(),
+      orderIndex: biSets.filter(
+        (item) =>
+          item.dayKey ===
+          biSetDay
+      ).length,
     };
 
     setBiSets((previous) => [
       ...previous,
-      newGroup,
+      group,
     ]);
 
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [biSetDay]: (
-        previous[biSetDay] || []
-      ).map((exercise) => {
-        if (
-          exercise.localId ===
-          firstExerciseLocalId
-        ) {
-          return {
-            ...exercise,
-            technique_type: 'bi_set',
-            technique_config: {},
-            exercise_group_local_id:
-              groupLocalId,
-            group_order: 1,
-          };
-        }
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [biSetDay]: (
+          previous[biSetDay] ||
+          []
+        ).map((exercise) => {
+          if (
+            exercise.localId ===
+            firstId
+          ) {
+            return {
+              ...exercise,
+              technique_type:
+                'bi_set',
+              technique_config:
+                {},
+              exercise_group_local_id:
+                localId,
+              group_order: 1,
+            };
+          }
 
-        if (
-          exercise.localId ===
-          secondExerciseLocalId
-        ) {
-          return {
-            ...exercise,
-            technique_type: 'bi_set',
-            technique_config: {},
-            exercise_group_local_id:
-              groupLocalId,
-            group_order: 2,
-          };
-        }
+          if (
+            exercise.localId ===
+            secondId
+          ) {
+            return {
+              ...exercise,
+              technique_type:
+                'bi_set',
+              technique_config:
+                {},
+              exercise_group_local_id:
+                localId,
+              group_order: 2,
+            };
+          }
 
-        return exercise;
-      }),
-    }));
+          return exercise;
+        }),
+      })
+    );
 
     closeBiSetModal();
+
     setSuccessMessage(
       'Bi-set criado com sucesso.'
     );
   }
 
-  function dissolveBiSet(groupLocalId: string) {
+  function dissolveBiSet(
+    groupLocalId: string
+  ) {
     const group = biSets.find(
-      (item) => item.localId === groupLocalId
+      (item) =>
+        item.localId ===
+        groupLocalId
     );
 
     if (!group) return;
 
-    setExercisesByDay((previous) => ({
-      ...previous,
-      [group.dayKey]: (
-        previous[group.dayKey] || []
-      ).map((exercise) =>
-        exercise.exercise_group_local_id ===
-        groupLocalId
-          ? {
-              ...exercise,
-              technique_type: 'normal',
-              technique_config: {},
-              exercise_group_local_id: null,
-              group_order: null,
-            }
-          : exercise
-      ),
-    }));
+    setExercisesByDay(
+      (previous) => ({
+        ...previous,
+        [group.dayKey]: (
+          previous[
+            group.dayKey
+          ] || []
+        ).map((exercise) =>
+          exercise.exercise_group_local_id ===
+          groupLocalId
+            ? {
+                ...exercise,
+                technique_type:
+                  'normal',
+                technique_config:
+                  {},
+                exercise_group_local_id:
+                  null,
+                group_order: null,
+              }
+            : exercise
+        ),
+      })
+    );
 
     setBiSets((previous) =>
       previous.filter(
-        (item) => item.localId !== groupLocalId
+        (item) =>
+          item.localId !==
+          groupLocalId
       )
     );
 
     setSuccessMessage(
-      'Bi-set desfeito. Os exercícios foram preservados.'
+      'Bi-set desfeito.'
     );
   }
 
   function validateWorkout() {
     if (!trainerProfile?.id) {
-      return 'Não foi possível identificar o personal logado.';
+      return 'Personal não identificado.';
     }
 
     if (!studentId) {
-      return 'Selecione um aluno para esse treino.';
+      return 'Selecione um aluno.';
     }
 
     if (!name.trim()) {
@@ -877,59 +1187,18 @@ export function WorkoutBuilderPage() {
       return 'A data de término não pode ser anterior à data de início.';
     }
 
-    if (selectedDays.size === 0) {
-      return 'Selecione pelo menos um dia da semana.';
+    if (
+      selectedDaysArray.length ===
+      0
+    ) {
+      return 'Selecione pelo menos um dia.';
     }
 
-    if (totalSelectedExercises === 0) {
-      return 'Adicione pelo menos um exercício no treino.';
-    }
-
-    for (const day of selectedDaysArray) {
-      const dayExercises =
-        exercisesByDay[day] || [];
-
-      for (const exercise of dayExercises) {
-        if (!exercise.name.trim()) {
-          return `Existe um exercício sem nome em ${getWeekdayName(
-            day
-          )}.`;
-        }
-
-        if (
-          exercise.technique_type ===
-          'drop_set'
-        ) {
-          const config =
-            getDropSetConfig(exercise);
-
-          if (
-            config.drops !== undefined &&
-            Number(config.drops) <= 0
-          ) {
-            return `A quantidade de quedas do drop-set de “${exercise.name}” precisa ser maior que zero.`;
-          }
-
-          if (
-            config.reduction_percent !==
-              undefined &&
-            Number(config.reduction_percent) <=
-              0
-          ) {
-            return `O percentual de redução do drop-set de “${exercise.name}” precisa ser maior que zero.`;
-          }
-
-          if (
-            config.rest_between_drops_seconds !==
-              undefined &&
-            Number(
-              config.rest_between_drops_seconds
-            ) < 0
-          ) {
-            return `O descanso do drop-set de “${exercise.name}” não pode ser negativo.`;
-          }
-        }
-      }
+    if (
+      totalSelectedExercises ===
+      0
+    ) {
+      return 'Adicione pelo menos um exercício.';
     }
 
     return '';
@@ -937,27 +1206,32 @@ export function WorkoutBuilderPage() {
 
   function buildCreateData(): CreateWorkoutData {
     const days: CreateWorkoutDay[] =
-      selectedDaysArray.map((day, index) => {
-        const configuration =
-          dayConfigurations[day];
+      selectedDaysArray.map(
+        (day, index) => {
+          const configuration =
+            dayConfigurations[
+              day
+            ];
 
-        return {
-          local_id:
-            configuration?.localId ||
-            createLocalId(),
-          weekday: WEEKDAY_NUMBER[day],
-          day_key: day,
-          order_index: index,
-          name:
-            configuration?.name.trim() ||
-            undefined,
-          notes:
-            configuration?.notes.trim() ||
-            undefined,
-        };
-      });
+          return {
+            local_id:
+              configuration?.localId ||
+              createLocalId(),
+            weekday:
+              WEEKDAY_NUMBER[day],
+            day_key: day,
+            order_index: index,
+            name:
+              configuration?.name.trim() ||
+              undefined,
+            notes:
+              configuration?.notes.trim() ||
+              undefined,
+          };
+        }
+      );
 
-    const dayLocalIdByKey = new Map<
+    const dayIds = new Map<
       WorkoutDayKey,
       string
     >(
@@ -970,95 +1244,135 @@ export function WorkoutBuilderPage() {
     const groups: CreateWorkoutExerciseGroup[] =
       biSets
         .filter((group) =>
-          selectedDays.has(group.dayKey)
+          selectedDays.has(
+            group.dayKey
+          )
         )
         .map((group) => ({
-          local_id: group.localId,
+          local_id:
+            group.localId,
           workout_day_local_id:
-            dayLocalIdByKey.get(
+            dayIds.get(
               group.dayKey
             ) || '',
           group_type: 'bi_set',
-          name: group.name || undefined,
-          order_index: group.orderIndex,
+          name:
+            group.name ||
+            undefined,
+          order_index:
+            group.orderIndex,
           rounds: group.rounds,
           rest_after_seconds:
             group.restAfterSeconds,
-          notes: group.notes || undefined,
+          notes:
+            group.notes ||
+            undefined,
         }));
 
-    const allExercises: CreateExerciseInWorkout[] =
+    const workoutExercises: CreateExerciseInWorkout[] =
       [];
 
-    selectedDaysArray.forEach((day) => {
-      const dayExercises =
-        exercisesByDay[day] || [];
+    selectedDaysArray.forEach(
+      (day) => {
+        const dayExercises =
+          exercisesByDay[day] ||
+          [];
 
-      dayExercises.forEach(
-        (exercise, index) => {
-          allExercises.push({
-            local_id: exercise.localId,
-            exercise_id:
-              exercise.exercise_id,
-            day_key: day,
-            workout_day_local_id:
-              dayLocalIdByKey.get(day) ||
-              null,
-            exercise_group_local_id:
-              exercise.exercise_group_local_id ||
-              null,
-            technique_type:
-              exercise.technique_type ||
-              'normal',
-            technique_config:
-              exercise.technique_config || {},
-            group_order:
-              exercise.group_order ?? null,
-            execution_order: index,
-            name: exercise.name,
-            sets: exercise.sets,
-            reps: exercise.reps,
-            rest_seconds: Number(
-              exercise.rest_seconds || 0
-            ),
-            suggested_weight:
-              exercise.suggested_weight || '',
-            observation:
-              exercise.observation || '',
-            tempo: exercise.tempo || '',
-            image_url:
-              exercise.image_url || null,
-            video_url:
-              exercise.video_url || null,
-            muscle_group:
-              exercise.muscle_group || null,
-            category:
-              exercise.category || null,
-            equipment:
-              exercise.equipment || null,
-            difficulty:
-              exercise.difficulty || null,
-            instructions:
-              exercise.instructions || null,
-            tips: exercise.tips || null,
-          });
-        }
-      );
-    });
+        dayExercises.forEach(
+          (exercise, index) => {
+            workoutExercises.push({
+              local_id:
+                exercise.localId,
+              exercise_id:
+                exercise.exercise_id,
+              day_key: day,
+              workout_day_local_id:
+                dayIds.get(day) ||
+                null,
+              exercise_group_local_id:
+                exercise.exercise_group_local_id ||
+                null,
+              technique_type:
+                exercise.technique_type ||
+                'normal',
+              technique_config:
+                exercise.technique_config ||
+                {},
+              group_order:
+                exercise.group_order ??
+                null,
+              execution_order:
+                index,
+              name:
+                exercise.name,
+              sets:
+                exercise.sets,
+              reps:
+                exercise.reps,
+              rest_seconds:
+                Number(
+                  exercise.rest_seconds ||
+                    0
+                ),
+              suggested_weight:
+                exercise.suggested_weight ||
+                '',
+              observation:
+                exercise.observation ||
+                '',
+              tempo:
+                exercise.tempo ||
+                '',
+              image_url:
+                exercise.image_url ||
+                null,
+              video_url:
+                exercise.video_url ||
+                null,
+              muscle_group:
+                exercise.muscle_group ||
+                null,
+              category:
+                exercise.category ||
+                null,
+              equipment:
+                exercise.equipment ||
+                null,
+              difficulty:
+                exercise.difficulty ||
+                null,
+              instructions:
+                exercise.instructions ||
+                null,
+              tips:
+                exercise.tips ||
+                null,
+            });
+          }
+        );
+      }
+    );
 
     return {
       student_id: studentId,
       name: name.trim(),
-      objective: objective || undefined,
-      level: level || undefined,
-      duration_minutes: duration
-        ? Number(duration)
-        : undefined,
-      start_date: startDate || null,
-      end_date: endDate || null,
+      objective:
+        objective ||
+        undefined,
+      level:
+        level || undefined,
+      duration_minutes:
+        duration
+          ? Number(duration)
+          : undefined,
+      start_date:
+        startDate || null,
+      end_date:
+        endDate || null,
       days,
       groups,
-      exercises: allExercises,
+      exercises:
+        workoutExercises,
     };
   }
 
@@ -1071,7 +1385,9 @@ export function WorkoutBuilderPage() {
       return;
     }
 
-    if (!trainerProfile?.id) return;
+    if (!trainerProfile?.id) {
+      return;
+    }
 
     setSaving(true);
     resetMessages();
@@ -1079,8 +1395,9 @@ export function WorkoutBuilderPage() {
     try {
       if (createdPlanId) {
         setSuccessMessage(
-          'Este treino já foi salvo. Use “Publicar” para disponibilizá-lo ao aluno.'
+          'O treino já foi salvo. Agora você pode publicá-lo.'
         );
+
         return;
       }
 
@@ -1091,16 +1408,16 @@ export function WorkoutBuilderPage() {
         );
 
       setCreatedPlanId(plan.id);
-      setSuccessMessage(
-        'Treino salvo como rascunho!'
-      );
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Erro ao salvar o treino.';
 
-      setError(message);
+      setSuccessMessage(
+        'Treino salvo como rascunho.'
+      );
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Erro ao salvar treino.'
+      );
     } finally {
       setSaving(false);
     }
@@ -1115,13 +1432,16 @@ export function WorkoutBuilderPage() {
       return;
     }
 
-    if (!trainerProfile?.id) return;
+    if (!trainerProfile?.id) {
+      return;
+    }
 
     setPublishing(true);
     resetMessages();
 
     try {
-      let planId = createdPlanId;
+      let planId =
+        createdPlanId;
 
       if (!planId) {
         const plan =
@@ -1139,15 +1459,16 @@ export function WorkoutBuilderPage() {
       );
 
       setSuccessMessage(
-        'Treino publicado com sucesso! O aluno já pode visualizar esse treino no aplicativo.'
+        'Treino publicado com sucesso.'
       );
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Erro ao publicar o treino.';
-
-      setError(message);
+    } catch (
+      publishError: unknown
+    ) {
+      setError(
+        publishError instanceof Error
+          ? publishError.message
+          : 'Erro ao publicar treino.'
+      );
     } finally {
       setPublishing(false);
     }
@@ -1162,296 +1483,305 @@ export function WorkoutBuilderPage() {
     }
 
     setCreatingExercise(true);
+    setError('');
 
     try {
-      const exercise =
+      const created =
         await exerciseService.createExercise(
           trainerProfile.id,
           {
-            name: newExName.trim(),
+            name:
+              newExName.trim(),
             muscle_group:
-              newExMuscle || null,
+              newExMuscle ||
+              null,
             category:
-              newExCategory || null,
+              newExCategory ||
+              null,
             equipment:
-              newExEquipment || null,
+              newExEquipment ||
+              null,
             difficulty:
-              newExDifficulty || null,
+              newExDifficulty ||
+              null,
             instructions:
-              newExInstructions || null,
+              newExInstructions ||
+              null,
             tips: null,
           }
         );
 
       setExercises((previous) => [
-        exercise,
+        created,
         ...previous,
       ]);
 
-      if (currentDay) {
-        addExerciseToDay(exercise);
-      }
+      addExerciseToDay(created);
 
-      setShowNewExercise(false);
       setNewExName('');
       setNewExMuscle('');
       setNewExCategory('');
       setNewExDifficulty('');
       setNewExEquipment('');
       setNewExInstructions('');
-    } catch (err) {
+      setShowNewExercise(false);
+    } catch (createError) {
       console.error(
-        '[WorkoutBuilderPage] create exercise error:',
-        err
+        '[WorkoutBuilderPage] create exercise:',
+        createError
       );
-      setError('Erro ao criar exercício.');
+
+      setError(
+        'Erro ao criar exercício.'
+      );
     } finally {
       setCreatingExercise(false);
     }
   }
 
-  function openAddExercise(day: WorkoutDayKey) {
-    setCurrentDay(day);
-    setShowAddExercise(true);
-    setExerciseSearch('');
-    setShowNewExercise(false);
-  }
-
-  function closeExerciseModal() {
-    setShowAddExercise(false);
-    setCurrentDay(null);
-    setExerciseSearch('');
-    setShowNewExercise(false);
-  }
-
   return (
-    <div>
+    <div className="min-h-screen bg-[#050505] text-white">
       <Header
         title="Montar Treino"
         showBack
       />
 
-      <div className="page-container space-y-5">
+      <div className="page-container space-y-5 pb-36">
         {successMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400"
+            initial={{
+              opacity: 0,
+              y: -8,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
           >
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <CheckCircle2 className="h-4 w-4" />
             {successMessage}
           </motion.div>
         )}
 
         {error && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+            initial={{
+              opacity: 0,
+              y: -8,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           >
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertCircle className="h-4 w-4" />
             {error}
           </motion.div>
         )}
 
         <Card>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="relative">
-              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-vs-muted" />
+              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
 
               <input
-                placeholder="Buscar aluno..."
-                className="input-field pl-10"
                 value={studentSearch}
-                onChange={(event) =>
+                onChange={(event) => {
                   setStudentSearch(
                     event.target.value
-                  )
-                }
+                  );
+
+                  if (
+                    studentId
+                  ) {
+                    setStudentId('');
+                  }
+                }}
+                placeholder="Buscar aluno..."
+                className="input-field pl-10"
               />
             </div>
 
-            <div className="max-h-40 space-y-1 overflow-y-auto">
+            <div className="max-h-44 space-y-1 overflow-y-auto">
               {filteredStudents.map(
                 (student) => (
                   <button
                     key={student.id}
                     type="button"
                     onClick={() => {
-                      setStudentId(student.id);
+                      setStudentId(
+                        student.id
+                      );
+
                       setStudentSearch(
                         student.name
                       );
-                      resetMessages();
                     }}
                     className={cn(
-                      'w-full rounded-xl px-4 py-2.5 text-left text-sm transition-colors',
-                      studentId === student.id
-                        ? 'border border-vs-primary/20 bg-vs-primary/10 text-vs-primary'
-                        : 'text-vs-text hover:bg-white/5'
+                      'w-full rounded-xl px-4 py-3 text-left text-sm',
+                      studentId ===
+                        student.id
+                        ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/15 text-[#ff2a32]'
+                        : 'text-zinc-300 hover:bg-white/5'
                     )}
                   >
-                    <span className="font-medium">
+                    <p className="font-black">
                       {student.name}
-                    </span>
+                    </p>
 
-                    {(student.email ||
-                      student.phone) && (
-                      <span className="ml-2 text-xs text-vs-muted">
-                        {student.email ||
-                          student.phone}
-                      </span>
-                    )}
+                    <p className="text-xs text-zinc-500">
+                      {student.email ||
+                        student.phone}
+                    </p>
                   </button>
                 )
-              )}
-
-              {filteredStudents.length === 0 && (
-                <p className="py-2 text-center text-xs text-vs-muted">
-                  Nenhum aluno encontrado
-                </p>
               )}
             </div>
           </div>
         </Card>
 
         <Card>
-          <div className="space-y-5">
+          <div className="space-y-4">
             <Input
               label="Nome do treino"
               value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                resetMessages();
-              }}
-              placeholder="Ex: Treino A - Superior"
+              onChange={(event) =>
+                setName(
+                  event.target.value
+                )
+              }
+              placeholder="Ex: Plano de hipertrofia"
             />
 
-            <div className="space-y-2">
-              <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+            <div>
+              <p className="mb-2 text-[11px] font-black uppercase text-zinc-500">
                 Objetivo
-              </span>
+              </p>
 
               <div className="grid grid-cols-2 gap-2">
-                {OBJECTIVES.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() =>
-                      setObjective(option.value)
-                    }
-                    className={cn(
-                      'min-h-11 rounded-2xl border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                      objective === option.value
-                        ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                        : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+                {OBJECTIVES.map(
+                  (option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() =>
+                        setObjective(
+                          option
+                        )
+                      }
+                      className={cn(
+                        'min-h-11 rounded-2xl border px-3 text-[11px] font-black',
+                        objective ===
+                          option
+                          ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                          : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                      )}
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+            <div>
+              <p className="mb-2 text-[11px] font-black uppercase text-zinc-500">
                 Nível
-              </span>
+              </p>
 
               <div className="grid grid-cols-3 gap-2">
-                {LEVELS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() =>
-                      setLevel(option.value)
-                    }
-                    className={cn(
-                      'h-11 rounded-2xl border px-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                      level === option.value
-                        ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                        : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+                {LEVELS.map(
+                  (option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() =>
+                        setLevel(
+                          option
+                        )
+                      }
+                      className={cn(
+                        'h-11 rounded-2xl border px-2 text-[10px] font-black',
+                        level ===
+                          option
+                          ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                          : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                      )}
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
               </div>
             </div>
 
             <Input
-              label="Duração (minutos)"
+              label="Duração em minutos"
               type="number"
+              min="1"
               value={duration}
               onChange={(event) =>
-                setDuration(event.target.value)
+                setDuration(
+                  event.target.value
+                )
               }
-              placeholder="Ex: 60"
               icon={
                 <Clock className="h-4 w-4" />
               }
             />
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
 
-                <span className="text-xs font-black uppercase tracking-wide text-white">
-                  Período do plano
-                </span>
+                <p className="text-xs font-black uppercase">
+                  Período
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Input
-                  label="Data de início"
+                  label="Data inicial"
                   type="date"
                   value={startDate}
-                  onChange={(event) => {
+                  onChange={(event) =>
                     setStartDate(
                       event.target.value
-                    );
-                    resetMessages();
-                  }}
+                    )
+                  }
                 />
 
                 <Input
-                  label="Data de término"
+                  label="Data final"
                   type="date"
+                  min={
+                    startDate ||
+                    undefined
+                  }
                   value={endDate}
-                  min={startDate || undefined}
-                  onChange={(event) => {
+                  onChange={(event) =>
                     setEndDate(
                       event.target.value
-                    );
-                    resetMessages();
-                  }}
+                    )
+                  }
                 />
               </div>
-
-              <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
-                As datas são opcionais. Planos sem
-                data final serão exibidos como “Sem
-                vencimento”.
-              </p>
             </div>
           </div>
         </Card>
 
-        <div>
+        <section>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-vs-muted">
+            <p className="text-sm font-black">
               Dias da semana
-            </h3>
+            </p>
 
-            {totalSelectedExercises > 0 && (
-              <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] font-bold text-vs-muted">
-                {totalSelectedExercises}{' '}
-                exercício
-                {totalSelectedExercises === 1
-                  ? ''
-                  : 's'}
-              </span>
-            )}
+            <span className="text-xs text-zinc-500">
+              {totalSelectedExercises}{' '}
+              exercícios
+            </span>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -1459,83 +1789,101 @@ export function WorkoutBuilderPage() {
               <button
                 key={day}
                 type="button"
-                onClick={() => toggleDay(day)}
+                onClick={() =>
+                  toggleDay(day)
+                }
                 className={cn(
-                  'chip transition-all',
-                  selectedDays.has(day) &&
-                    'chip-active'
+                  'rounded-full border px-4 py-2 text-[11px] font-black uppercase',
+                  selectedDays.has(
+                    day
+                  )
+                    ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
+                    : 'border-white/10 bg-white/[0.04] text-zinc-500'
                 )}
               >
-                {getWeekdayName(day).slice(0, 3)}
+                {day}
               </button>
             ))}
           </div>
-        </div>
+        </section>
 
-        {selectedDaysArray.map((day) => {
-          const dayExercises =
-            exercisesByDay[day] || [];
+        {selectedDaysArray.map(
+          (day) => {
+            const dayExercises =
+              exercisesByDay[day] ||
+              [];
 
-          const dayBiSets = biSets.filter(
-            (group) => group.dayKey === day
-          );
+            const dayBiSets =
+              biSets.filter(
+                (group) =>
+                  group.dayKey ===
+                  day
+              );
 
-          return (
-            <Card key={day}>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h4 className="font-semibold text-white">
-                      {getWeekdayName(day)}
-                    </h4>
+            return (
+              <Card key={day}>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="font-black">
+                        {getWeekdayName(
+                          day
+                        )}
+                      </h2>
 
-                    <p className="text-[11px] text-zinc-500">
-                      {dayExercises.length}{' '}
-                      exercício
-                      {dayExercises.length === 1
-                        ? ''
-                        : 's'}
-                    </p>
+                      <p className="text-xs text-zinc-500">
+                        {
+                          dayExercises.length
+                        }{' '}
+                        exercícios
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          openBiSetModal(
+                            day
+                          )
+                        }
+                      >
+                        <Layers2 className="h-4 w-4" />
+                        Bi-set
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          openAddExercise(
+                            day
+                          )
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                        Exercício
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        openBiSetModal(day)
-                      }
-                    >
-                      <Layers2 className="h-4 w-4" />
-                      Criar bi-set
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        openAddExercise(day)
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                      Exercício
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:grid-cols-2">
                     <Input
                       label="Nome do treino do dia"
                       value={
-                        dayConfigurations[day]
-                          ?.name || ''
+                        dayConfigurations[
+                          day
+                        ]?.name || ''
                       }
                       onChange={(event) =>
                         updateDayConfiguration(
                           day,
                           {
-                            name: event.target.value,
+                            name:
+                              event
+                                .target
+                                .value,
                           }
                         )
                       }
@@ -1543,37 +1891,36 @@ export function WorkoutBuilderPage() {
                     />
 
                     <Textarea
-                      label="Observações do dia"
+                      label="Orientações do dia"
                       value={
-                        dayConfigurations[day]
-                          ?.notes || ''
+                        dayConfigurations[
+                          day
+                        ]?.notes || ''
                       }
                       onChange={(event) =>
                         updateDayConfiguration(
                           day,
                           {
                             notes:
-                              event.target.value,
+                              event
+                                .target
+                                .value,
                           }
                         )
                       }
-                      placeholder="Orientações gerais deste dia"
-                      className="min-h-[74px]"
                     />
                   </div>
-                </div>
 
-                {dayBiSets.length > 0 && (
-                  <div className="space-y-2">
-                    {dayBiSets.map((group) => {
-                      const firstExercise =
+                  {dayBiSets.map(
+                    (group) => {
+                      const first =
                         dayExercises.find(
                           (exercise) =>
                             exercise.localId ===
                             group.firstExerciseLocalId
                         );
 
-                      const secondExercise =
+                      const second =
                         dayExercises.find(
                           (exercise) =>
                             exercise.localId ===
@@ -1582,44 +1929,32 @@ export function WorkoutBuilderPage() {
 
                       return (
                         <div
-                          key={group.localId}
-                          className="rounded-2xl border border-purple-400/25 bg-purple-400/10 p-3"
+                          key={
+                            group.localId
+                          }
+                          className="rounded-2xl border border-purple-400/25 bg-purple-400/10 p-4"
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="mb-2 flex items-center gap-2">
-                                <span className="rounded-full bg-purple-400/20 px-2.5 py-1 text-[10px] font-black text-purple-200">
-                                  BI-SET
-                                </span>
-
-                                {group.name && (
-                                  <span className="truncate text-xs font-bold text-white">
-                                    {group.name}
-                                  </span>
-                                )}
-                              </div>
-
-                              <p className="text-xs text-zinc-300">
-                                1.{' '}
-                                {firstExercise?.name ||
-                                  'Exercício removido'}
+                            <div>
+                              <p className="text-[10px] font-black uppercase text-purple-300">
+                                Bi-set
                               </p>
 
-                              <p className="mt-1 text-xs text-zinc-300">
-                                2.{' '}
-                                {secondExercise?.name ||
-                                  'Exercício removido'}
+                              <p className="mt-2 text-sm font-black">
+                                {first?.name ||
+                                  'Exercício 1'}
+                                {' + '}
+                                {second?.name ||
+                                  'Exercício 2'}
                               </p>
 
-                              <p className="mt-2 text-[11px] text-zinc-500">
-                                {group.rounds
-                                  ? `${group.rounds} rodadas`
-                                  : 'Rodadas livres'}
-                                {' • '}
-                                {group.restAfterSeconds !==
-                                null
-                                  ? `${group.restAfterSeconds}s de descanso`
-                                  : 'Sem descanso definido'}
+                              <p className="mt-1 text-xs text-zinc-400">
+                                {group.rounds ||
+                                  0}{' '}
+                                rodadas •{' '}
+                                {group.restAfterSeconds ??
+                                  0}
+                                s de descanso
                               </p>
                             </div>
 
@@ -1630,426 +1965,441 @@ export function WorkoutBuilderPage() {
                                   group.localId
                                 )
                               }
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-red-300 transition-colors hover:bg-red-500/10"
-                              title="Desfazer bi-set"
+                              className="rounded-xl p-2 text-red-300 hover:bg-red-500/10"
                             >
                               <Unlink className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
+                    }
+                  )}
 
-                {dayExercises.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-vs-muted">
-                    Nenhum exercício adicionado
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {dayExercises.map(
-                      (exercise, index) => {
-                        const dropConfig =
-                          getDropSetConfig(
-                            exercise
-                          );
+                  {dayExercises.length ===
+                  0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center">
+                      <Dumbbell className="mx-auto h-8 w-8 text-zinc-700" />
 
-                        return (
-                          <motion.div
-                            key={exercise.localId}
-                            initial={{
-                              opacity: 0,
-                              y: 8,
-                            }}
-                            animate={{
-                              opacity: 1,
-                              y: 0,
-                            }}
-                            className="space-y-3 rounded-xl border border-vs-border bg-white/5 p-3"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium">
-                                  {exercise.name}
-                                </span>
+                      <p className="mt-2 text-xs text-zinc-500">
+                        Nenhum exercício adicionado.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {dayExercises.map(
+                        (
+                          exercise,
+                          index
+                        ) => {
+                          const dropConfig =
+                            getDropSetConfig(
+                              exercise
+                            );
 
-                                <span
-                                  className={cn(
-                                    'mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black',
-                                    exercise.technique_type ===
-                                      'drop_set'
-                                      ? 'bg-orange-400/15 text-orange-300'
-                                      : exercise.technique_type ===
-                                          'bi_set'
-                                        ? 'bg-purple-400/15 text-purple-300'
-                                        : 'bg-white/5 text-zinc-500'
-                                  )}
-                                >
-                                  {getTechniqueLabel(
-                                    exercise.technique_type
-                                  )}
-                                </span>
-                              </div>
+                          return (
+                            <motion.div
+                              key={
+                                exercise.localId
+                              }
+                              initial={{
+                                opacity: 0,
+                                y: 8,
+                              }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                              }}
+                              className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h3 className="truncate text-sm font-black">
+                                    {
+                                      exercise.name
+                                    }
+                                  </h3>
 
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    moveExercise(
-                                      day,
-                                      index,
-                                      'up'
-                                    )
-                                  }
-                                  disabled={index === 0}
-                                  className="rounded-lg p-1 hover:bg-white/5 disabled:opacity-30"
-                                >
-                                  <ChevronUp className="h-4 w-4" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    moveExercise(
-                                      day,
-                                      index,
-                                      'down'
-                                    )
-                                  }
-                                  disabled={
-                                    index ===
-                                    dayExercises.length -
-                                      1
-                                  }
-                                  className="rounded-lg p-1 hover:bg-white/5 disabled:opacity-30"
-                                >
-                                  <ChevronDown className="h-4 w-4" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeExercise(
-                                      day,
-                                      exercise.localId
-                                    )
-                                  }
-                                  className="rounded-lg p-1 text-red-400 hover:bg-red-500/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <span className="text-[10px] font-black uppercase tracking-wide text-zinc-500">
-                                Técnica
-                              </span>
-
-                              <div className="grid grid-cols-3 gap-2">
-                                {TECHNIQUES.map(
-                                  (technique) => (
-                                    <button
-                                      key={
-                                        technique.value
-                                      }
-                                      type="button"
-                                      onClick={() =>
-                                        changeExerciseTechnique(
-                                          day,
-                                          exercise,
-                                          technique.value
-                                        )
-                                      }
-                                      className={cn(
-                                        'min-h-10 rounded-xl border px-2 text-[10px] font-black transition-all',
-                                        exercise.technique_type ===
-                                          technique.value
-                                          ? technique.value ===
-                                            'drop_set'
-                                            ? 'border-orange-400/40 bg-orange-400/15 text-orange-300'
-                                            : technique.value ===
-                                                'bi_set'
-                                              ? 'border-purple-400/40 bg-purple-400/15 text-purple-300'
-                                              : 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
-                                          : 'border-white/10 bg-black/20 text-zinc-500'
-                                      )}
-                                    >
-                                      {technique.label}
-                                    </button>
-                                  )
-                                )}
-                              </div>
-                            </div>
-
-                            {exercise.technique_type ===
-                              'drop_set' && (
-                              <div className="rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-3">
-                                <div className="mb-3 flex items-center gap-2">
-                                  <Zap className="h-4 w-4 text-orange-300" />
-                                  <span className="text-[11px] font-black uppercase text-orange-200">
-                                    Configuração do
-                                    drop-set
+                                  <span
+                                    className={cn(
+                                      'mt-1 inline-flex rounded-full px-2 py-1 text-[9px] font-black',
+                                      exercise.technique_type ===
+                                        'drop_set'
+                                        ? 'bg-orange-400/15 text-orange-300'
+                                        : exercise.technique_type ===
+                                            'bi_set'
+                                          ? 'bg-purple-400/15 text-purple-300'
+                                          : 'bg-white/5 text-zinc-500'
+                                    )}
+                                  >
+                                    {getTechniqueLabel(
+                                      exercise.technique_type
+                                    )}
                                   </span>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                  <Input
-                                    label="Quedas"
-                                    type="number"
-                                    min="1"
-                                    value={
-                                      dropConfig.drops ??
-                                      ''
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      index ===
+                                      0
                                     }
-                                    onChange={(
-                                      event
-                                    ) =>
-                                      updateDropSetConfig(
+                                    onClick={() =>
+                                      moveExercise(
                                         day,
-                                        exercise,
-                                        {
-                                          drops: event
-                                            .target
-                                            .value
-                                            ? Number(
-                                                event
-                                                  .target
-                                                  .value
-                                              )
-                                            : undefined,
-                                        }
+                                        index,
+                                        'up'
                                       )
                                     }
-                                  />
+                                    className="rounded-lg p-1.5 disabled:opacity-30"
+                                  >
+                                    <ChevronUp className="h-4 w-4" />
+                                  </button>
 
-                                  <Input
-                                    label="Redução (%)"
-                                    type="number"
-                                    min="1"
-                                    value={
-                                      dropConfig.reduction_percent ??
-                                      ''
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      index ===
+                                      dayExercises.length -
+                                        1
                                     }
-                                    onChange={(
-                                      event
-                                    ) =>
-                                      updateDropSetConfig(
+                                    onClick={() =>
+                                      moveExercise(
                                         day,
-                                        exercise,
-                                        {
-                                          reduction_percent:
-                                            event
-                                              .target
-                                              .value
-                                              ? Number(
-                                                  event
-                                                    .target
-                                                    .value
-                                                )
-                                              : undefined,
-                                        }
+                                        index,
+                                        'down'
                                       )
                                     }
-                                  />
+                                    className="rounded-lg p-1.5 disabled:opacity-30"
+                                  >
+                                    <ChevronDown className="h-4 w-4" />
+                                  </button>
 
-                                  <Input
-                                    label="Descanso entre quedas"
-                                    type="number"
-                                    min="0"
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeExercise(
+                                        day,
+                                        exercise.localId
+                                      )
+                                    }
+                                    className="rounded-lg p-1.5 text-red-300"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
+                                  Técnica
+                                </p>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                  {(
+                                    [
+                                      'normal',
+                                      'drop_set',
+                                      'bi_set',
+                                    ] as WorkoutTechniqueType[]
+                                  ).map(
+                                    (
+                                      technique
+                                    ) => (
+                                      <button
+                                        key={
+                                          technique
+                                        }
+                                        type="button"
+                                        onClick={() =>
+                                          changeExerciseTechnique(
+                                            day,
+                                            exercise,
+                                            technique
+                                          )
+                                        }
+                                        className={cn(
+                                          'min-h-10 rounded-xl border px-2 text-[10px] font-black',
+                                          exercise.technique_type ===
+                                            technique
+                                            ? technique ===
+                                              'drop_set'
+                                              ? 'border-orange-400/40 bg-orange-400/15 text-orange-300'
+                                              : technique ===
+                                                  'bi_set'
+                                                ? 'border-purple-400/40 bg-purple-400/15 text-purple-300'
+                                                : 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                                            : 'border-white/10 bg-black/20 text-zinc-500'
+                                        )}
+                                      >
+                                        {technique ===
+                                        'drop_set'
+                                          ? 'Drop-set'
+                                          : technique ===
+                                              'bi_set'
+                                            ? 'Bi-set'
+                                            : 'Normal'}
+                                      </button>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+
+                              {exercise.technique_type ===
+                                'drop_set' && (
+                                <div className="space-y-3 rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-3">
+                                  <div className="flex items-center gap-2">
+                                    <Zap className="h-4 w-4 text-orange-300" />
+
+                                    <p className="text-[10px] font-black uppercase text-orange-300">
+                                      Configuração do drop-set
+                                    </p>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <Input
+                                      label="Quedas"
+                                      type="number"
+                                      min="1"
+                                      value={
+                                        dropConfig.drops ??
+                                        ''
+                                      }
+                                      onChange={(event) =>
+                                        updateDropSetConfig(
+                                          day,
+                                          exercise,
+                                          {
+                                            drops:
+                                              event.target.value
+                                                ? Number(
+                                                    event.target.value
+                                                  )
+                                                : undefined,
+                                          }
+                                        )
+                                      }
+                                    />
+
+                                    <Input
+                                      label="Redução %"
+                                      type="number"
+                                      min="1"
+                                      value={
+                                        dropConfig.reduction_percent ??
+                                        ''
+                                      }
+                                      onChange={(event) =>
+                                        updateDropSetConfig(
+                                          day,
+                                          exercise,
+                                          {
+                                            reduction_percent:
+                                              event.target.value
+                                                ? Number(
+                                                    event.target.value
+                                                  )
+                                                : undefined,
+                                          }
+                                        )
+                                      }
+                                    />
+
+                                    <Input
+                                      label="Descanso"
+                                      type="number"
+                                      min="0"
+                                      value={
+                                        dropConfig.rest_between_drops_seconds ??
+                                        ''
+                                      }
+                                      onChange={(event) =>
+                                        updateDropSetConfig(
+                                          day,
+                                          exercise,
+                                          {
+                                            rest_between_drops_seconds:
+                                              Number(
+                                                event.target.value ||
+                                                  0
+                                              ),
+                                          }
+                                        )
+                                      }
+                                    />
+                                  </div>
+
+                                  <Textarea
+                                    label="Orientação"
                                     value={
-                                      dropConfig.rest_between_drops_seconds ??
+                                      dropConfig.notes ||
                                       ''
                                     }
-                                    onChange={(
-                                      event
-                                    ) =>
+                                    onChange={(event) =>
                                       updateDropSetConfig(
                                         day,
                                         exercise,
                                         {
-                                          rest_between_drops_seconds:
-                                            event
-                                              .target
-                                              .value
-                                              ? Number(
-                                                  event
-                                                    .target
-                                                    .value
-                                                )
-                                              : 0,
+                                          notes:
+                                            event.target.value,
                                         }
                                       )
                                     }
                                   />
                                 </div>
+                              )}
 
-                                <Textarea
-                                  label="Orientação do drop-set"
+                              <div className="grid grid-cols-3 gap-2">
+                                <Input
+                                  label="Séries"
                                   value={
-                                    dropConfig.notes ||
-                                    ''
+                                    exercise.sets
                                   }
                                   onChange={(event) =>
-                                    updateDropSetConfig(
+                                    updateExercise(
                                       day,
-                                      exercise,
+                                      exercise.localId,
                                       {
-                                        notes:
-                                          event.target
-                                            .value,
+                                        sets:
+                                          event.target.value,
                                       }
                                     )
                                   }
-                                  className="mt-2 min-h-[60px]"
+                                />
+
+                                <Input
+                                  label="Reps"
+                                  value={
+                                    exercise.reps
+                                  }
+                                  onChange={(event) =>
+                                    updateExercise(
+                                      day,
+                                      exercise.localId,
+                                      {
+                                        reps:
+                                          event.target.value,
+                                      }
+                                    )
+                                  }
+                                />
+
+                                <Input
+                                  label="Descanso"
+                                  type="number"
+                                  min="0"
+                                  value={
+                                    exercise.rest_seconds ??
+                                    ''
+                                  }
+                                  onChange={(event) =>
+                                    updateExercise(
+                                      day,
+                                      exercise.localId,
+                                      {
+                                        rest_seconds:
+                                          Number(
+                                            event.target.value ||
+                                              0
+                                          ),
+                                      }
+                                    )
+                                  }
                                 />
                               </div>
-                            )}
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <Input
-                                label="Séries"
-                                value={exercise.sets}
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      sets: event
-                                        .target.value,
-                                    }
-                                  )
-                                }
-                              />
-
-                              <Input
-                                label="Reps"
-                                value={exercise.reps}
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      reps: event
-                                        .target.value,
-                                    }
-                                  )
-                                }
-                              />
-
-                              <Input
-                                label="Descanso (s)"
-                                type="number"
-                                min="0"
-                                value={
-                                  exercise.rest_seconds ??
-                                  ''
-                                }
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      rest_seconds:
-                                        Number(
-                                          event.target
-                                            .value || 0
-                                        ),
-                                    }
-                                  )
-                                }
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <Input
-                                label="Carga sugerida"
-                                value={
-                                  exercise.suggested_weight ||
-                                  ''
-                                }
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      suggested_weight:
-                                        event.target
-                                          .value,
-                                    }
-                                  )
-                                }
-                                placeholder="Ex: 20kg"
-                              />
-
-                              <Input
-                                label="Tempo"
-                                value={
-                                  exercise.tempo || ''
-                                }
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      tempo:
-                                        event.target
-                                          .value,
-                                    }
-                                  )
-                                }
-                                placeholder="Ex: 2-0-2-0"
-                              />
-                            </div>
-
-                            <Textarea
-                              label="Observação"
-                              value={
-                                exercise.observation ||
-                                ''
-                              }
-                              onChange={(event) =>
-                                updateExercise(
-                                  day,
-                                  exercise.localId,
-                                  {
-                                    observation:
-                                      event.target
-                                        .value,
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <Input
+                                  label="Carga sugerida"
+                                  value={
+                                    exercise.suggested_weight ||
+                                    ''
                                   }
-                                )
-                              }
-                              className="min-h-[60px]"
-                            />
-                          </motion.div>
-                        );
-                      }
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
+                                  onChange={(event) =>
+                                    updateExercise(
+                                      day,
+                                      exercise.localId,
+                                      {
+                                        suggested_weight:
+                                          event.target.value,
+                                      }
+                                    )
+                                  }
+                                />
 
-        <div className="flex gap-3 pt-2">
+                                <Input
+                                  label="Tempo"
+                                  value={
+                                    exercise.tempo ||
+                                    ''
+                                  }
+                                  onChange={(event) =>
+                                    updateExercise(
+                                      day,
+                                      exercise.localId,
+                                      {
+                                        tempo:
+                                          event.target.value,
+                                      }
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <Textarea
+                                label="Observação"
+                                value={
+                                  exercise.observation ||
+                                  ''
+                                }
+                                onChange={(event) =>
+                                  updateExercise(
+                                    day,
+                                    exercise.localId,
+                                    {
+                                      observation:
+                                        event.target.value,
+                                    }
+                                  )
+                                }
+                              />
+                            </motion.div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          }
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
           <Button
             variant="secondary"
-            className="flex-1"
-            onClick={handleSave}
+            onClick={() =>
+              void handleSave()
+            }
             loading={saving}
-            disabled={publishing}
+            disabled={
+              saving ||
+              publishing
+            }
           >
             <Save className="h-4 w-4" />
-            Salvar rascunho
+            Salvar
           </Button>
 
           <Button
-            className="flex-1"
-            onClick={handlePublish}
+            onClick={() =>
+              void handlePublish()
+            }
             loading={publishing}
-            disabled={saving}
+            disabled={
+              saving ||
+              publishing
+            }
           >
             <Send className="h-4 w-4" />
             Publicar
@@ -2060,35 +2410,42 @@ export function WorkoutBuilderPage() {
       <Modal
         open={showAddExercise}
         onClose={closeExerciseModal}
-        title="Adicionar Exercício"
+        title={
+          currentDay
+            ? `Adicionar em ${getWeekdayName(
+                currentDay
+              )}`
+            : 'Adicionar exercício'
+        }
       >
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-vs-muted" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
 
             <input
-              className="input-field pl-10"
-              placeholder="Buscar exercícios..."
               value={exerciseSearch}
               onChange={(event) =>
                 setExerciseSearch(
                   event.target.value
                 )
               }
-              autoFocus
+              placeholder="Buscar exercício..."
+              className="input-field pl-10"
             />
           </div>
 
           {loadingExercises ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-vs-muted" />
+              <Loader2 className="h-7 w-7 animate-spin text-[#ff2a32]" />
             </div>
           ) : (
-            <div className="max-h-72 space-y-2 overflow-y-auto">
+            <div className="max-h-80 space-y-2 overflow-y-auto">
               {filteredExercises.map(
                 (exercise) => {
                   const normalized =
-                    normalizeExercise(exercise);
+                    normalizeExercise(
+                      exercise
+                    );
 
                   return (
                     <button
@@ -2099,65 +2456,43 @@ export function WorkoutBuilderPage() {
                           exercise
                         )
                       }
-                      className="flex w-full gap-3 rounded-xl border border-transparent p-2 text-left transition-colors hover:border-vs-border hover:bg-white/5"
+                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left"
                     >
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-950">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/30">
                         {normalized.imageUrl ? (
                           <img
                             src={
                               normalized.imageUrl
                             }
-                            alt={exercise.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : normalized.videoUrl ? (
-                          <video
-                            src={
-                              normalized.videoUrl
+                            alt={
+                              exercise.name
                             }
-                            muted
-                            playsInline
-                            preload="metadata"
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <Dumbbell className="h-5 w-5 text-zinc-600" />
-                          </div>
+                          <Dumbbell className="h-5 w-5 text-[#ff2a32]" />
                         )}
                       </div>
 
-                      <div className="min-w-0 flex-1 self-center">
-                        <p className="truncate text-sm font-medium">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black">
                           {exercise.name}
                         </p>
 
-                        <p className="truncate text-xs text-vs-muted">
+                        <p className="truncate text-xs text-zinc-500">
                           {normalized.category ||
-                            normalized.muscleGroup}
-                          {normalized.difficulty &&
-                            ` • ${normalized.difficulty}`}
+                            normalized.muscleGroup ||
+                            'Exercício'}
                         </p>
                       </div>
                     </button>
                   );
                 }
               )}
-
-              {filteredExercises.length === 0 && (
-                <p className="py-4 text-center text-xs text-vs-muted">
-                  Nenhum exercício encontrado
-                </p>
-              )}
             </div>
           )}
 
-          <div className="border-t border-vs-border pt-4">
-            <p className="mb-3 text-xs text-vs-muted">
-              Não encontrou o exercício?
-            </p>
-
+          <div className="border-t border-white/10 pt-4">
             {showNewExercise ? (
               <div className="space-y-3">
                 <Input
@@ -2168,7 +2503,6 @@ export function WorkoutBuilderPage() {
                       event.target.value
                     )
                   }
-                  placeholder="Nome do exercício"
                 />
 
                 <Input
@@ -2179,7 +2513,6 @@ export function WorkoutBuilderPage() {
                       event.target.value
                     )
                   }
-                  placeholder="Ex: Peito"
                 />
 
                 <Input
@@ -2190,37 +2523,7 @@ export function WorkoutBuilderPage() {
                       event.target.value
                     )
                   }
-                  placeholder="Ex: Empurrar"
                 />
-
-                <div className="space-y-2">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
-                    Dificuldade
-                  </span>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {LEVELS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          setNewExDifficulty(
-                            option.value
-                          )
-                        }
-                        className={cn(
-                          'h-11 rounded-2xl border px-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                          newExDifficulty ===
-                            option.value
-                            ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                            : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 <Input
                   label="Equipamento"
@@ -2230,12 +2533,44 @@ export function WorkoutBuilderPage() {
                       event.target.value
                     )
                   }
-                  placeholder="Ex: Halteres"
                 />
+
+                <div>
+                  <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
+                    Dificuldade
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {LEVELS.map(
+                      (option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() =>
+                            setNewExDifficulty(
+                              option
+                            )
+                          }
+                          className={cn(
+                            'h-10 rounded-xl border text-[10px] font-black',
+                            newExDifficulty ===
+                              option
+                              ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                              : 'border-white/10 text-zinc-500'
+                          )}
+                        >
+                          {option}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
 
                 <Textarea
                   label="Instruções"
-                  value={newExInstructions}
+                  value={
+                    newExInstructions
+                  }
                   onChange={(event) =>
                     setNewExInstructions(
                       event.target.value
@@ -2243,25 +2578,27 @@ export function WorkoutBuilderPage() {
                   }
                 />
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="secondary"
-                    className="flex-1"
                     onClick={() =>
-                      setShowNewExercise(false)
+                      setShowNewExercise(
+                        false
+                      )
                     }
                   >
-                    Voltar
+                    Cancelar
                   </Button>
 
                   <Button
-                    className="flex-1"
-                    onClick={
-                      handleCreateExercise
+                    onClick={() =>
+                      void handleCreateExercise()
                     }
-                    loading={creatingExercise}
+                    loading={
+                      creatingExercise
+                    }
                   >
-                    Criar e adicionar
+                    Criar
                   </Button>
                 </div>
               </div>
@@ -2270,7 +2607,9 @@ export function WorkoutBuilderPage() {
                 variant="secondary"
                 className="w-full"
                 onClick={() =>
-                  setShowNewExercise(true)
+                  setShowNewExercise(
+                    true
+                  )
                 }
               >
                 <Plus className="h-4 w-4" />
@@ -2284,28 +2623,27 @@ export function WorkoutBuilderPage() {
       <Modal
         open={showBiSetModal}
         onClose={closeBiSetModal}
-        title="Criar Bi-set"
+        title="Criar bi-set"
       >
         <div className="space-y-4">
           <div className="rounded-2xl border border-purple-400/20 bg-purple-400/[0.07] p-4">
-            <div className="flex items-center gap-2">
-              <Layers2 className="h-5 w-5 text-purple-300" />
+            <div className="flex gap-3">
+              <Layers2 className="h-5 w-5 shrink-0 text-purple-300" />
 
               <div>
-                <p className="text-sm font-black text-white">
+                <p className="text-sm font-black">
                   Dois exercícios em sequência
                 </p>
 
-                <p className="text-xs text-zinc-400">
-                  O descanso será feito depois
-                  dos dois exercícios.
+                <p className="mt-1 text-xs text-zinc-400">
+                  O aluno executará o primeiro e o segundo exercício sem descanso entre eles.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+          <div>
+            <label className="mb-2 block text-[10px] font-black uppercase text-zinc-500">
               Primeiro exercício
             </label>
 
@@ -2315,20 +2653,25 @@ export function WorkoutBuilderPage() {
                 biSetForm.firstExerciseLocalId
               }
               onChange={(event) =>
-                setBiSetForm((previous) => ({
-                  ...previous,
-                  firstExerciseLocalId:
-                    event.target.value,
-                }))
+                setBiSetForm(
+                  (previous) => ({
+                    ...previous,
+                    firstExerciseLocalId:
+                      event.target.value,
+                  })
+                )
               }
             >
               <option value="">
                 Selecione
               </option>
 
-              {(biSetDay
-                ? exercisesByDay[biSetDay] || []
-                : []
+              {(
+                biSetDay
+                  ? exercisesByDay[
+                      biSetDay
+                    ] || []
+                  : []
               )
                 .filter(
                   (exercise) =>
@@ -2336,8 +2679,12 @@ export function WorkoutBuilderPage() {
                 )
                 .map((exercise) => (
                   <option
-                    key={exercise.localId}
-                    value={exercise.localId}
+                    key={
+                      exercise.localId
+                    }
+                    value={
+                      exercise.localId
+                    }
                   >
                     {exercise.name}
                   </option>
@@ -2345,8 +2692,8 @@ export function WorkoutBuilderPage() {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+          <div>
+            <label className="mb-2 block text-[10px] font-black uppercase text-zinc-500">
               Segundo exercício
             </label>
 
@@ -2356,20 +2703,25 @@ export function WorkoutBuilderPage() {
                 biSetForm.secondExerciseLocalId
               }
               onChange={(event) =>
-                setBiSetForm((previous) => ({
-                  ...previous,
-                  secondExerciseLocalId:
-                    event.target.value,
-                }))
+                setBiSetForm(
+                  (previous) => ({
+                    ...previous,
+                    secondExerciseLocalId:
+                      event.target.value,
+                  })
+                )
               }
             >
               <option value="">
                 Selecione
               </option>
 
-              {(biSetDay
-                ? exercisesByDay[biSetDay] || []
-                : []
+              {(
+                biSetDay
+                  ? exercisesByDay[
+                      biSetDay
+                    ] || []
+                  : []
               )
                 .filter(
                   (exercise) =>
@@ -2377,8 +2729,12 @@ export function WorkoutBuilderPage() {
                 )
                 .map((exercise) => (
                   <option
-                    key={exercise.localId}
-                    value={exercise.localId}
+                    key={
+                      exercise.localId
+                    }
+                    value={
+                      exercise.localId
+                    }
                   >
                     {exercise.name}
                   </option>
@@ -2390,10 +2746,13 @@ export function WorkoutBuilderPage() {
             label="Nome do bi-set"
             value={biSetForm.name}
             onChange={(event) =>
-              setBiSetForm((previous) => ({
-                ...previous,
-                name: event.target.value,
-              }))
+              setBiSetForm(
+                (previous) => ({
+                  ...previous,
+                  name:
+                    event.target.value,
+                })
+              )
             }
             placeholder="Ex: Bi-set de quadríceps"
           />
@@ -2403,55 +2762,65 @@ export function WorkoutBuilderPage() {
               label="Rodadas"
               type="number"
               min="1"
-              value={biSetForm.rounds}
+              value={
+                biSetForm.rounds
+              }
               onChange={(event) =>
-                setBiSetForm((previous) => ({
-                  ...previous,
-                  rounds: event.target.value,
-                }))
+                setBiSetForm(
+                  (previous) => ({
+                    ...previous,
+                    rounds:
+                      event.target.value,
+                  })
+                )
               }
             />
 
             <Input
-              label="Descanso após o bi-set"
+              label="Descanso após"
               type="number"
               min="0"
               value={
                 biSetForm.restAfterSeconds
               }
               onChange={(event) =>
-                setBiSetForm((previous) => ({
-                  ...previous,
-                  restAfterSeconds:
-                    event.target.value,
-                }))
+                setBiSetForm(
+                  (previous) => ({
+                    ...previous,
+                    restAfterSeconds:
+                      event.target.value,
+                  })
+                )
               }
             />
           </div>
 
           <Textarea
-            label="Observação"
+            label="Orientação"
             value={biSetForm.notes}
             onChange={(event) =>
-              setBiSetForm((previous) => ({
-                ...previous,
-                notes: event.target.value,
-              }))
+              setBiSetForm(
+                (previous) => ({
+                  ...previous,
+                  notes:
+                    event.target.value,
+                })
+              )
             }
-            placeholder="Ex: Executar sem descanso entre os exercícios"
+            placeholder="Ex: Sem descanso entre os exercícios"
           />
 
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Button
               variant="secondary"
-              className="flex-1"
-              onClick={closeBiSetModal}
+              onClick={
+                closeBiSetModal
+              }
             >
               Cancelar
             </Button>
 
             <Button
-              className="flex-1"
               onClick={createBiSet}
             >
               <Layers2 className="h-4 w-4" />

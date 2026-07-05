@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -30,6 +34,7 @@ import type {
 } from '../../types/database';
 
 type CompletedExercise = {
+  exerciseId: string;
   exerciseName: string;
   setsCompleted: number;
   repsCompleted: string;
@@ -38,167 +43,69 @@ type CompletedExercise = {
 
 type RestMode = 'set' | 'exercise';
 
+const DAY_ALIASES: Record<string, string> = {
+  Sunday: 'dom',
+  Monday: 'seg',
+  Tuesday: 'ter',
+  Wednesday: 'qua',
+  Thursday: 'qui',
+  Friday: 'sex',
+  Saturday: 'sab',
+  sunday: 'dom',
+  monday: 'seg',
+  tuesday: 'ter',
+  wednesday: 'qua',
+  thursday: 'qui',
+  friday: 'sex',
+  saturday: 'sab',
+  dom: 'dom',
+  seg: 'seg',
+  ter: 'ter',
+  qua: 'qua',
+  qui: 'qui',
+  sex: 'sex',
+  sab: 'sab',
+};
+
+const DAY_NAMES: Record<string, string> = {
+  dom: 'Domingo',
+  seg: 'Segunda-feira',
+  ter: 'Terça-feira',
+  qua: 'Quarta-feira',
+  qui: 'Quinta-feira',
+  sex: 'Sexta-feira',
+  sab: 'Sábado',
+};
+
+function normalizeDayKey(value?: string | null) {
+  if (!value) return '';
+
+  return DAY_ALIASES[value] || value;
+}
+
+function getTodayDayKey() {
+  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][
+    new Date().getDay()
+  ];
+}
+
 function formatDuration(seconds: number) {
-  const safeSeconds = Math.max(0, Number(seconds || 0));
+  const safeSeconds = Math.max(0, seconds);
   const minutes = Math.floor(safeSeconds / 60);
-  const restSeconds = safeSeconds % 60;
+  const remainingSeconds = safeSeconds % 60;
 
   return `${String(minutes).padStart(2, '0')}:${String(
-    restSeconds
+    remainingSeconds
   ).padStart(2, '0')}`;
 }
 
-function isUuid(value: unknown) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    String(value || '').trim()
-  );
-}
-
-function pickUuid(...values: unknown[]) {
-  for (const value of values) {
-    const uuid = String(value || '').trim();
-
-    if (isUuid(uuid)) {
-      return uuid;
-    }
-  }
-
-  return '';
-}
-
-function pickEmail(...values: unknown[]) {
-  for (const value of values) {
-    const email = String(value || '')
-      .trim()
-      .toLowerCase();
-
-    if (email && email.includes('@')) {
-      return email;
-    }
-  }
-
-  return '';
-}
-
-function createUuid() {
-  if (
-    typeof crypto !== 'undefined' &&
-    crypto.randomUUID
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
-    /[xy]/g,
-    (char) => {
-      const random = (Math.random() * 16) | 0;
-      const value =
-        char === 'x'
-          ? random
-          : (random & 0x3) | 0x8;
-
-      return value.toString(16);
-    }
-  );
-}
-
-function getStudentName(student: any) {
-  return (
-    student?.name ||
-    student?.full_name ||
-    student?.student_name ||
-    student?.email ||
-    'Aluno'
-  );
-}
-
-function getWorkoutName(plan: any) {
-  return (
-    plan?.name ||
-    plan?.title ||
-    plan?.plan_name ||
-    plan?.workout_name ||
-    'Treino personalizado'
-  );
-}
-
-function getWorkoutObjective(plan: any) {
-  return (
-    plan?.objective ||
-    plan?.goal ||
-    plan?.focus ||
-    'Execução guiada'
-  );
-}
-
-function getTrainerId(student: any, plan: any) {
-  return (
-    student?.trainer_id ||
-    student?.trainerId ||
-    student?.coach_id ||
-    student?.coachId ||
-    plan?.trainer_id ||
-    plan?.trainerId ||
-    plan?.coach_id ||
-    plan?.coachId ||
-    ''
-  );
-}
-
-function getTrainerUserIdFromObjects(
-  student: any,
-  plan: any
+function getExerciseOrder(
+  exercise: WorkoutPlanExercise
 ) {
-  return pickUuid(
-    student?.trainer_user_id,
-    student?.trainerUserId,
-    student?.coach_user_id,
-    student?.coachUserId,
-    student?.personal_user_id,
-    student?.personalUserId,
-    student?.trainer_auth_user_id,
-    student?.coach_auth_user_id,
-    student?.trainer?.user_id,
-    student?.trainer?.auth_user_id,
-    student?.coach?.user_id,
-    student?.coach?.auth_user_id,
-    plan?.trainer_user_id,
-    plan?.trainerUserId,
-    plan?.coach_user_id,
-    plan?.coachUserId,
-    plan?.personal_user_id,
-    plan?.personalUserId,
-    plan?.trainer_auth_user_id,
-    plan?.coach_auth_user_id,
-    plan?.trainer?.user_id,
-    plan?.trainer?.auth_user_id,
-    plan?.coach?.user_id,
-    plan?.coach?.auth_user_id
-  );
-}
-
-function getTrainerEmailFromObjects(
-  student: any,
-  plan: any
-) {
-  return pickEmail(
-    student?.coach_email,
-    student?.coachEmail,
-    student?.trainer_email,
-    student?.trainerEmail,
-    student?.personal_email,
-    student?.personalEmail,
-    student?.trainer?.email,
-    student?.trainer?.coach_email,
-    student?.coach?.email,
-    plan?.coach_email,
-    plan?.coachEmail,
-    plan?.trainer_email,
-    plan?.trainerEmail,
-    plan?.personal_email,
-    plan?.personalEmail,
-    plan?.trainer?.email,
-    plan?.coach?.email
+  return (
+    exercise.execution_order ??
+    exercise.order_index ??
+    0
   );
 }
 
@@ -206,12 +113,6 @@ function getExerciseName(
   exercise: WorkoutPlanExercise
 ) {
   return exercise.name || 'Exercício';
-}
-
-function getExerciseReps(
-  exercise: WorkoutPlanExercise
-) {
-  return exercise.reps || '—';
 }
 
 function getExerciseSets(
@@ -227,42 +128,28 @@ function getExerciseSets(
     : 1;
 }
 
+function getExerciseReps(
+  exercise: WorkoutPlanExercise
+) {
+  return exercise.reps || '—';
+}
+
 function getExerciseWeight(
   exercise: WorkoutPlanExercise
 ) {
   return exercise.suggested_weight || '—';
 }
 
-function getExerciseRestSeconds(
+function getExerciseRest(
   exercise: WorkoutPlanExercise
 ) {
-  const value = Number(exercise.rest_seconds || 0);
-
-  return Number.isFinite(value) && value > 0
-    ? value
-    : 0;
-}
-
-function getExerciseObservation(
-  exercise: WorkoutPlanExercise
-) {
-  return (
-    exercise.observation ||
-    exercise.instructions ||
-    ''
+  const parsed = Number(
+    exercise.rest_seconds || 0
   );
-}
 
-function getExerciseVideoUrl(
-  exercise: WorkoutPlanExercise
-) {
-  return exercise.video_url || '';
-}
-
-function getExerciseImageUrl(
-  exercise: WorkoutPlanExercise
-) {
-  return exercise.image_url || '';
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : 0;
 }
 
 function getDropSetConfig(
@@ -281,61 +168,44 @@ function getDropSetConfig(
   return {};
 }
 
-function getEffectiveOrder(
-  exercise: WorkoutPlanExercise
+function getExercisesForDay(
+  plan: CompleteWorkoutPlan,
+  selectedDay: string
 ) {
-  return (
-    exercise.execution_order ??
-    exercise.order_index
-  );
-}
+  const normalizedDay =
+    normalizeDayKey(selectedDay);
 
-function sortPlanExercises(
-  plan: CompleteWorkoutPlan
-) {
-  const days = plan.workout_days || [];
-  const exercises =
-    plan.workout_plan_exercises || [];
-
-  const dayOrderById = new Map(
-    days.map((day) => [
-      day.id,
-      day.order_index,
-    ])
+  const matchingDayIds = new Set(
+    plan.workout_days
+      .filter(
+        (day) =>
+          normalizeDayKey(day.day_key) ===
+          normalizedDay
+      )
+      .map((day) => day.id)
   );
 
-  const legacyDayOrder: Record<string, number> = {
-    seg: 0,
-    ter: 1,
-    qua: 2,
-    qui: 3,
-    sex: 4,
-    sab: 5,
-    dom: 6,
-    Monday: 0,
-    Tuesday: 1,
-    Wednesday: 2,
-    Thursday: 3,
-    Friday: 4,
-    Saturday: 5,
-    Sunday: 6,
-  };
+  return [...plan.workout_plan_exercises]
+    .filter((exercise) => {
+      if (
+        exercise.workout_day_id &&
+        matchingDayIds.has(
+          exercise.workout_day_id
+        )
+      ) {
+        return true;
+      }
 
-  return [...exercises].sort((a, b) => {
-    const dayOrderA = a.workout_day_id
-      ? dayOrderById.get(a.workout_day_id) ?? 99
-      : legacyDayOrder[a.day_key || ''] ?? 99;
-
-    const dayOrderB = b.workout_day_id
-      ? dayOrderById.get(b.workout_day_id) ?? 99
-      : legacyDayOrder[b.day_key || ''] ?? 99;
-
-    if (dayOrderA !== dayOrderB) {
-      return dayOrderA - dayOrderB;
-    }
-
-    return getEffectiveOrder(a) - getEffectiveOrder(b);
-  });
+      return (
+        normalizeDayKey(exercise.day_key) ===
+        normalizedDay
+      );
+    })
+    .sort(
+      (a, b) =>
+        getExerciseOrder(a) -
+        getExerciseOrder(b)
+    );
 }
 
 function getExerciseGroup(
@@ -349,12 +219,13 @@ function getExerciseGroup(
   return (
     groups.find(
       (group) =>
-        group.id === exercise.exercise_group_id
+        group.id ===
+        exercise.exercise_group_id
     ) || null
   );
 }
 
-function getTransitionRestSeconds({
+function getTransitionRest({
   exercise,
   nextExercise,
   groups,
@@ -371,7 +242,8 @@ function getTransitionRestSeconds({
   if (
     group?.group_type === 'bi_set' &&
     exercise.group_order === 1 &&
-    nextExercise?.exercise_group_id === group.id
+    nextExercise?.exercise_group_id ===
+      group.id
   ) {
     return 0;
   }
@@ -382,34 +254,21 @@ function getTransitionRestSeconds({
   ) {
     return (
       group.rest_after_seconds ??
-      getExerciseRestSeconds(exercise)
+      getExerciseRest(exercise)
     );
   }
 
-  return getExerciseRestSeconds(exercise);
+  return getExerciseRest(exercise);
 }
 
-function getRestTitle({
-  exercise,
-  nextExercise,
-  groups,
-}: {
-  exercise: WorkoutPlanExercise;
-  nextExercise: WorkoutPlanExercise | null;
-  groups: WorkoutExerciseGroup[];
-}) {
+function getTransitionTitle(
+  exercise: WorkoutPlanExercise,
+  groups: WorkoutExerciseGroup[]
+) {
   const group = getExerciseGroup(
     exercise,
     groups
   );
-
-  if (
-    group?.group_type === 'bi_set' &&
-    exercise.group_order === 1 &&
-    nextExercise?.exercise_group_id === group.id
-  ) {
-    return 'Segundo exercício do bi-set';
-  }
 
   if (
     group?.group_type === 'bi_set' &&
@@ -429,368 +288,144 @@ async function resolveLoggedStudent() {
 
   if (authError) throw authError;
 
-  const authUser = authData.user;
-
-  if (!authUser?.id) {
+  if (!authData.user?.id) {
     throw new Error(
-      'Sessão do aluno não encontrada. Faça login novamente.'
+      'Sessão do aluno não encontrada.'
     );
   }
 
-  const accountResult =
+  const account =
     await studentService.getStudentAccountByAuthUser(
-      authUser.id
+      authData.user.id
     );
 
-  let studentData =
-    accountResult?.student || null;
+  let student = account?.student || null;
 
-  if (!studentData) {
-    studentData =
+  if (!student) {
+    student =
       await studentService.getStudentByAuthUser(
-        authUser.id
+        authData.user.id
       );
   }
 
-  if (!studentData?.id) {
+  if (!student?.id) {
     throw new Error(
       'Perfil do aluno não encontrado.'
     );
   }
 
-  return studentData;
+  return student;
 }
 
-async function resolveTrainerEmail(
-  student: any,
-  plan: any
-) {
-  const directEmail =
-    getTrainerEmailFromObjects(student, plan);
-
-  if (directEmail) return directEmail;
-
-  const studentId = String(
-    student?.id || ''
-  ).trim();
-
-  if (studentId) {
-    try {
-      const {
-        data: account,
-        error,
-      } = await supabase
-        .from('student_accounts')
-        .select('*')
-        .eq('student_id', studentId)
-        .maybeSingle();
-
-      if (!error && account) {
-        const accountEmail = pickEmail(
-          account?.coach_email,
-          account?.coachEmail,
-          account?.trainer_email,
-          account?.trainerEmail,
-          account?.personal_email,
-          account?.personalEmail,
-          account?.owner_email,
-          account?.ownerEmail
-        );
-
-        if (accountEmail) {
-          return accountEmail;
-        }
-      }
-    } catch (error) {
-      console.warn(
-        '[WorkoutExecutionPage] student account trainer email exception:',
-        error
-      );
-    }
-  }
-
-  const trainerId = getTrainerId(
-    student,
-    plan
+function getStudentName(student: any) {
+  return (
+    student?.name ||
+    student?.full_name ||
+    student?.email ||
+    'Aluno'
   );
+}
 
+function getTrainerId(
+  student: any,
+  plan: CompleteWorkoutPlan
+) {
+  return (
+    student?.trainer_id ||
+    student?.coach_id ||
+    plan.trainer_id ||
+    ''
+  );
+}
+
+async function resolveTrainerNotificationUserId(
+  trainerId: string
+) {
   if (!trainerId) return '';
 
-  try {
-    const { data, error } = await supabase
-      .from('trainer_profiles')
-      .select('*')
-      .eq('id', trainerId)
-      .maybeSingle();
+  const { data: trainer } = await supabase
+    .from('trainer_profiles')
+    .select('*')
+    .eq('id', trainerId)
+    .maybeSingle();
 
-    if (!error && data) {
-      const trainerEmail = pickEmail(
-        data?.email,
-        data?.coach_email,
-        data?.user_email,
-        data?.auth_email,
-        data?.login_email,
-        data?.personal_email
-      );
+  const trainerUserId =
+    trainer?.auth_user_id ||
+    trainer?.user_id ||
+    trainer?.profile_id ||
+    '';
 
-      if (trainerEmail) {
-        return trainerEmail;
-      }
-    }
-  } catch (error) {
-    console.warn(
-      '[WorkoutExecutionPage] trainer_profiles email exception:',
-      error
-    );
+  if (trainerUserId) {
+    return trainerUserId;
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', trainerId)
-      .maybeSingle();
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('id', trainerId)
+    .maybeSingle();
 
-    if (!error && data) {
-      const profileEmail = pickEmail(
-        data?.email,
-        data?.coach_email,
-        data?.user_email,
-        data?.auth_email,
-        data?.login_email,
-        data?.personal_email
-      );
-
-      if (profileEmail) {
-        return profileEmail;
-      }
-    }
-  } catch (error) {
-    console.warn(
-      '[WorkoutExecutionPage] user_profiles email exception:',
-      error
-    );
-  }
-
-  return '';
+  return profile?.id || '';
 }
 
-async function resolveTrainerUserId(
-  student: any,
-  plan: any
-) {
-  const directUserId =
-    getTrainerUserIdFromObjects(student, plan);
-
-  if (directUserId) return directUserId;
-
-  const trainerId = getTrainerId(
-    student,
-    plan
-  );
-
-  const trainerEmail =
-    await resolveTrainerEmail(student, plan);
-
-  if (trainerEmail) {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('email', trainerEmail)
-        .maybeSingle();
-
-      if (!error && data) {
-        const userId = pickUuid(
-          data?.id,
-          data?.user_id,
-          data?.auth_user_id
-        );
-
-        if (userId) return userId;
-      }
-    } catch (error) {
-      console.warn(
-        '[WorkoutExecutionPage] user_profiles by email exception:',
-        error
-      );
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('trainer_profiles')
-        .select('*')
-        .eq('email', trainerEmail)
-        .maybeSingle();
-
-      if (!error && data) {
-        const userId = pickUuid(
-          data?.auth_user_id,
-          data?.user_id,
-          data?.profile_id,
-          data?.owner_id,
-          data?.id
-        );
-
-        if (userId) return userId;
-      }
-    } catch (error) {
-      console.warn(
-        '[WorkoutExecutionPage] trainer_profiles by email exception:',
-        error
-      );
-    }
-  }
-
-  if (isUuid(trainerId)) {
-    try {
-      const { data, error } = await supabase
-        .from('trainer_profiles')
-        .select('*')
-        .eq('id', trainerId)
-        .maybeSingle();
-
-      if (!error && data) {
-        const email = pickEmail(
-          data?.email,
-          data?.user_email,
-          data?.auth_email
-        );
-
-        if (email) {
-          const {
-            data: profileByEmail,
-          } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('email', email)
-            .maybeSingle();
-
-          const userIdByEmail = pickUuid(
-            profileByEmail?.id,
-            profileByEmail?.user_id,
-            profileByEmail?.auth_user_id
-          );
-
-          if (userIdByEmail) {
-            return userIdByEmail;
-          }
-        }
-
-        const userId = pickUuid(
-          data?.auth_user_id,
-          data?.user_id,
-          data?.profile_id,
-          data?.owner_id,
-          data?.id
-        );
-
-        if (userId) return userId;
-      }
-    } catch (error) {
-      console.warn(
-        '[WorkoutExecutionPage] trainer_profiles by id exception:',
-        error
-      );
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', trainerId)
-        .maybeSingle();
-
-      if (!error && data) {
-        return trainerId;
-      }
-    } catch (error) {
-      console.warn(
-        '[WorkoutExecutionPage] user_profiles by id exception:',
-        error
-      );
-    }
-  }
-
-  return '';
-}
-
-function getSavedLogId(log: any) {
-  if (Array.isArray(log)) {
-    return log[0]?.id || '';
-  }
-
-  return log?.id || '';
-}
-
-async function createTrainerWorkoutCompletedNotification({
+async function notifyTrainer({
   student,
   plan,
-  completedAt,
   durationSeconds,
   completedExercises,
+  completedAt,
 }: {
   student: any;
   plan: CompleteWorkoutPlan;
-  completedAt: string;
   durationSeconds: number;
   completedExercises: CompletedExercise[];
+  completedAt: string;
 }) {
   try {
-    const trainerUserId =
-      await resolveTrainerUserId(
-        student,
-        plan
+    const trainerId = getTrainerId(
+      student,
+      plan
+    );
+
+    const userId =
+      await resolveTrainerNotificationUserId(
+        trainerId
       );
 
-    if (!trainerUserId) {
+    if (!userId) {
       console.warn(
-        '[WorkoutExecutionPage] Notificação não criada: user_id do personal não encontrado.'
+        '[WorkoutExecutionPage] user_id do personal não encontrado.'
       );
-
       return;
     }
 
     const studentName =
       getStudentName(student);
 
-    const workoutName =
-      getWorkoutName(plan);
-
-    const durationMinutes = Math.max(
+    const minutes = Math.max(
       1,
       Math.round(durationSeconds / 60)
     );
 
-    const completedCount =
+    const total =
       completedExercises.length;
-
-    const exerciseWord =
-      completedCount === 1
-        ? 'exercício'
-        : 'exercícios';
-
-    const title = `${studentName} finalizou o treino`;
-
-    const message = `${studentName} finalizou o treino "${workoutName}" — ${completedCount} ${exerciseWord} em ${durationMinutes} min.`;
-
-    const payload = {
-      id: createUuid(),
-      user_id: trainerUserId,
-      title,
-      message,
-      type: 'trainer_student_workout_completed',
-      read: false,
-      created_at: completedAt,
-    };
 
     const { error } = await supabase
       .from('notifications')
-      .insert(payload);
+      .insert({
+        user_id: userId,
+        title: `${studentName} finalizou o treino`,
+        message: `${studentName} finalizou "${plan.name}" com ${total} exercício${
+          total === 1 ? '' : 's'
+        } em ${minutes} min.`,
+        type: 'trainer_student_workout_completed',
+        read: false,
+        created_at: completedAt,
+      });
 
     if (error) {
       console.error(
-        '[WorkoutExecutionPage] erro ao criar notificação do personal:',
+        '[WorkoutExecutionPage] notification error:',
         error
       );
     }
@@ -802,9 +437,37 @@ async function createTrainerWorkoutCompletedNotification({
   }
 }
 
+function getSavedLogId(log: unknown) {
+  if (Array.isArray(log)) {
+    const first = log[0] as
+      | Record<string, unknown>
+      | undefined;
+
+    return String(first?.id || '');
+  }
+
+  if (
+    log &&
+    typeof log === 'object' &&
+    'id' in log
+  ) {
+    return String(
+      (log as Record<string, unknown>).id ||
+        ''
+    );
+  }
+
+  return '';
+}
+
 export function WorkoutExecutionPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const selectedDayKey = normalizeDayKey(
+    searchParams.get('day')
+  );
 
   const [student, setStudent] =
     useState<any | null>(null);
@@ -816,8 +479,10 @@ export function WorkoutExecutionPage() {
 
   const [loading, setLoading] =
     useState(true);
+
   const [saving, setSaving] =
     useState(false);
+
   const [error, setError] = useState('');
 
   const [
@@ -831,64 +496,53 @@ export function WorkoutExecutionPage() {
   const [isResting, setIsResting] =
     useState(false);
 
-  const [
-    restTimeLeft,
-    setRestTimeLeft,
-  ] = useState(0);
+  const [restTimeLeft, setRestTimeLeft] =
+    useState(0);
 
-  const [
-    restDuration,
-    setRestDuration,
-  ] = useState(0);
+  const [restDuration, setRestDuration] =
+    useState(0);
 
   const [restMode, setRestMode] =
     useState<RestMode>('exercise');
 
-  const [
-    restTitle,
-    setRestTitle,
-  ] = useState('Próximo exercício');
+  const [restTitle, setRestTitle] =
+    useState('Descanso');
 
   const [isCompleted, setIsCompleted] =
     useState(false);
 
-  const [startedAt] = useState(
+  const [completedExercises, setCompletedExercises] =
+    useState<CompletedExercise[]>([]);
+
+  const [elapsedSeconds, setElapsedSeconds] =
+    useState(0);
+
+  const startedAtRef = useRef(
     new Date().toISOString()
   );
 
-  const [
-    completedExercises,
-    setCompletedExercises,
-  ] = useState<CompletedExercise[]>([]);
-
-  const [
-    elapsedSeconds,
-    setElapsedSeconds,
-  ] = useState(0);
-
-  const exercisesRef =
-    useRef<WorkoutPlanExercise[]>([]);
-
   useEffect(() => {
     void loadExecutionData();
-  }, [id]);
+  }, [id, selectedDayKey]);
 
   useEffect(() => {
     if (isCompleted) return;
 
     const interval = window.setInterval(() => {
+      const startedAt = new Date(
+        startedAtRef.current
+      ).getTime();
+
       setElapsedSeconds(
         Math.floor(
-          (Date.now() -
-            new Date(startedAt).getTime()) /
-            1000
+          (Date.now() - startedAt) / 1000
         )
       );
     }, 1000);
 
     return () =>
       window.clearInterval(interval);
-  }, [isCompleted, startedAt]);
+  }, [isCompleted]);
 
   useEffect(() => {
     if (!isResting) return;
@@ -897,7 +551,7 @@ export function WorkoutExecutionPage() {
       setRestTimeLeft((previous) => {
         if (previous <= 1) {
           window.clearInterval(interval);
-          completeRestTransition();
+          finishRest();
           return 0;
         }
 
@@ -916,21 +570,37 @@ export function WorkoutExecutionPage() {
   async function loadExecutionData() {
     setLoading(true);
     setError('');
+    setPlan(null);
 
     try {
       if (!id) {
         throw new Error(
-          'Treino não encontrado.'
+          'Plano de treino não encontrado.'
         );
       }
 
-      const [
-        studentData,
-        planData,
-      ] = await Promise.all([
-        resolveLoggedStudent(),
-        getWorkoutPlanById(id),
-      ]);
+      if (!selectedDayKey) {
+        throw new Error(
+          'Selecione o dia do treino antes de iniciar.'
+        );
+      }
+
+      const today = getTodayDayKey();
+
+      if (selectedDayKey !== today) {
+        throw new Error(
+          `O treino de ${
+            DAY_NAMES[selectedDayKey] ||
+            selectedDayKey
+          } não pode ser executado hoje.`
+        );
+      }
+
+      const [studentData, planData] =
+        await Promise.all([
+          resolveLoggedStudent(),
+          getWorkoutPlanById(id),
+        ]);
 
       if (!planData) {
         throw new Error(
@@ -938,19 +608,31 @@ export function WorkoutExecutionPage() {
         );
       }
 
-      const sortedExercises =
-        sortPlanExercises(planData);
+      const dayExercises =
+        getExercisesForDay(
+          planData,
+          selectedDayKey
+        );
 
-      exercisesRef.current =
-        sortedExercises;
+      if (dayExercises.length === 0) {
+        throw new Error(
+          'Este dia não possui exercícios cadastrados.'
+        );
+      }
 
       setStudent(studentData);
       setPlan(planData);
+      setCurrentExerciseIndex(0);
+      setCurrentSet(1);
+      setCompletedExercises([]);
+      setIsCompleted(false);
+      startedAtRef.current =
+        new Date().toISOString();
     } catch (loadError: unknown) {
       const message =
         loadError instanceof Error
           ? loadError.message
-          : 'Erro ao carregar execução do treino.';
+          : 'Erro ao carregar treino.';
 
       setError(message);
     } finally {
@@ -959,13 +641,36 @@ export function WorkoutExecutionPage() {
   }
 
   const exercises = useMemo(() => {
+    if (!plan || !selectedDayKey) {
+      return [];
+    }
+
+    return getExercisesForDay(
+      plan,
+      selectedDayKey
+    );
+  }, [plan, selectedDayKey]);
+
+  const dayGroups = useMemo(() => {
     if (!plan) return [];
 
-    return sortPlanExercises(plan);
-  }, [plan]);
+    const selectedDayIds = new Set(
+      plan.workout_days
+        .filter(
+          (day) =>
+            normalizeDayKey(day.day_key) ===
+            selectedDayKey
+        )
+        .map((day) => day.id)
+    );
 
-  const groups =
-    plan?.workout_exercise_groups || [];
+    return plan.workout_exercise_groups.filter(
+      (group) =>
+        selectedDayIds.has(
+          group.workout_day_id
+        )
+    );
+  }, [plan, selectedDayKey]);
 
   const currentExercise =
     exercises[currentExerciseIndex] || null;
@@ -977,7 +682,7 @@ export function WorkoutExecutionPage() {
   const currentGroup = currentExercise
     ? getExerciseGroup(
         currentExercise,
-        groups
+        dayGroups
       )
     : null;
 
@@ -997,26 +702,7 @@ export function WorkoutExecutionPage() {
     ? getExerciseWeight(currentExercise)
     : '—';
 
-  const exerciseObservation =
-    currentExercise
-      ? getExerciseObservation(
-          currentExercise
-        )
-      : '';
-
-  const videoUrl = currentExercise
-    ? getExerciseVideoUrl(currentExercise)
-    : '';
-
-  const imageUrl = currentExercise
-    ? getExerciseImageUrl(currentExercise)
-    : '';
-
-  const technique =
-    currentExercise?.technique_type ||
-    'normal';
-
-  const dropSetConfig = currentExercise
+  const dropConfig = currentExercise
     ? getDropSetConfig(currentExercise)
     : {};
 
@@ -1048,9 +734,9 @@ export function WorkoutExecutionPage() {
     title: string;
   }) {
     setRestMode(mode);
+    setRestTitle(title);
     setRestDuration(seconds);
     setRestTimeLeft(seconds);
-    setRestTitle(title);
     setIsResting(true);
   }
 
@@ -1067,7 +753,7 @@ export function WorkoutExecutionPage() {
     setIsCompleted(true);
   }
 
-  function completeRestTransition() {
+  function finishRest() {
     setIsResting(false);
     setRestTimeLeft(0);
 
@@ -1085,16 +771,14 @@ export function WorkoutExecutionPage() {
     if (!currentExercise) return;
 
     if (currentSet < safeTotalSets) {
-      const setRest =
-        getExerciseRestSeconds(
-          currentExercise
-        );
+      const rest =
+        getExerciseRest(currentExercise);
 
-      if (setRest > 0) {
+      if (rest > 0) {
         startRest({
-          seconds: setRest,
+          seconds: rest,
           mode: 'set',
-          title: 'Próxima série',
+          title: 'Descanso entre séries',
         });
 
         return;
@@ -1107,22 +791,28 @@ export function WorkoutExecutionPage() {
       return;
     }
 
-    const completedEntry: CompletedExercise =
-      {
-        exerciseName,
-        setsCompleted: safeTotalSets,
-        repsCompleted: String(
-          exerciseReps || ''
-        ),
-        weightUsed: String(
-          exerciseWeight || ''
-        ),
-      };
+    const completed: CompletedExercise = {
+      exerciseId: currentExercise.id,
+      exerciseName,
+      setsCompleted: safeTotalSets,
+      repsCompleted: exerciseReps,
+      weightUsed: exerciseWeight,
+    };
 
-    setCompletedExercises((previous) => [
-      ...previous,
-      completedEntry,
-    ]);
+    setCompletedExercises((previous) => {
+      const alreadyCompleted =
+        previous.some(
+          (exercise) =>
+            exercise.exerciseId ===
+            currentExercise.id
+        );
+
+      if (alreadyCompleted) {
+        return previous;
+      }
+
+      return [...previous, completed];
+    });
 
     if (!nextExercise) {
       setIsCompleted(true);
@@ -1130,21 +820,20 @@ export function WorkoutExecutionPage() {
     }
 
     const transitionRest =
-      getTransitionRestSeconds({
+      getTransitionRest({
         exercise: currentExercise,
         nextExercise,
-        groups,
+        groups: dayGroups,
       });
 
     if (transitionRest > 0) {
       startRest({
         seconds: transitionRest,
         mode: 'exercise',
-        title: getRestTitle({
-          exercise: currentExercise,
-          nextExercise,
-          groups,
-        }),
+        title: getTransitionTitle(
+          currentExercise,
+          dayGroups
+        ),
       });
 
       return;
@@ -1153,41 +842,49 @@ export function WorkoutExecutionPage() {
     goToNextExercise();
   }
 
-  function handleRestComplete() {
-    completeRestTransition();
-  }
-
   async function handleSave() {
-    if (!student || !plan || saving) {
+    if (
+      !student ||
+      !plan ||
+      saving
+    ) {
       return;
     }
 
     setSaving(true);
+    setError('');
 
     try {
       const completedAt =
         new Date().toISOString();
 
-      const totalSeconds = Math.floor(
-        (Date.now() -
-          new Date(startedAt).getTime()) /
-          1000
-      );
+      const durationSeconds =
+        Math.floor(
+          (Date.now() -
+            new Date(
+              startedAtRef.current
+            ).getTime()) /
+            1000
+        );
 
-      const logData = {
+      const trainerId =
+        getTrainerId(student, plan);
+
+      const log = await saveWorkoutLog({
         student_id: student.id,
-        trainer_id: getTrainerId(
-          student,
-          plan
-        ),
+        trainer_id: trainerId,
         workout_plan_id: plan.id,
-        started_at: startedAt,
+        started_at:
+          startedAtRef.current,
         completed_at: completedAt,
-        duration_seconds: totalSeconds,
+        duration_seconds:
+          durationSeconds,
         status: 'completed',
         exercises_data:
           completedExercises.map(
             (exercise) => ({
+              exercise_id:
+                exercise.exerciseId,
               exercise_name:
                 exercise.exerciseName,
               sets_completed:
@@ -1196,22 +893,19 @@ export function WorkoutExecutionPage() {
                 exercise.repsCompleted,
               weight_used:
                 exercise.weightUsed,
+              day_key:
+                selectedDayKey,
             })
           ),
-      };
+      });
 
-      const log =
-        await saveWorkoutLog(logData);
-
-      await createTrainerWorkoutCompletedNotification(
-        {
-          student,
-          plan,
-          completedAt,
-          durationSeconds: totalSeconds,
-          completedExercises,
-        }
-      );
+      await notifyTrainer({
+        student,
+        plan,
+        durationSeconds,
+        completedExercises,
+        completedAt,
+      });
 
       const logId = getSavedLogId(log);
 
@@ -1223,36 +917,26 @@ export function WorkoutExecutionPage() {
           replace: true,
         }
       );
-    } catch (saveError) {
-      console.error(
-        '[WorkoutExecutionPage] save error:',
-        saveError
-      );
+    } catch (saveError: unknown) {
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : 'Erro ao salvar o treino.';
 
-      setError(
-        'Erro ao salvar o treino. Tente novamente.'
-      );
+      setError(message);
       setSaving(false);
     }
   }
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-6 text-white">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15 shadow-[0_18px_45px_rgba(255,42,48,0.22)]">
-            <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
-          </div>
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] text-white">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-10 w-10 animate-spin text-[#ff2a32]" />
 
-          <div>
-            <p className="text-sm font-black text-white">
-              Abrindo treino...
-            </p>
-
-            <p className="mt-1 text-xs text-zinc-500">
-              Preparando sua execução.
-            </p>
-          </div>
+          <p className="mt-4 text-sm font-black">
+            Abrindo treino...
+          </p>
         </div>
       </div>
     );
@@ -1262,36 +946,24 @@ export function WorkoutExecutionPage() {
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
         <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
-            <AlertCircle className="h-8 w-8" />
-          </div>
+          <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
 
-          <h1 className="mt-5 text-xl font-black text-white">
-            Erro ao abrir treino
+          <h1 className="mt-5 text-xl font-black">
+            Não foi possível iniciar
           </h1>
 
-          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
+          <p className="mt-2 text-sm text-red-200/80">
             {error}
           </p>
 
           <button
             type="button"
             onClick={() =>
-              void loadExecutionData()
+              navigate(-1)
             }
-            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black"
           >
-            TENTAR NOVAMENTE
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/student/workouts')
-            }
-            className="mt-3 h-12 w-full rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-black text-white"
-          >
-            VOLTAR
+            VOLTAR AO PLANO
           </button>
         </div>
       </div>
@@ -1301,38 +973,15 @@ export function WorkoutExecutionPage() {
   if (
     !plan ||
     !student ||
-    exercises.length === 0 ||
     !currentExercise
   ) {
-    return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
-        <div className="w-full max-w-sm rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-zinc-400">
-            <Dumbbell className="h-8 w-8" />
-          </div>
-
-          <h1 className="mt-5 text-xl font-black text-white">
-            Treino vazio
-          </h1>
-
-          <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-            Este treino não possui exercícios
-            cadastrados.
-          </p>
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/student/workouts')
-            }
-            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
-          >
-            VOLTAR PARA TREINOS
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
+
+  const observation =
+    currentExercise.observation ||
+    currentExercise.instructions ||
+    '';
 
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] text-white">
@@ -1342,43 +991,31 @@ export function WorkoutExecutionPage() {
             key="completed"
             initial={{
               opacity: 0,
-              y: 18,
               scale: 0.98,
             }}
             animate={{
               opacity: 1,
-              y: 0,
               scale: 1,
             }}
-            exit={{
-              opacity: 0,
-              y: 18,
-              scale: 0.98,
-            }}
-            className="flex min-h-screen flex-col px-4 py-6"
+            className="flex min-h-screen items-center px-4 py-6"
           >
-            <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center">
-              <section className="relative overflow-hidden rounded-[36px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/15 via-white/[0.05] to-white/[0.025] p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] bg-gradient-to-br from-yellow-400 to-orange-500 text-white"
-                >
+            <div className="mx-auto w-full max-w-lg">
+              <section className="rounded-[36px] border border-yellow-400/20 bg-yellow-400/10 p-6 text-center">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] bg-gradient-to-br from-yellow-400 to-orange-500">
                   <Trophy className="h-12 w-12" />
-                </motion.div>
+                </div>
 
-                <p className="mt-6 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">
+                <p className="mt-6 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-300">
                   Finalizado
                 </p>
 
-                <h1 className="mt-2 text-[32px] font-black uppercase italic leading-none text-white">
+                <h1 className="mt-2 text-3xl font-black uppercase italic">
                   Treino concluído
                 </h1>
 
-                <p className="mx-auto mt-3 max-w-[300px] text-sm text-zinc-400">
+                <p className="mt-3 text-sm text-zinc-400">
                   Parabéns,{' '}
-                  {getStudentName(student)}. Seu
-                  progresso foi registrado.
+                  {getStudentName(student)}.
                 </p>
 
                 <div className="mt-6 grid grid-cols-3 gap-2">
@@ -1407,21 +1044,23 @@ export function WorkoutExecutionPage() {
               </section>
 
               <section className="mt-5 rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
-                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
+                <p className="mb-4 text-[10px] font-black uppercase text-[#ff2a32]">
                   Exercícios concluídos
                 </p>
 
-                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                <div className="max-h-64 space-y-2 overflow-y-auto">
                   {completedExercises.map(
-                    (exercise, index) => (
+                    (exercise) => (
                       <div
-                        key={`${exercise.exerciseName}-${index}`}
-                        className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/20 p-3"
+                        key={
+                          exercise.exerciseId
+                        }
+                        className="flex items-center gap-3 rounded-2xl bg-black/20 p-3"
                       >
                         <CheckCircle2 className="h-5 w-5 text-emerald-300" />
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-white">
+                        <div>
+                          <p className="text-sm font-black">
                             {
                               exercise.exerciseName
                             }
@@ -1431,11 +1070,10 @@ export function WorkoutExecutionPage() {
                             {
                               exercise.setsCompleted
                             }{' '}
-                            séries x{' '}
+                            séries ×{' '}
                             {
                               exercise.repsCompleted
-                            }{' '}
-                            reps
+                            }
                           </p>
                         </div>
                       </div>
@@ -1456,7 +1094,7 @@ export function WorkoutExecutionPage() {
                   void handleSave()
                 }
                 disabled={saving}
-                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-sm font-black uppercase text-white disabled:opacity-70"
+                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase disabled:opacity-60"
               >
                 {saving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -1470,84 +1108,54 @@ export function WorkoutExecutionPage() {
           </motion.main>
         ) : isResting ? (
           <motion.main
-            key="resting"
+            key="rest"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex min-h-screen flex-col px-4 py-6"
+            className="flex min-h-screen items-center px-4"
           >
-            <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center">
-              <section className="rounded-[38px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-6 text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.26em] text-[#ff2a32]">
-                  Descanso
+            <div className="mx-auto w-full max-w-lg rounded-[38px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-6 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#ff2a32]">
+                Descanso
+              </p>
+
+              <h1 className="mt-2 text-2xl font-black uppercase">
+                {restTitle}
+              </h1>
+
+              <div className="my-8">
+                <Timer className="mx-auto h-10 w-10 text-[#ff2a32]" />
+
+                <p className="mt-3 text-7xl font-black">
+                  {restTimeLeft}
                 </p>
 
-                <h1 className="mt-2 text-[28px] font-black uppercase italic text-white">
-                  {restTitle}
-                </h1>
+                <p className="text-xs text-zinc-500">
+                  segundos
+                </p>
+              </div>
 
-                <div className="relative mx-auto my-8 h-52 w-52">
-                  <svg
-                    className="h-full w-full -rotate-90"
-                    viewBox="0 0 220 220"
-                  >
-                    <circle
-                      cx="110"
-                      cy="110"
-                      r="94"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.07)"
-                      strokeWidth="12"
-                    />
+              <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                <motion.div
+                  className="h-full bg-[#ff2a32]"
+                  animate={{
+                    width: `${
+                      restDuration > 0
+                        ? (restTimeLeft /
+                            restDuration) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
 
-                    <motion.circle
-                      cx="110"
-                      cy="110"
-                      r="94"
-                      fill="none"
-                      stroke="#ff2a32"
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray={
-                        2 * Math.PI * 94
-                      }
-                      animate={{
-                        strokeDashoffset:
-                          2 *
-                          Math.PI *
-                          94 *
-                          (1 -
-                            restTimeLeft /
-                              Math.max(
-                                1,
-                                restDuration
-                              )),
-                      }}
-                    />
-                  </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <Timer className="mb-2 h-8 w-8 text-[#ff2a32]" />
-
-                    <span className="text-6xl font-black text-white">
-                      {restTimeLeft}
-                    </span>
-
-                    <span className="text-xs text-zinc-500">
-                      segundos
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={
-                    handleRestComplete
-                  }
-                  className="h-14 w-full rounded-[20px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase text-white"
-                >
-                  Pular descanso
-                </button>
-              </section>
+              <button
+                type="button"
+                onClick={finishRest}
+                className="mt-6 h-14 w-full rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase"
+              >
+                Pular descanso
+              </button>
             </div>
           </motion.main>
         ) : (
@@ -1558,13 +1166,11 @@ export function WorkoutExecutionPage() {
             className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-5"
           >
             <header>
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() =>
-                    navigate(
-                      '/student/workouts'
-                    )
+                    navigate(-1)
                   }
                   className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]"
                 >
@@ -1572,12 +1178,14 @@ export function WorkoutExecutionPage() {
                 </button>
 
                 <div className="min-w-0 flex-1 text-center">
-                  <p className="truncate text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
-                    {getWorkoutName(plan)}
+                  <p className="truncate text-[10px] font-black uppercase text-[#ff2a32]">
+                    {plan.name}
                   </p>
 
-                  <p className="truncate text-xs text-zinc-500">
-                    {getWorkoutObjective(plan)}
+                  <p className="text-xs text-zinc-500">
+                    {DAY_NAMES[
+                      selectedDayKey
+                    ] || selectedDayKey}
                   </p>
                 </div>
 
@@ -1588,7 +1196,7 @@ export function WorkoutExecutionPage() {
                 </div>
               </div>
 
-              <div className="mb-2 flex justify-between text-xs">
+              <div className="mt-4 flex justify-between text-xs">
                 <span className="text-zinc-500">
                   Exercício{' '}
                   {currentExerciseIndex + 1}{' '}
@@ -1603,9 +1211,9 @@ export function WorkoutExecutionPage() {
                 </span>
               </div>
 
-              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
                 <motion.div
-                  className="h-full rounded-full bg-[#ff2a32]"
+                  className="h-full bg-[#ff2a32]"
                   animate={{
                     width: `${progressPercent}%`,
                   }}
@@ -1618,32 +1226,36 @@ export function WorkoutExecutionPage() {
                 key={`${currentExercise.id}-${currentSet}`}
                 initial={{
                   opacity: 0,
-                  y: 18,
+                  y: 15,
                 }}
                 animate={{
                   opacity: 1,
                   y: 0,
                 }}
-                className="overflow-hidden rounded-[38px] border border-white/10 bg-white/[0.04] p-5"
+                className="rounded-[38px] border border-white/10 bg-white/[0.04] p-5"
               >
-                <div className="overflow-hidden rounded-[30px] border border-white/10 bg-black/35">
-                  {videoUrl ? (
+                <div className="h-56 overflow-hidden rounded-[30px] border border-white/10 bg-black/30">
+                  {currentExercise.video_url ? (
                     <video
-                      src={videoUrl}
-                      className="h-56 w-full object-cover"
+                      src={
+                        currentExercise.video_url
+                      }
                       autoPlay
                       muted
                       loop
                       playsInline
+                      className="h-full w-full object-cover"
                     />
-                  ) : imageUrl ? (
+                  ) : currentExercise.image_url ? (
                     <img
-                      src={imageUrl}
+                      src={
+                        currentExercise.image_url
+                      }
                       alt={exerciseName}
-                      className="h-56 w-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-56 items-center justify-center">
+                    <div className="flex h-full items-center justify-center">
                       <Dumbbell className="h-16 w-16 text-[#ff2a32]" />
                     </div>
                   )}
@@ -1651,14 +1263,17 @@ export function WorkoutExecutionPage() {
 
                 <div className="mt-5 text-center">
                   <TechniqueBadge
-                    technique={technique}
+                    technique={
+                      currentExercise.technique_type ||
+                      'normal'
+                    }
                     group={currentGroup}
                     groupOrder={
                       currentExercise.group_order
                     }
                   />
 
-                  <h1 className="mt-3 text-[28px] font-black leading-tight text-white">
+                  <h1 className="mt-3 text-3xl font-black">
                     {exerciseName}
                   </h1>
 
@@ -1679,10 +1294,10 @@ export function WorkoutExecutionPage() {
                     />
                   </div>
 
-                  {technique ===
+                  {currentExercise.technique_type ===
                     'drop_set' && (
                     <DropSetPanel
-                      config={dropSetConfig}
+                      config={dropConfig}
                     />
                   )}
 
@@ -1700,23 +1315,23 @@ export function WorkoutExecutionPage() {
                         de 2.
                         {currentExercise.group_order ===
                         1
-                          ? ' Faça o próximo exercício sem descanso.'
-                          : ` Descanse ${
+                          ? ' O próximo exercício será iniciado sem descanso.'
+                          : ` Depois dele, descanse ${
                               currentGroup.rest_after_seconds ||
                               0
-                            }s ao finalizar.`}
+                            } segundos.`}
                       </p>
                     </div>
                   )}
 
-                  {exerciseObservation && (
-                    <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.035] p-4 text-left">
+                  {observation && (
+                    <div className="mt-4 rounded-[22px] border border-white/10 bg-black/20 p-4 text-left">
                       <p className="text-[10px] font-black uppercase text-[#ff2a32]">
                         Observação
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {exerciseObservation}
+                        {observation}
                       </p>
                     </div>
                   )}
@@ -1724,24 +1339,21 @@ export function WorkoutExecutionPage() {
               </motion.div>
             </section>
 
-            <footer className="pb-[max(12px,env(safe-area-inset-bottom))]">
-              <button
-                type="button"
-                onClick={handleCompleteSet}
-                className="flex h-16 w-full items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase text-white"
-              >
-                <CheckCircle2 className="h-6 w-6" />
+            <button
+              type="button"
+              onClick={handleCompleteSet}
+              className="flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase"
+            >
+              <CheckCircle2 className="h-6 w-6" />
 
-                {currentSet <
-                safeTotalSets
-                  ? 'Concluir série'
-                  : nextExercise
-                    ? 'Próximo exercício'
-                    : 'Finalizar treino'}
+              {currentSet < safeTotalSets
+                ? 'Concluir série'
+                : nextExercise
+                  ? 'Próximo exercício'
+                  : 'Finalizar treino'}
 
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </footer>
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </motion.main>
         )}
       </AnimatePresence>
@@ -1796,7 +1408,7 @@ function DropSetPanel({
   return (
     <div className="mt-4 rounded-[22px] border border-orange-400/20 bg-orange-400/[0.07] p-4 text-left">
       <p className="text-[10px] font-black uppercase text-orange-300">
-        Instruções do drop-set
+        Drop-set
       </p>
 
       <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-300">
@@ -1810,7 +1422,7 @@ function DropSetPanel({
         {config.reduction_percent !==
           undefined && (
           <span>
-            • Reduzir{' '}
+            • Redução de{' '}
             {config.reduction_percent}%
           </span>
         )}
@@ -1849,7 +1461,7 @@ function MetricCard({
         {label}
       </p>
 
-      <p className="mt-1 text-3xl font-black text-white">
+      <p className="mt-1 text-3xl font-black">
         {value}
       </p>
     </div>
@@ -1869,7 +1481,7 @@ function SummaryCard({
     <div className="rounded-[22px] border border-white/10 bg-black/25 p-3">
       <Icon className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
 
-      <p className="text-lg font-black text-white">
+      <p className="text-lg font-black">
         {value}
       </p>
 

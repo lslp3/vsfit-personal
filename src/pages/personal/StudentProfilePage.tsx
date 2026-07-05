@@ -1,59 +1,70 @@
-import { useEffect, useState, useCallback, type ElementType } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ElementType,
+} from 'react';
+import {
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  User,
-  TrendingUp,
+  Calendar,
+  Check,
+  ChevronRight,
+  Copy,
   DollarSign,
-  MessageSquare,
-  FileText,
   Dumbbell,
-  Plus,
-  Send,
-  Lock,
-  Unlock,
+  FileText,
   Key,
   KeyRound,
-  Save,
-  Copy,
-  Check,
-  X,
-  Phone,
-  Calendar,
-  Ruler,
-  Activity,
-  ChevronRight,
-  Clock,
-  Target,
   Loader2,
+  Lock,
+  MessageSquare,
+  Pencil,
+  Phone,
+  Plus,
+  Save,
+  Send,
+  Target,
+  Trash2,
+  TrendingUp,
+  Unlock,
+  User,
+  X,
 } from 'lucide-react';
 
-import { useAuthStore } from '../../store/authStore';
 import { Header } from '../../components/ui/Header';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
+
+import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
+
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
   formatPhone,
 } from '../../lib/formatters';
+
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
 import * as paymentService from '../../services/paymentService';
 import * as messageService from '../../services/messageService';
+
 import type {
+  Message,
+  Payment,
   Student,
   StudentGoals,
   StudentMetrics,
   WorkoutPlan,
-  Payment,
-  Message,
 } from '../../types/database';
 
 type TabKey =
@@ -64,68 +75,149 @@ type TabKey =
   | 'chat'
   | 'dados';
 
-const tabs: { key: TabKey; label: string; icon: ElementType }[] = [
-  { key: 'resumo', label: 'Resumo', icon: User },
-  { key: 'treinos', label: 'Treinos', icon: Dumbbell },
-  { key: 'progresso', label: 'Progresso', icon: TrendingUp },
-  { key: 'financeiro', label: 'Financeiro', icon: DollarSign },
-  { key: 'chat', label: 'Chat', icon: MessageSquare },
-  { key: 'dados', label: 'Dados', icon: FileText },
+type Credentials = {
+  email: string;
+  password: string;
+  studentName: string;
+  phone: string | null;
+};
+
+const tabs: {
+  key: TabKey;
+  label: string;
+  icon: ElementType;
+}[] = [
+  {
+    key: 'resumo',
+    label: 'Resumo',
+    icon: User,
+  },
+  {
+    key: 'treinos',
+    label: 'Treinos',
+    icon: Dumbbell,
+  },
+  {
+    key: 'progresso',
+    label: 'Progresso',
+    icon: TrendingUp,
+  },
+  {
+    key: 'financeiro',
+    label: 'Financeiro',
+    icon: DollarSign,
+  },
+  {
+    key: 'chat',
+    label: 'Chat',
+    icon: MessageSquare,
+  },
+  {
+    key: 'dados',
+    label: 'Dados',
+    icon: FileText,
+  },
 ];
 
 const PAYMENT_METHODS = [
-  { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'transfer', label: 'Transferência' },
+  {
+    value: 'pix',
+    label: 'PIX',
+  },
+  {
+    value: 'credit_card',
+    label: 'Cartão',
+  },
+  {
+    value: 'cash',
+    label: 'Dinheiro',
+  },
+  {
+    value: 'transfer',
+    label: 'Transferência',
+  },
 ];
 
 function getStudentInitials(name?: string) {
-  const safeName = String(name || 'Aluno').trim();
-  const parts = safeName.split(' ').filter(Boolean);
+  const safeName = String(
+    name || 'Aluno'
+  ).trim();
+
+  const parts = safeName
+    .split(' ')
+    .filter(Boolean);
 
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
-  return safeName.slice(0, 2).toUpperCase();
+  return safeName
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-function getStudentAvatarUrl(student: any) {
+function getStudentAvatarUrl(
+  student: Student
+) {
+  const record =
+    student as unknown as Record<
+      string,
+      string | null
+    >;
+
   return (
-    student?.avatar_url ||
-    student?.photo_url ||
-    student?.profile_photo_url ||
-    student?.image_url ||
+    record.avatar_url ||
+    record.photo_url ||
+    record.profile_photo_url ||
+    record.image_url ||
     ''
   );
 }
 
-function normalizeWhatsappPhone(value?: string | null) {
-  const digits = String(value || '').replace(/\D/g, '');
+function normalizeWhatsappPhone(
+  value?: string | null
+) {
+  const digits = String(
+    value || ''
+  ).replace(/\D/g, '');
 
-  if (!digits) return '';
+  if (!digits) {
+    return '';
+  }
 
-  if (digits.length === 10 || digits.length === 11) {
+  if (
+    digits.length === 10 ||
+    digits.length === 11
+  ) {
     return `55${digits}`;
   }
 
   return digits;
 }
 
-function StudentAvatar({ student }: { student: Student }) {
-  const avatarUrl = getStudentAvatarUrl(student);
-  const initials = getStudentInitials(student.name);
+function StudentAvatar({
+  student,
+}: {
+  student: Student;
+}) {
+  const avatarUrl =
+    getStudentAvatarUrl(student);
+
+  const initials =
+    getStudentInitials(student.name);
 
   if (avatarUrl) {
     return (
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#171717]">
         <img
           src={avatarUrl}
-          alt={student.name || 'Aluno'}
+          alt={
+            student.name || 'Aluno'
+          }
           className="h-full w-full object-cover"
           onError={(event) => {
-            event.currentTarget.style.display = 'none';
+            event.currentTarget.style.display =
+              'none';
           }}
         />
       </div>
@@ -133,14 +225,20 @@ function StudentAvatar({ student }: { student: Student }) {
   }
 
   return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-[15px] font-black text-[#ff2a32] shadow-[0_14px_35px_rgba(255,42,48,0.16)]">
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-[15px] font-black text-[#ff2a32]">
       {initials}
     </div>
   );
 }
 
-function StudentStatusBadge({ status }: { status?: string }) {
-  const normalized = String(status || 'active').toLowerCase();
+function StudentStatusBadge({
+  status,
+}: {
+  status?: string;
+}) {
+  const normalized = String(
+    status || 'active'
+  ).toLowerCase();
 
   const label =
     normalized === 'active'
@@ -160,193 +258,520 @@ function StudentStatusBadge({ status }: { status?: string }) {
 
   return (
     <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${className}`}
+      className={cn(
+        'rounded-full border px-2.5 py-1 text-[10px] font-black uppercase',
+        className
+      )}
     >
       {label}
     </span>
   );
 }
 
-function AccessBadge({ student }: { student: Student }) {
-  const accounts = student.student_accounts;
+function AccessBadge({
+  student,
+}: {
+  student: Student;
+}) {
+  const accounts =
+    student.student_accounts;
+
+  const accountHasAccess =
+    Array.isArray(accounts)
+      ? accounts.some(
+          (account) =>
+            account.auth_user_id
+        )
+      : Boolean(
+          (
+            accounts as unknown as {
+              auth_user_id?: string;
+            }
+          )?.auth_user_id
+        );
 
   const hasAccess =
     Boolean(student.auth_user_id) ||
-    (Array.isArray(accounts)
-      ? accounts.some((account) => account.auth_user_id)
-      : Boolean((accounts as any)?.auth_user_id)) ||
-    student.app_access_status === 'active' ||
-    student.app_access_status === 'invited';
+    accountHasAccess ||
+    student.app_access_status ===
+      'active' ||
+    student.app_access_status ===
+      'invited';
 
-  const isBlocked =
-    student.app_access_status === 'blocked' ||
+  const blocked =
+    student.app_access_status ===
+      'blocked' ||
     student.login_enabled === false;
-
-  if (
-    isBlocked &&
-    (student.auth_user_id || (accounts as any)?.auth_user_id)
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-400/10 px-2.5 py-1 text-[11px] font-bold text-red-300">
-        <Lock className="h-3 w-3" />
-        Bloqueado
-      </span>
-    );
-  }
 
   return (
     <span
-      className={
-        hasAccess
-          ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300'
-          : 'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-400'
-      }
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold',
+        blocked
+          ? 'border-red-400/25 bg-red-400/10 text-red-300'
+          : hasAccess
+            ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'
+            : 'border-white/10 bg-white/[0.04] text-zinc-400'
+      )}
     >
-      <KeyRound className="h-3 w-3" />
-      {hasAccess ? 'Com acesso' : 'Sem acesso'}
+      {blocked ? (
+        <Lock className="h-3 w-3" />
+      ) : (
+        <KeyRound className="h-3 w-3" />
+      )}
+
+      {blocked
+        ? 'Bloqueado'
+        : hasAccess
+          ? 'Com acesso'
+          : 'Sem acesso'}
     </span>
   );
 }
 
+function getWorkoutStatusLabel(
+  workout: WorkoutPlan
+) {
+  const status = String(
+    workout.status || ''
+  ).toLowerCase();
+
+  if (status === 'published') {
+    return 'Publicado';
+  }
+
+  if (status === 'draft') {
+    return 'Rascunho';
+  }
+
+  if (status === 'archived') {
+    return 'Arquivado';
+  }
+
+  return status || 'Treino';
+}
+
+function getWorkoutStatusClass(
+  workout: WorkoutPlan
+) {
+  const status = String(
+    workout.status || ''
+  ).toLowerCase();
+
+  if (status === 'published') {
+    return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300';
+  }
+
+  if (status === 'draft') {
+    return 'border-yellow-400/25 bg-yellow-400/10 text-yellow-300';
+  }
+
+  return 'border-white/10 bg-white/[0.05] text-zinc-400';
+}
+
 export function StudentProfilePage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } =
+    useParams<{ id: string }>();
+
   const navigate = useNavigate();
-  const { trainerProfile } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('resumo');
-  const [loading, setLoading] = useState(true);
+  const { trainerProfile } =
+    useAuthStore();
 
-  const [student, setStudent] = useState<Student | null>(null);
-  const [goals, setGoals] = useState<StudentGoals | null>(null);
-  const [metrics, setMetrics] = useState<StudentMetrics[]>([]);
-  const [workouts, setWorkouts] = useState<WorkoutPlan[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] =
+    useState<TabKey>('resumo');
 
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
+  const [loading, setLoading] =
+    useState(true);
 
-  const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
-  const [generatedCredentials, setGeneratedCredentials] = useState<{
-    email: string;
-    password: string;
-    studentName: string;
-    phone: string | null;
-  } | null>(null);
+  const [error, setError] =
+    useState('');
 
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [copiedText, setCopiedText] = useState(false);
+  const [student, setStudent] =
+    useState<Student | null>(null);
 
-  const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    birthDate: '',
-  });
+  const [goals, setGoals] =
+    useState<StudentGoals | null>(
+      null
+    );
 
-  const [paymentForm, setPaymentForm] = useState({
+  const [metrics, setMetrics] =
+    useState<StudentMetrics[]>([]);
+
+  const [workouts, setWorkouts] =
+    useState<WorkoutPlan[]>([]);
+
+  const [payments, setPayments] =
+    useState<Payment[]>([]);
+
+  const [messages, setMessages] =
+    useState<Message[]>([]);
+
+  const [
+    deletingWorkoutId,
+    setDeletingWorkoutId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    editModalOpen,
+    setEditModalOpen,
+  ] = useState(false);
+
+  const [
+    paymentModalOpen,
+    setPaymentModalOpen,
+  ] = useState(false);
+
+  const [chatInput, setChatInput] =
+    useState('');
+
+  const [
+    credentialsModalOpen,
+    setCredentialsModalOpen,
+  ] = useState(false);
+
+  const [
+    generatedCredentials,
+    setGeneratedCredentials,
+  ] = useState<Credentials | null>(
+    null
+  );
+
+  const [
+    resettingPassword,
+    setResettingPassword,
+  ] = useState(false);
+
+  const [
+    passwordError,
+    setPasswordError,
+  ] = useState('');
+
+  const [copiedText, setCopiedText] =
+    useState(false);
+
+  const [editForm, setEditForm] =
+    useState({
+      name: '',
+      email: '',
+      phone: '',
+      birthDate: '',
+    });
+
+  const [
+    paymentForm,
+    setPaymentForm,
+  ] = useState({
     amount: '',
     dueDate: '',
     description: '',
     method: 'pix',
   });
 
-  const loadStudent = useCallback(async () => {
-    if (!id || !trainerProfile) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const studentData = await studentService.getStudentById(id);
-
-      if (!studentData) {
-        setError('Aluno não encontrado');
+  const loadStudent =
+    useCallback(async () => {
+      if (
+        !id ||
+        !trainerProfile?.id
+      ) {
         return;
       }
 
-      setStudent(studentData);
+      setLoading(true);
+      setError('');
 
-      const [goalsData, paymentsData, workoutsData, messagesData] =
-        await Promise.all([
+      try {
+        const studentData =
+          await studentService.getStudentById(
+            id
+          );
+
+        if (!studentData) {
+          throw new Error(
+            'Aluno não encontrado.'
+          );
+        }
+
+        const [
+          goalsResult,
+          paymentsResult,
+          workoutsResult,
+          messagesResult,
+          metricsResult,
+        ] = await Promise.all([
           supabase
             .from('student_goals')
             .select('*')
             .eq('student_id', id)
             .maybeSingle(),
-          paymentService.getPaymentsByStudent(id),
-          workoutService.getWorkoutPlansByStudent(id),
-          messageService.getMessages(trainerProfile.id, id),
+
+          paymentService.getPaymentsByStudent(
+            id
+          ),
+
+          workoutService.getWorkoutPlansByStudent(
+            id
+          ),
+
+          messageService.getMessages(
+            trainerProfile.id,
+            id
+          ),
+
+          supabase
+            .from('student_metrics')
+            .select('*')
+            .eq('student_id', id)
+            .order('created_at', {
+              ascending: false,
+            }),
         ]);
 
-      setGoals(goalsData.data || null);
-      setPayments(paymentsData);
-      setWorkouts(workoutsData);
-      setMessages(messagesData);
+        setStudent(studentData);
 
-      const { data: metricsData } = await supabase
-        .from('student_metrics')
-        .select('*')
-        .eq('student_id', id)
-        .order('created_at', { ascending: false });
+        setGoals(
+          goalsResult.data || null
+        );
 
-      setMetrics(metricsData || []);
-    } catch (err) {
-      console.error('Failed to load student:', err);
-      setError('Erro ao carregar dados do aluno');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, trainerProfile]);
+        setPayments(
+          paymentsResult || []
+        );
+
+        setWorkouts(
+          workoutsResult || []
+        );
+
+        setMessages(
+          messagesResult || []
+        );
+
+        setMetrics(
+          metricsResult.data || []
+        );
+      } catch (
+        loadError: unknown
+      ) {
+        console.error(
+          '[StudentProfilePage] load:',
+          loadError
+        );
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Erro ao carregar dados do aluno.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      id,
+      trainerProfile?.id,
+    ]);
 
   useEffect(() => {
-    loadStudent();
+    void loadStudent();
   }, [loadStudent]);
 
   useEffect(() => {
-    if (!student) return;
+    if (!student) {
+      return;
+    }
 
     setEditForm({
       name: student.name || '',
       email: student.email || '',
       phone: student.phone || '',
-      birthDate: student.birth_date || '',
+      birthDate:
+        student.birth_date || '',
     });
   }, [student]);
 
   async function handleEditStudent() {
-    if (!student) return;
+    if (!student) {
+      return;
+    }
+
+    setError('');
 
     try {
-      const updated = await studentService.updateStudent(student.id, {
-        name: editForm.name,
-        email: editForm.email,
-        phone: editForm.phone || null,
-        birth_date: editForm.birthDate || null,
-      });
+      const updated =
+        await studentService.updateStudent(
+          student.id,
+          {
+            name:
+              editForm.name.trim(),
+            email:
+              editForm.email.trim(),
+            phone:
+              editForm.phone.trim() ||
+              null,
+            birth_date:
+              editForm.birthDate ||
+              null,
+          }
+        );
 
       setStudent(updated);
       setEditModalOpen(false);
-    } catch (err) {
-      console.error('Failed to update student:', err);
+    } catch (
+      updateError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] update student:',
+        updateError
+      );
+
+      setError(
+        updateError instanceof Error
+          ? updateError.message
+          : 'Erro ao editar o aluno.'
+      );
+    }
+  }
+
+  async function handleDeleteWorkout(
+    workout: WorkoutPlan
+  ) {
+    if (!trainerProfile?.id) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Tem certeza que deseja excluir o treino "${workout.name}"?\n\nEsta ação não poderá ser desfeita.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingWorkoutId(
+      workout.id
+    );
+
+    setError('');
+
+    try {
+      const {
+        error: exercisesError,
+      } = await supabase
+        .from(
+          'workout_plan_exercises'
+        )
+        .delete()
+        .eq(
+          'workout_plan_id',
+          workout.id
+        );
+
+      if (exercisesError) {
+        throw exercisesError;
+      }
+
+      const {
+        error: groupsError,
+      } = await supabase
+        .from(
+          'workout_exercise_groups'
+        )
+        .delete()
+        .eq(
+          'workout_plan_id',
+          workout.id
+        );
+
+      if (groupsError) {
+        throw groupsError;
+      }
+
+      const {
+        error: daysError,
+      } = await supabase
+        .from('workout_days')
+        .delete()
+        .eq(
+          'workout_plan_id',
+          workout.id
+        );
+
+      if (daysError) {
+        throw daysError;
+      }
+
+      const {
+        error: planError,
+      } = await supabase
+        .from('workout_plans')
+        .delete()
+        .eq('id', workout.id)
+        .eq(
+          'trainer_id',
+          trainerProfile.id
+        );
+
+      if (planError) {
+        throw planError;
+      }
+
+      setWorkouts((previous) =>
+        previous.filter(
+          (item) =>
+            item.id !== workout.id
+        )
+      );
+    } catch (
+      deleteError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] delete workout:',
+        deleteError
+      );
+
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : 'Erro ao excluir o treino.'
+      );
+    } finally {
+      setDeletingWorkoutId(null);
     }
   }
 
   async function handleCreatePayment() {
-    if (!student || !trainerProfile || !paymentForm.amount) return;
+    if (
+      !student ||
+      !trainerProfile?.id ||
+      !paymentForm.amount
+    ) {
+      return;
+    }
+
+    setError('');
 
     try {
-      await paymentService.createPayment(trainerProfile.id, {
-        student_id: student.id,
-        student_name: student.name,
-        amount: Number(paymentForm.amount),
-        due_date: paymentForm.dueDate || undefined,
-        description: paymentForm.description || undefined,
-        method: paymentForm.method || undefined,
-      });
+      await paymentService.createPayment(
+        trainerProfile.id,
+        {
+          student_id: student.id,
+          student_name:
+            student.name,
+          amount: Number(
+            paymentForm.amount
+          ),
+          due_date:
+            paymentForm.dueDate ||
+            undefined,
+          description:
+            paymentForm.description ||
+            undefined,
+          method:
+            paymentForm.method ||
+            undefined,
+        }
+      );
 
       setPaymentModalOpen(false);
 
@@ -357,63 +782,119 @@ export function StudentProfilePage() {
         method: 'pix',
       });
 
-      const updated = await paymentService.getPaymentsByStudent(student.id);
+      const updated =
+        await paymentService.getPaymentsByStudent(
+          student.id
+        );
+
       setPayments(updated);
-    } catch (err) {
-      console.error('Failed to create payment:', err);
+    } catch (
+      paymentError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] payment:',
+        paymentError
+      );
+
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : 'Erro ao criar pagamento.'
+      );
     }
   }
 
   async function handleSendMessage() {
-    if (!student || !trainerProfile || !chatInput.trim()) return;
+    if (
+      !student ||
+      !trainerProfile?.id ||
+      !chatInput.trim()
+    ) {
+      return;
+    }
 
     try {
       await messageService.sendMessage({
-        trainer_id: trainerProfile.id,
+        trainer_id:
+          trainerProfile.id,
         student_id: student.id,
         sender_role: 'personal',
-        sender_id: trainerProfile.id,
+        sender_id:
+          trainerProfile.id,
         content: chatInput.trim(),
       });
 
       setChatInput('');
 
-      const updated = await messageService.getMessages(
-        trainerProfile.id,
-        student.id
-      );
+      const updated =
+        await messageService.getMessages(
+          trainerProfile.id,
+          student.id
+        );
+
       setMessages(updated);
-    } catch (err) {
-      console.error('Failed to send message:', err);
+    } catch (
+      messageError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] message:',
+        messageError
+      );
+
+      setError(
+        messageError instanceof Error
+          ? messageError.message
+          : 'Erro ao enviar mensagem.'
+      );
     }
   }
 
   async function handleToggleAccess() {
-    if (!student) return;
+    if (!student) {
+      return;
+    }
 
     try {
-      const newStatus = student.login_enabled
-        ? {
-            login_enabled: false,
-            app_access_status: 'blocked' as const,
-          }
-        : {
-            login_enabled: true,
-            app_access_status: 'active' as const,
-          };
+      const newStatus =
+        student.login_enabled
+          ? {
+              login_enabled: false,
+              app_access_status:
+                'blocked' as const,
+            }
+          : {
+              login_enabled: true,
+              app_access_status:
+                'active' as const,
+            };
 
-      const updated = await studentService.updateStudent(
-        student.id,
-        newStatus
-      );
+      const updated =
+        await studentService.updateStudent(
+          student.id,
+          newStatus
+        );
+
       setStudent(updated);
-    } catch (err) {
-      console.error('Failed to toggle access:', err);
+    } catch (
+      accessError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] access:',
+        accessError
+      );
+
+      setError(
+        accessError instanceof Error
+          ? accessError.message
+          : 'Erro ao alterar acesso.'
+      );
     }
   }
 
   async function handleResetPassword() {
-    if (!student) return;
+    if (!student) {
+      return;
+    }
 
     setResettingPassword(true);
     setPasswordError('');
@@ -421,111 +902,145 @@ export function StudentProfilePage() {
     try {
       const studentName =
         student.name ||
-        student.email?.split('@')[0] ||
+        student.email?.split(
+          '@'
+        )[0] ||
         'Aluno';
 
-      const { resetStudentPassword } = await import(
+      const {
+        resetStudentPassword,
+      } = await import(
         '../../services/resetStudentPassword'
       );
 
-      const tempPassword = await resetStudentPassword(
-        student.id,
-        student.email,
-        studentName
-      );
+      const password =
+        await resetStudentPassword(
+          student.id,
+          student.email,
+          studentName
+        );
 
       setGeneratedCredentials({
         email: student.email,
-        password: tempPassword,
+        password,
         studentName,
-        phone: student.phone,
+        phone:
+          student.phone || null,
       });
 
-      setCredentialsModalOpen(true);
-    } catch (err: any) {
-      console.error('[RESET STUDENT PASSWORD]', err);
-      setPasswordError(
-        err?.message || 'Erro ao resetar senha do aluno.'
+      setCredentialsModalOpen(
+        true
+      );
+    } catch (
+      resetError: unknown
+    ) {
+      console.error(
+        '[StudentProfilePage] reset password:',
+        resetError
       );
 
-      setTimeout(() => setPasswordError(''), 4000);
+      setPasswordError(
+        resetError instanceof Error
+          ? resetError.message
+          : 'Erro ao resetar senha.'
+      );
     } finally {
-      setResettingPassword(false);
+      setResettingPassword(
+        false
+      );
     }
   }
 
   function handleCopyCredentials() {
-    if (!generatedCredentials) return;
-
-    const text = `Email: ${generatedCredentials.email}\nSenha: ${generatedCredentials.password}`;
-
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopiedText(true);
-        setTimeout(() => setCopiedText(false), 2000);
-      })
-      .catch(() => {});
-  }
-
-  function handleSendWhatsApp() {
-    if (!generatedCredentials || !student) return;
-
-    const msg = `Olá ${student.name}, seu acesso ao VSFit Personal foi criado:
-
-Email: ${student.email}
-Senha temporária: ${generatedCredentials.password}
-
-Acesse o app e altere sua senha após o primeiro login.`;
-
-    const phone = normalizeWhatsappPhone(student.phone);
-
-    if (phone) {
-      window.open(
-        `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,
-        '_blank'
-      );
+    if (!generatedCredentials) {
       return;
     }
 
-    navigator.clipboard
-      .writeText(msg)
-      .then(() => {
-        setPasswordError(
-          'Telefone não informado. Mensagem copiada para envio manual.'
-        );
+    const text = `Email: ${generatedCredentials.email}\nSenha: ${generatedCredentials.password}`;
 
-        setTimeout(() => setPasswordError(''), 4000);
-      })
-      .catch(() => {});
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopiedText(true);
+
+        window.setTimeout(() => {
+          setCopiedText(false);
+        }, 2000);
+      });
+  }
+
+  function handleSendWhatsApp() {
+    if (
+      !generatedCredentials ||
+      !student
+    ) {
+      return;
+    }
+
+    const message = `Olá ${student.name}, seu acesso ao VSFit Personal foi criado:
+
+Email: ${generatedCredentials.email}
+Senha temporária: ${generatedCredentials.password}
+
+Acesse o aplicativo e altere sua senha após o primeiro login.`;
+
+    const phone =
+      normalizeWhatsappPhone(
+        generatedCredentials.phone
+      );
+
+    if (phone) {
+      window.open(
+        `https://wa.me/${phone}?text=${encodeURIComponent(
+          message
+        )}`,
+        '_blank'
+      );
+
+      return;
+    }
+
+    void navigator.clipboard.writeText(
+      message
+    );
+
+    setPasswordError(
+      'Telefone não informado. A mensagem foi copiada.'
+    );
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505]">
-        <Header title="Carregando..." showBack />
+        <Header
+          title="Carregando..."
+          showBack
+        />
 
         <div className="flex items-center justify-center pt-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#ff2a32] border-t-transparent" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#ff2a32]" />
         </div>
       </div>
     );
   }
 
-  if (error || !student) {
+  if (error && !student) {
     return (
       <div className="min-h-screen bg-[#050505]">
-        <Header title="Aluno" showBack />
+        <Header
+          title="Aluno"
+          showBack
+        />
 
         <EmptyState
           title="Aluno não encontrado"
-          description={
-            error || 'O aluno solicitado não foi encontrado'
-          }
+          description={error}
           action={
             <Button
               variant="secondary"
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                navigate(-1)
+              }
             >
               Voltar
             </Button>
@@ -533,6 +1048,10 @@ Acesse o app e altere sua senha após o primeiro login.`;
         />
       </div>
     );
+  }
+
+  if (!student) {
+    return null;
   }
 
   return (
@@ -543,35 +1062,52 @@ Acesse o app e altere sua senha após o primeiro login.`;
         right={
           <button
             type="button"
-            onClick={() => setEditModalOpen(true)}
-            className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black tracking-wide text-white transition-all active:scale-95"
+            onClick={() =>
+              setEditModalOpen(true)
+            }
+            className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black text-white"
           >
             EDITAR
           </button>
         }
       />
 
-      <div className="mx-auto w-full min-w-0 max-w-lg overflow-x-hidden px-4 pb-32 pt-4">
-        <div className="mb-6 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
+      <div className="mx-auto w-full max-w-lg px-4 pb-32 pt-4">
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        <section className="mb-6 rounded-[24px] border border-white/10 bg-white/[0.045] p-5">
           <div className="flex items-center gap-4">
-            <StudentAvatar student={student} />
+            <StudentAvatar
+              student={student}
+            />
 
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-black tracking-[-0.02em] text-white">
+              <h1 className="truncate text-xl font-black">
                 {student.name}
               </h1>
 
-              <p className="truncate text-[13px] font-medium text-zinc-400">
+              <p className="truncate text-[13px] text-zinc-400">
                 {student.email}
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StudentStatusBadge status={student.status} />
-                <AccessBadge student={student} />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <StudentStatusBadge
+                  status={
+                    student.status
+                  }
+                />
+
+                <AccessBadge
+                  student={student}
+                />
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         <div className="mb-6 grid grid-cols-3 gap-2 rounded-[22px] border border-white/5 bg-white/[0.03] p-2">
           {tabs.map((tab) => {
@@ -581,151 +1117,144 @@ Acesse o app e altere sua senha após o primeiro login.`;
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() =>
+                  setActiveTab(tab.key)
+                }
                 className={cn(
-                  'flex min-h-[46px] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] px-1 text-[10px] font-black uppercase tracking-wide transition-all',
-                  activeTab === tab.key
-                    ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/20 text-[#ff2a32] shadow-[0_8px_20px_rgba(255,42,48,0.12)]'
+                  'flex min-h-[48px] flex-col items-center justify-center gap-1 rounded-[16px] px-1 text-[10px] font-black uppercase',
+                  activeTab ===
+                    tab.key
+                    ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/20 text-[#ff2a32]'
                     : 'text-zinc-500'
                 )}
               >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="max-w-full truncate">
-                  {tab.label}
-                </span>
+                <Icon className="h-4 w-4" />
+                {tab.label}
               </button>
             );
           })}
         </div>
 
-        {activeTab === 'resumo' && (
+        {activeTab ===
+          'resumo' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
             className="space-y-4"
           >
-            <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
-                  <User className="h-4 w-4 text-[#ff2a32]" />
-                </div>
+            <SectionCard
+              title="Dados do aluno"
+              icon={User}
+            >
+              <InfoRow
+                icon={Phone}
+                label="Telefone"
+                value={
+                  student.phone
+                    ? formatPhone(
+                        student.phone
+                      )
+                    : 'Não informado'
+                }
+              />
 
-                <h3 className="text-xs font-black uppercase tracking-[0.1em] text-zinc-500">
-                  Dados do Aluno
-                </h3>
-              </div>
+              <InfoRow
+                icon={Calendar}
+                label="Nascimento"
+                value={
+                  student.birth_date
+                    ? formatDate(
+                        student.birth_date
+                      )
+                    : 'Não informado'
+                }
+              />
+            </SectionCard>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-white/[0.04]">
-                    <Phone className="h-4 w-4 text-zinc-400" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                      Telefone
-                    </p>
-
-                    <p className="break-words text-sm font-black text-white">
-                      {student.phone
-                        ? formatPhone(student.phone)
-                        : '—'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-white/[0.04]">
-                    <Calendar className="h-4 w-4 text-zinc-400" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                      Nascimento
-                    </p>
-
-                    <p className="break-words text-sm font-black text-white">
-                      {student.birth_date
-                        ? formatDate(student.birth_date)
-                        : '—'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
-                  <Target className="h-4 w-4 text-[#ff2a32]" />
-                </div>
-
-                <h3 className="text-xs font-black uppercase tracking-[0.1em] text-zinc-500">
-                  Metas e Objetivos
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                    Objetivo
-                  </p>
-
-                  <p className="break-words text-sm font-black text-white">
-                    {goals?.objective || '—'}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                    Nível
-                  </p>
-
-                  <p className="break-words text-sm font-black text-white">
-                    {goals?.level || '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
-                <p className="text-3xl font-black text-[#ff2a32]">
-                  {workouts.length}
-                </p>
-
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500">
-                  Treinos
-                </p>
-              </div>
-
-              <div className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
-                <p className="text-3xl font-black text-emerald-400">
-                  {
-                    payments.filter(
-                      (payment) => payment.status === 'paid'
-                    ).length
+            <SectionCard
+              title="Metas"
+              icon={Target}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <InfoBox
+                  label="Objetivo"
+                  value={
+                    goals?.objective ||
+                    'Não informado'
                   }
-                </p>
+                />
 
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500">
-                  Pagamentos
-                </p>
+                <InfoBox
+                  label="Nível"
+                  value={
+                    goals?.level ||
+                    'Não informado'
+                  }
+                />
+
+                <InfoBox
+                  label="Frequência"
+                  value={
+                    goals?.weekly_frequency
+                      ? `${goals.weekly_frequency}x por semana`
+                      : 'Não informada'
+                  }
+                />
+
+                <InfoBox
+                  label="Peso-alvo"
+                  value={
+                    goals?.target_weight
+                      ? `${goals.target_weight} kg`
+                      : 'Não informado'
+                  }
+                />
               </div>
+            </SectionCard>
+
+            <div className="grid grid-cols-2 gap-3">
+              <CounterCard
+                value={workouts.length}
+                label="Treinos"
+              />
+
+              <CounterCard
+                value={
+                  payments.filter(
+                    (payment) =>
+                      payment.status ===
+                      'paid'
+                  ).length
+                }
+                label="Pagamentos"
+              />
             </div>
           </motion.div>
         )}
 
-        {activeTab === 'treinos' && (
+        {activeTab ===
+          'treinos' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="min-w-0 space-y-6"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="space-y-4"
           >
-            <div className="flex min-w-0 items-center justify-between gap-3">
-              <h3 className="min-w-0 text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
-                Planos de Treino
-              </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-black uppercase text-zinc-500">
+                Planos de treino
+              </h2>
 
               <button
                 type="button"
@@ -734,368 +1263,400 @@ Acesse o app e altere sua senha após o primeiro login.`;
                     `/personal/workout-builder?studentId=${student.id}`
                   )
                 }
-                className="flex shrink-0 items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
+                className="flex items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
                 NOVO
               </button>
             </div>
 
             {workouts.length === 0 ? (
-              <div className="py-8">
-                <EmptyState
-                  icon={
-                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/5 bg-white/[0.03]">
-                      <Dumbbell className="h-10 w-10 text-zinc-700" />
-                    </div>
-                  }
-                  title="Nenhum treino criado"
-                  description="Comece criando o primeiro plano de treino personalizado para este aluno."
-                  action={
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/personal/workout-builder?studentId=${student.id}`
-                        )
-                      }
-                      className="mt-6 rounded-2xl bg-[#ff2a32] px-8 py-4 text-[14px] font-black text-white shadow-[0_15px_40px_rgba(255,42,48,0.3)] transition-all active:scale-95"
-                    >
-                      CRIAR PRIMEIRO TREINO
-                    </button>
-                  }
-                />
-              </div>
-            ) : (
-              <div className="grid w-full min-w-0 max-w-full gap-3 overflow-hidden">
-                {workouts.map((workout) => (
-                  <button
-                    key={workout.id}
-                    type="button"
+              <EmptyState
+                title="Nenhum treino criado"
+                description="Crie o primeiro plano de treino para este aluno."
+                action={
+                  <Button
                     onClick={() =>
                       navigate(
-                        `/personal/workout-builder?studentId=${student.id}&workoutId=${workout.id}`
+                        `/personal/workout-builder?studentId=${student.id}`
                       )
                     }
-                    className="block w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/5 bg-white/[0.03] p-4 text-left transition-all hover:border-white/10 active:scale-[0.98]"
                   >
-                    <div className="flex w-full min-w-0 items-start gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#ff2a32]/10 bg-[#ff2a32]/10">
-                        <Dumbbell className="h-6 w-6 text-[#ff2a32]" />
-                      </div>
-
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="flex min-w-0 items-start gap-2">
-                          <h4 className="min-w-0 flex-1 break-words text-[14px] font-black leading-tight tracking-tight text-white">
-                            {workout.name}
-                          </h4>
-
-                          <div className="shrink-0">
-                            <Badge status={workout.status} />
+                    <Plus className="h-4 w-4" />
+                    Criar treino
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-3">
+                {workouts.map(
+                  (workout) => (
+                    <article
+                      key={workout.id}
+                      className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            `/personal/workout-builder?studentId=${student.id}&workoutId=${workout.id}`
+                          )
+                        }
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff2a32]/15 text-[#ff2a32]">
+                            <Dumbbell className="h-6 w-6" />
                           </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={cn(
+                                  'rounded-full border px-2.5 py-1 text-[9px] font-black uppercase',
+                                  getWorkoutStatusClass(
+                                    workout
+                                  )
+                                )}
+                              >
+                                {getWorkoutStatusLabel(
+                                  workout
+                                )}
+                              </span>
+                            </div>
+
+                            <h3 className="mt-2 truncate text-base font-black">
+                              {workout.name}
+                            </h3>
+
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {workout.objective ||
+                                'Treino personalizado'}
+                            </p>
+                          </div>
+
+                          <ChevronRight className="h-5 w-5 text-zinc-700" />
                         </div>
+                      </button>
 
-                        <p className="mt-1 min-w-0 break-words text-[11px] font-medium leading-relaxed text-zinc-400">
-                          {workout.objective || 'Treino Geral'} •{' '}
-                          {workout.level || 'Todos os níveis'}
-                        </p>
+                      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/personal/workout-builder?studentId=${student.id}&workoutId=${workout.id}`
+                            )
+                          }
+                          className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] text-[11px] font-black"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          EDITAR
+                        </button>
 
-                        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-                          <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold text-zinc-500">
-                            <Clock className="h-3.5 w-3.5" />
-                            {workout.duration_minutes || '--'} min
-                          </div>
+                        <button
+                          type="button"
+                          disabled={
+                            deletingWorkoutId ===
+                            workout.id
+                          }
+                          onClick={() =>
+                            void handleDeleteWorkout(
+                              workout
+                            )
+                          }
+                          className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 text-[11px] font-black text-red-300 disabled:opacity-50"
+                        >
+                          {deletingWorkoutId ===
+                          workout.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
 
-                          <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold text-zinc-500">
-                            <Activity className="h-3.5 w-3.5 shrink-0" />
-                            <span className="break-words">
-                              Frequência Livre
-                            </span>
-                          </div>
-                        </div>
+                          EXCLUIR
+                        </button>
                       </div>
-
-                      <ChevronRight className="mt-3 h-5 w-5 shrink-0 text-zinc-700" />
-                    </div>
-                  </button>
-                ))}
+                    </article>
+                  )
+                )}
               </div>
             )}
           </motion.div>
         )}
 
-        {activeTab === 'progresso' && (
+        {activeTab ===
+          'progresso' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="space-y-4"
           >
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
-                Histórico de Medidas
-              </h3>
+              <h2 className="text-sm font-black uppercase text-zinc-500">
+                Progresso
+              </h2>
 
               <button
                 type="button"
-                onClick={() => navigate('/personal/progress')}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-white/5 bg-white/[0.04] px-4 py-2 text-[11px] font-black tracking-wide text-zinc-400 transition-all active:scale-95"
+                onClick={() =>
+                  navigate(
+                    '/personal/progress'
+                  )
+                }
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-black"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
                 NOVA
               </button>
             </div>
 
             {metrics.length === 0 ? (
-              <div className="py-8">
-                <EmptyState
-                  icon={
-                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/5 bg-white/[0.03]">
-                      <Ruler className="h-10 w-10 text-zinc-700" />
-                    </div>
-                  }
-                  title="Nenhuma medida"
-                  description="As avaliações físicas e progresso do aluno aparecerão listadas aqui."
-                />
-              </div>
+              <EmptyState
+                title="Nenhuma medida"
+                description="As avaliações físicas aparecerão aqui."
+              />
             ) : (
-              <div className="grid gap-4">
-                {metrics.map((metric) => (
-                  <div
-                    key={metric.id}
-                    className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-5"
-                  >
-                    <div className="mb-4 flex items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-                        <Calendar className="h-3.5 w-3.5 text-blue-400" />
-                      </div>
-
-                      <p className="min-w-0 break-words text-[11px] font-black uppercase tracking-widest text-zinc-500">
-                        {formatDateTime(metric.created_at)}
+              <div className="space-y-3">
+                {metrics.map(
+                  (metric) => (
+                    <article
+                      key={metric.id}
+                      className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4"
+                    >
+                      <p className="mb-3 text-[10px] font-black uppercase text-zinc-500">
+                        {formatDateTime(
+                          metric.created_at
+                        )}
                       </p>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      {metric.weight && (
-                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                            Peso
-                          </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <MetricBox
+                          label="Peso"
+                          value={
+                            metric.weight
+                              ? `${metric.weight} kg`
+                              : '—'
+                          }
+                        />
 
-                          <p className="break-words text-lg font-black text-white">
-                            {metric.weight}kg
-                          </p>
-                        </div>
-                      )}
+                        <MetricBox
+                          label="Altura"
+                          value={
+                            metric.height
+                              ? `${metric.height} m`
+                              : '—'
+                          }
+                        />
 
-                      {metric.height && (
-                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                            Altura
-                          </span>
+                        <MetricBox
+                          label="Gordura"
+                          value={
+                            metric.body_fat
+                              ? `${metric.body_fat}%`
+                              : '—'
+                          }
+                        />
 
-                          <p className="break-words text-lg font-black text-white">
-                            {metric.height}m
-                          </p>
-                        </div>
-                      )}
-
-                      {metric.body_fat && (
-                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                            Gordura
-                          </span>
-
-                          <p className="break-words text-lg font-black text-blue-400">
-                            {metric.body_fat}%
-                          </p>
-                        </div>
-                      )}
-
-                      {metric.muscle_mass && (
-                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                            Massa
-                          </span>
-
-                          <p className="break-words text-lg font-black text-emerald-400">
-                            {metric.muscle_mass}kg
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                        <MetricBox
+                          label="Massa muscular"
+                          value={
+                            metric.muscle_mass
+                              ? `${metric.muscle_mass} kg`
+                              : '—'
+                          }
+                        />
+                      </div>
+                    </article>
+                  )
+                )}
               </div>
             )}
           </motion.div>
         )}
 
-        {activeTab === 'financeiro' && (
+        {activeTab ===
+          'financeiro' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="space-y-4"
           >
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-black uppercase text-zinc-500">
                 Financeiro
-              </h3>
+              </h2>
 
               <button
                 type="button"
-                onClick={() => setPaymentModalOpen(true)}
-                className="flex shrink-0 items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
+                onClick={() =>
+                  setPaymentModalOpen(
+                    true
+                  )
+                }
+                className="flex items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
                 NOVO
               </button>
             </div>
 
             {payments.length === 0 ? (
-              <div className="py-8">
-                <EmptyState
-                  icon={
-                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/5 bg-white/[0.03]">
-                      <DollarSign className="h-10 w-10 text-zinc-700" />
-                    </div>
-                  }
-                  title="Nenhum pagamento"
-                  description="Registre as cobranças e mensalidades deste aluno para controle financeiro."
-                  action={
-                    <button
-                      type="button"
-                      onClick={() => setPaymentModalOpen(true)}
-                      className="mt-6 rounded-2xl bg-[#ff2a32] px-8 py-4 text-[14px] font-black text-white shadow-[0_15px_40px_rgba(255,42,48,0.3)] transition-all active:scale-95"
-                    >
-                      ADICIONAR PAGAMENTO
-                    </button>
-                  }
-                />
-              </div>
+              <EmptyState
+                title="Nenhum pagamento"
+                description="As cobranças deste aluno aparecerão aqui."
+              />
             ) : (
-              <div className="grid gap-3">
-                {payments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="min-w-0 overflow-hidden rounded-[24px] border border-white/5 bg-white/[0.03] p-5 transition-all active:scale-[0.98]"
-                  >
-                    <div className="flex min-w-0 items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
-                          <p className="min-w-0 break-words text-xl font-black text-white">
-                            {formatCurrency(payment.amount)}
+              <div className="space-y-3">
+                {payments.map(
+                  (payment) => (
+                    <article
+                      key={payment.id}
+                      className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xl font-black">
+                            {formatCurrency(
+                              payment.amount
+                            )}
                           </p>
 
-                          <div className="shrink-0">
-                            <Badge status={payment.status} />
-                          </div>
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {payment.description ||
+                              'Sem descrição'}
+                          </p>
                         </div>
 
-                        <p className="break-words text-[13px] font-bold text-zinc-300">
-                          {payment.description || 'Sem descrição'}
-                        </p>
-
-                        <div className="mt-3 flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-                          <Calendar className="h-3.5 w-3.5 shrink-0" />
-                          <span className="break-words">
-                            Vencimento:{' '}
-                            {formatDate(payment.due_date)}
-                          </span>
-                        </div>
+                        <Badge
+                          status={
+                            payment.status
+                          }
+                        />
                       </div>
-                    </div>
-                  </div>
-                ))}
+
+                      <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                        <Calendar className="h-4 w-4" />
+                        Vencimento:{' '}
+                        {payment.due_date
+                          ? formatDate(
+                              payment.due_date
+                            )
+                          : 'Não definido'}
+                      </p>
+                    </article>
+                  )
+                )}
               </div>
             )}
           </motion.div>
         )}
 
-        {activeTab === 'chat' && (
+        {activeTab ===
+          'chat' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="space-y-4"
           >
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
-                Conversa
-              </h3>
+            <h2 className="text-sm font-black uppercase text-zinc-500">
+              Conversa
+            </h2>
 
-              <button
-                type="button"
-                onClick={() => navigate('/personal/chat')}
-                className="shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] font-black text-white"
-              >
-                ABRIR CHAT
-              </button>
-            </div>
-
-            <div className="hide-scrollbar flex max-h-[500px] min-w-0 flex-col gap-4 overflow-y-auto px-1">
+            <div className="max-h-[480px] space-y-3 overflow-y-auto">
               {messages.length === 0 ? (
-                <div className="py-12">
-                  <EmptyState
-                    title="Nenhuma mensagem"
-                    description="Inicie uma conversa direta com seu aluno através do chat do aplicativo."
-                  />
-                </div>
+                <EmptyState
+                  title="Nenhuma mensagem"
+                  description="Inicie uma conversa com o aluno."
+                />
               ) : (
-                messages.map((message) => {
-                  const isPersonal =
-                    message.sender_role === 'personal';
+                messages.map(
+                  (message) => {
+                    const personal =
+                      message.sender_role ===
+                      'personal';
 
-                  return (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        'flex min-w-0',
-                        isPersonal
-                          ? 'justify-end'
-                          : 'justify-start'
-                      )}
-                    >
+                    return (
                       <div
+                        key={message.id}
                         className={cn(
-                          'max-w-[85%] min-w-0 overflow-hidden rounded-[20px] px-4 py-3 shadow-lg',
-                          isPersonal
-                            ? 'rounded-tr-sm bg-[#ff2a32] text-white'
-                            : 'rounded-tl-sm border border-white/5 bg-white/[0.06] text-white'
+                          'flex',
+                          personal
+                            ? 'justify-end'
+                            : 'justify-start'
                         )}
                       >
-                        <p className="break-words text-sm font-medium leading-relaxed">
-                          {message.content}
-                        </p>
+                        <div
+                          className={cn(
+                            'max-w-[85%] rounded-[20px] px-4 py-3',
+                            personal
+                              ? 'rounded-tr-sm bg-[#ff2a32]'
+                              : 'rounded-tl-sm border border-white/10 bg-white/[0.06]'
+                          )}
+                        >
+                          <p className="break-words text-sm">
+                            {message.content}
+                          </p>
 
-                        <p className="mt-1.5 break-words text-[9px] font-bold uppercase tracking-wider opacity-60">
-                          {formatDateTime(message.created_at)}
-                        </p>
+                          <p className="mt-1 text-[9px] opacity-60">
+                            {formatDateTime(
+                              message.created_at
+                            )}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  }
+                )
               )}
             </div>
 
-            <div className="flex min-w-0 gap-2 border-t border-white/5 pt-4">
+            <div className="flex gap-2 border-t border-white/10 pt-4">
               <input
-                type="text"
                 value={chatInput}
                 onChange={(event) =>
-                  setChatInput(event.target.value)
+                  setChatInput(
+                    event.target.value
+                  )
                 }
-                onKeyDown={(event) =>
-                  event.key === 'Enter' &&
-                  handleSendMessage()
-                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key ===
+                    'Enter'
+                  ) {
+                    void handleSendMessage();
+                  }
+                }}
                 placeholder="Escreva sua mensagem..."
-                className="min-w-0 flex-1 rounded-[18px] border border-white/10 bg-white/[0.045] px-5 py-3.5 text-sm font-medium placeholder:text-zinc-600 transition-all focus:border-[#ff2a32]/40 focus:bg-white/[0.06] focus:outline-none"
+                className="min-w-0 flex-1 rounded-[18px] border border-white/10 bg-white/[0.045] px-4 py-3 text-sm outline-none"
               />
 
               <button
                 type="button"
-                onClick={handleSendMessage}
-                disabled={!chatInput.trim()}
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-[#ff2a32] text-white shadow-[0_12px_30px_rgba(255,42,48,0.22)] transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
+                disabled={
+                  !chatInput.trim()
+                }
+                onClick={() =>
+                  void handleSendMessage()
+                }
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#ff2a32] disabled:opacity-50"
               >
                 <Send className="h-5 w-5" />
               </button>
@@ -1103,158 +1664,97 @@ Acesse o app e altere sua senha após o primeiro login.`;
           </motion.div>
         )}
 
-        {activeTab === 'dados' && (
+        {activeTab ===
+          'dados' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="space-y-4"
           >
-            <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-6">
-              <div className="mb-6 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
-                  <KeyRound className="h-4 w-4 text-[#ff2a32]" />
-                </div>
+            <SectionCard
+              title="Controle de acesso"
+              icon={KeyRound}
+            >
+              <p className="text-sm text-zinc-400">
+                {student.login_enabled
+                  ? 'O aluno pode acessar o aplicativo.'
+                  : 'O acesso do aluno está bloqueado.'}
+              </p>
 
-                <h3 className="text-xs font-black uppercase tracking-[0.1em] text-zinc-500">
-                  Controle de Acesso
-                </h3>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.035] p-5">
-                  <h4 className="text-[15px] font-black leading-tight text-white">
-                    Acesso ao Aplicativo
-                  </h4>
-
-                  <p className="mt-1 text-[12px] leading-relaxed text-zinc-400">
-                    {student.login_enabled
-                      ? 'O aluno pode realizar login e acessar seus treinos.'
-                      : 'Acesso suspenso. O aluno não consegue acessar o app.'}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleToggleAccess}
-                    className={cn(
-                      'mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] text-[13px] font-black tracking-wide transition-all active:scale-[0.98]',
-                      student.login_enabled
-                        ? 'border border-red-500/20 bg-red-500/10 text-red-400'
-                        : 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                    )}
-                  >
-                    {student.login_enabled ? (
-                      <>
-                        <Lock className="h-4 w-4" />
-                        BLOQUEAR
-                      </>
-                    ) : (
-                      <>
-                        <Unlock className="h-4 w-4" />
-                        LIBERAR ACESSO
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.035] p-5">
-                  <h4 className="text-[15px] font-black leading-tight text-white">
-                    Segurança da Conta
-                  </h4>
-
-                  <p className="mt-1 text-[12px] leading-relaxed text-zinc-400">
-                    Gera uma nova senha temporária e desconecta o aluno de outros dispositivos.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleResetPassword}
-                    disabled={resettingPassword}
-                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.06] text-[13px] font-black tracking-wide text-white transition-all active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {resettingPassword ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        GERANDO...
-                      </>
-                    ) : (
-                      <>
-                        <Key className="h-4 w-4" />
-                        RESETAR SENHA
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {passwordError && (
-                  <p className="mt-2 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-xs font-medium text-red-400">
-                    {passwordError}
-                  </p>
+              <button
+                type="button"
+                onClick={() =>
+                  void handleToggleAccess()
+                }
+                className={cn(
+                  'mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] text-sm font-black',
+                  student.login_enabled
+                    ? 'border border-red-400/20 bg-red-400/10 text-red-300'
+                    : 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
                 )}
-              </div>
-            </div>
+              >
+                {student.login_enabled ? (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    BLOQUEAR ACESSO
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-4 w-4" />
+                    LIBERAR ACESSO
+                  </>
+                )}
+              </button>
+            </SectionCard>
 
-            <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-6">
-              <div className="mb-6 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
-                  <Target className="h-4 w-4 text-[#ff2a32]" />
-                </div>
+            <SectionCard
+              title="Segurança"
+              icon={Key}
+            >
+              <p className="text-sm text-zinc-400">
+                Gere uma nova senha temporária para o aluno.
+              </p>
 
-                <h3 className="text-xs font-black uppercase tracking-[0.1em] text-zinc-500">
-                  Mais Metas
-                </h3>
-              </div>
+              <button
+                type="button"
+                disabled={
+                  resettingPassword
+                }
+                onClick={() =>
+                  void handleResetPassword()
+                }
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.06] text-sm font-black disabled:opacity-50"
+              >
+                {resettingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4" />
+                )}
 
-              {goals ? (
-                <div className="grid gap-4">
-                  <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
-                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                      Frequência Semanal
-                    </p>
+                RESETAR SENHA
+              </button>
 
-                    <p className="break-words text-sm font-black text-white">
-                      {goals.weekly_frequency
-                        ? `${goals.weekly_frequency}x por semana`
-                        : 'Não informada'}
-                    </p>
-                  </div>
-
-                  <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
-                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                      Peso Alvo
-                    </p>
-
-                    <p className="break-words text-sm font-black text-[#ff2a32]">
-                      {goals.target_weight
-                        ? `${goals.target_weight}kg`
-                        : 'Não informado'}
-                    </p>
-                  </div>
-
-                  {goals.goal_notes && (
-                    <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
-                      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Observações
-                      </p>
-
-                      <p className="break-words text-xs font-medium leading-relaxed text-zinc-400">
-                        {goals.goal_notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="py-4 text-center text-sm font-medium italic text-zinc-500">
-                  Nenhuma meta adicional registrada.
+              {passwordError && (
+                <p className="mt-3 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300">
+                  {passwordError}
                 </p>
               )}
-            </div>
+            </SectionCard>
           </motion.div>
         )}
       </div>
 
       <Modal
         open={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
+        onClose={() =>
+          setEditModalOpen(false)
+        }
         title="Editar Aluno"
       >
         <div className="space-y-4">
@@ -1262,10 +1762,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
             label="Nome"
             value={editForm.name}
             onChange={(event) =>
-              setEditForm({
-                ...editForm,
-                name: event.target.value,
-              })
+              setEditForm(
+                (previous) => ({
+                  ...previous,
+                  name:
+                    event.target.value,
+                })
+              )
             }
           />
 
@@ -1274,10 +1777,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
             type="email"
             value={editForm.email}
             onChange={(event) =>
-              setEditForm({
-                ...editForm,
-                email: event.target.value,
-              })
+              setEditForm(
+                (previous) => ({
+                  ...previous,
+                  email:
+                    event.target.value,
+                })
+              )
             }
           />
 
@@ -1285,35 +1791,49 @@ Acesse o app e altere sua senha após o primeiro login.`;
             label="Telefone"
             value={editForm.phone}
             onChange={(event) =>
-              setEditForm({
-                ...editForm,
-                phone: event.target.value,
-              })
+              setEditForm(
+                (previous) => ({
+                  ...previous,
+                  phone:
+                    event.target.value,
+                })
+              )
             }
           />
 
           <Input
-            label="Data de Nascimento"
+            label="Data de nascimento"
             type="date"
-            value={editForm.birthDate}
+            value={
+              editForm.birthDate
+            }
             onChange={(event) =>
-              setEditForm({
-                ...editForm,
-                birthDate: event.target.value,
-              })
+              setEditForm(
+                (previous) => ({
+                  ...previous,
+                  birthDate:
+                    event.target.value,
+                })
+              )
             }
           />
 
-          <Button onClick={handleEditStudent}>
+          <Button
+            onClick={() =>
+              void handleEditStudent()
+            }
+          >
             <Save className="h-4 w-4" />
-            Salvar Alterações
+            Salvar alterações
           </Button>
         </div>
       </Modal>
 
       <Modal
         open={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
+        onClose={() =>
+          setPaymentModalOpen(false)
+        }
         title="Novo Pagamento"
       >
         <div className="space-y-4">
@@ -1321,195 +1841,352 @@ Acesse o app e altere sua senha após o primeiro login.`;
             label="Valor"
             type="number"
             step="0.01"
-            placeholder="0,00"
-            value={paymentForm.amount}
+            value={
+              paymentForm.amount
+            }
             onChange={(event) =>
-              setPaymentForm({
-                ...paymentForm,
-                amount: event.target.value,
-              })
+              setPaymentForm(
+                (previous) => ({
+                  ...previous,
+                  amount:
+                    event.target.value,
+                })
+              )
             }
           />
 
           <Input
-            label="Data de Vencimento"
+            label="Vencimento"
             type="date"
-            value={paymentForm.dueDate}
+            value={
+              paymentForm.dueDate
+            }
             onChange={(event) =>
-              setPaymentForm({
-                ...paymentForm,
-                dueDate: event.target.value,
-              })
+              setPaymentForm(
+                (previous) => ({
+                  ...previous,
+                  dueDate:
+                    event.target.value,
+                })
+              )
             }
           />
 
           <Input
             label="Descrição"
-            placeholder="Ex: Mensalidade Junho"
-            value={paymentForm.description}
+            value={
+              paymentForm.description
+            }
             onChange={(event) =>
-              setPaymentForm({
-                ...paymentForm,
-                description: event.target.value,
-              })
+              setPaymentForm(
+                (previous) => ({
+                  ...previous,
+                  description:
+                    event.target.value,
+                })
+              )
             }
           />
 
-          <div className="space-y-2">
-            <span className="text-[11px] font-black uppercase tracking-wide text-zinc-500">
+          <div>
+            <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
               Método
-            </span>
+            </p>
 
             <div className="grid grid-cols-2 gap-2">
-              {PAYMENT_METHODS.map((method) => (
-                <button
-                  key={method.value}
-                  type="button"
-                  onClick={() =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      method: method.value,
-                    })
-                  }
-                  className={cn(
-                    'min-h-12 rounded-2xl border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
-                    paymentForm.method === method.value
-                      ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32] shadow-[0_12px_30px_rgba(255,42,48,0.18)]'
-                      : 'border-white/10 bg-white/[0.045] text-zinc-400'
-                  )}
-                >
-                  {method.label}
-                </button>
-              ))}
+              {PAYMENT_METHODS.map(
+                (method) => (
+                  <button
+                    key={
+                      method.value
+                    }
+                    type="button"
+                    onClick={() =>
+                      setPaymentForm(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+                          method:
+                            method.value,
+                        })
+                      )
+                    }
+                    className={cn(
+                      'h-11 rounded-2xl border text-[11px] font-black',
+                      paymentForm.method ===
+                        method.value
+                        ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                        : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                    )}
+                  >
+                    {method.label}
+                  </button>
+                )
+              )}
             </div>
           </div>
 
-          <Button onClick={handleCreatePayment}>
+          <Button
+            onClick={() =>
+              void handleCreatePayment()
+            }
+          >
             <Plus className="h-4 w-4" />
-            Criar Pagamento
+            Criar pagamento
           </Button>
         </div>
       </Modal>
 
-      {generatedCredentials && credentialsModalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-md">
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={() =>
-              setCredentialsModalOpen(false)
-            }
-            className="absolute inset-0"
-          />
-
-          <div className="relative w-full max-w-[370px] overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
-            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-emerald-500/20 to-transparent" />
-
+      {generatedCredentials &&
+        credentialsModalOpen && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-md">
             <button
               type="button"
+              aria-label="Fechar"
+              className="absolute inset-0"
               onClick={() =>
-                setCredentialsModalOpen(false)
+                setCredentialsModalOpen(
+                  false
+                )
               }
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            />
 
-            <div className="relative p-5 pt-7">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] bg-emerald-500/15 text-emerald-400 shadow-[0_18px_45px_rgba(16,185,129,0.22)]">
+            <div className="relative w-full max-w-[380px] rounded-[32px] border border-white/10 bg-[#080808] p-5">
+              <button
+                type="button"
+                onClick={() =>
+                  setCredentialsModalOpen(
+                    false
+                  )
+                }
+                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] bg-emerald-500/15 text-emerald-400">
                 <KeyRound className="h-8 w-8" />
               </div>
 
-              <h2 className="mt-5 text-center text-[22px] font-black tracking-[-0.04em] text-white">
-                Senha temporária gerada
+              <h2 className="mt-5 text-center text-xl font-black">
+                Senha temporária
               </h2>
 
-              <p className="mt-2 text-center text-[13px] leading-relaxed text-zinc-400">
-                Envie essas credenciais para o aluno acessar o aplicativo.
-              </p>
+              <div className="mt-5 space-y-3">
+                <CredentialBox
+                  label="Aluno"
+                  value={
+                    generatedCredentials.studentName
+                  }
+                />
 
-              <div className="mt-5 rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
-                <p className="text-[13px] font-bold text-emerald-300">
-                  Acesso criado com sucesso!
-                </p>
-              </div>
+                <CredentialBox
+                  label="Email"
+                  value={
+                    generatedCredentials.email
+                  }
+                />
 
-              <div className="mt-4 space-y-3">
-                <div className="rounded-[18px] border border-white/10 bg-white/[0.045] p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                    Aluno
-                  </p>
-
-                  <p className="mt-1 break-words text-[14px] font-black text-white">
-                    {generatedCredentials.studentName}
-                  </p>
-                </div>
-
-                <div className="rounded-[18px] border border-white/10 bg-white/[0.045] p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                    Email
-                  </p>
-
-                  <p className="mt-1 break-all text-[14px] font-black text-white">
-                    {generatedCredentials.email}
-                  </p>
-                </div>
-
-                <div className="rounded-[18px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-red-300">
-                    Senha temporária
-                  </p>
-
-                  <p className="mt-1 break-all text-[18px] font-black tracking-wide text-[#ff2a32]">
-                    {generatedCredentials.password}
-                  </p>
-                </div>
+                <CredentialBox
+                  label="Senha"
+                  value={
+                    generatedCredentials.password
+                  }
+                  highlighted
+                />
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={handleCopyCredentials}
-                  className="h-12 rounded-[18px] border border-white/10 bg-white/[0.06] text-[14px] font-black text-white active:scale-[0.98]"
+                  onClick={
+                    handleCopyCredentials
+                  }
+                  className="flex h-12 items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.06] text-sm font-black"
                 >
                   {copiedText ? (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <Check className="h-4 w-4" />
-                      Copiado
-                    </span>
+                    <Check className="h-4 w-4" />
                   ) : (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <Copy className="h-4 w-4" />
-                      Copiar
-                    </span>
+                    <Copy className="h-4 w-4" />
                   )}
+
+                  {copiedText
+                    ? 'Copiado'
+                    : 'Copiar'}
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleSendWhatsApp}
-                  className="h-12 rounded-[18px] border border-white/10 bg-white/[0.06] text-[14px] font-black text-white active:scale-[0.98]"
+                  onClick={
+                    handleSendWhatsApp
+                  }
+                  className="flex h-12 items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.06] text-sm font-black"
                 >
-                  <span className="flex items-center justify-center gap-1.5">
-                    <Send className="h-4 w-4" />
-                    WhatsApp
-                  </span>
+                  <Send className="h-4 w-4" />
+                  WhatsApp
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setCredentialsModalOpen(false)
-                }
-                className="mt-3 h-12 w-full rounded-[18px] bg-[#ff2a32] text-[14px] font-black text-white shadow-[0_18px_45px_rgba(255,42,48,0.32)] active:scale-[0.98]"
-              >
-                Fechar
-              </button>
             </div>
           </div>
+        )}
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
+          <Icon className="h-4 w-4 text-[#ff2a32]" />
         </div>
+
+        <h3 className="text-xs font-black uppercase text-zinc-500">
+          {title}
+        </h3>
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ElementType;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="mb-4 flex items-center gap-3 last:mb-0">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 bg-white/[0.04]">
+        <Icon className="h-4 w-4 text-zinc-400" />
+      </div>
+
+      <div>
+        <p className="text-[10px] font-black uppercase text-zinc-500">
+          {label}
+        </p>
+
+        <p className="text-sm font-black">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function InfoBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
+      <p className="text-[9px] font-black uppercase text-zinc-600">
+        {label}
+      </p>
+
+      <p className="mt-1 break-words text-sm font-black">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function CounterCard({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5 text-center">
+      <p className="text-3xl font-black text-[#ff2a32]">
+        {value}
+      </p>
+
+      <p className="mt-1 text-[10px] font-black uppercase text-zinc-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function MetricBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-black/20 p-3">
+      <p className="text-[9px] font-black uppercase text-zinc-600">
+        {label}
+      </p>
+
+      <p className="mt-1 text-lg font-black">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function CredentialBox({
+  label,
+  value,
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-[18px] border p-3',
+        highlighted
+          ? 'border-[#ff2a32]/20 bg-[#ff2a32]/10'
+          : 'border-white/10 bg-white/[0.045]'
       )}
+    >
+      <p
+        className={cn(
+          'text-[10px] font-black uppercase',
+          highlighted
+            ? 'text-red-300'
+            : 'text-zinc-500'
+        )}
+      >
+        {label}
+      </p>
+
+      <p
+        className={cn(
+          'mt-1 break-all font-black',
+          highlighted
+            ? 'text-lg text-[#ff2a32]'
+            : 'text-sm text-white'
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }

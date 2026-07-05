@@ -99,21 +99,14 @@ function normalizeDayKey(value?: string | null) {
 }
 
 function getTodayDayKey() {
-  const keys = [
-    'dom',
-    'seg',
-    'ter',
-    'qua',
-    'qui',
-    'sex',
-    'sab',
+  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][
+    new Date().getDay()
   ];
-
-  return keys[new Date().getDay()];
 }
 
 function getDayPosition(dayKey: string) {
   const normalized = normalizeDayKey(dayKey);
+
   const index = DAY_ORDER.indexOf(
     normalized as (typeof DAY_ORDER)[number]
   );
@@ -139,18 +132,6 @@ function getExerciseObservation(
     exercise.instructions ||
     ''
   );
-}
-
-function getExerciseImage(
-  exercise: WorkoutPlanExercise
-) {
-  return exercise.image_url || '';
-}
-
-function getExerciseVideo(
-  exercise: WorkoutPlanExercise
-) {
-  return exercise.video_url || '';
 }
 
 function getDropSetConfig(
@@ -208,9 +189,9 @@ function getExpirationInfo(endDate?: string | null) {
   if (difference < 0) {
     return {
       label: 'Vencido',
-      description: `Venceu há ${Math.abs(
-        difference
-      )} dia${Math.abs(difference) === 1 ? '' : 's'}.`,
+      description: `Venceu há ${Math.abs(difference)} dia${
+        Math.abs(difference) === 1 ? '' : 's'
+      }.`,
       className:
         'border-red-400/25 bg-red-400/10 text-red-300',
     };
@@ -252,9 +233,7 @@ function buildDaySections(
   const sections = new Map<string, DaySection>();
 
   for (const day of days) {
-    const key =
-      normalizeDayKey(day.day_key) ||
-      `day-${day.id}`;
+    const key = normalizeDayKey(day.day_key);
 
     sections.set(key, {
       key,
@@ -298,7 +277,7 @@ function buildDaySections(
   return [...sections.values()]
     .filter(
       (section) =>
-        section.exercises.length > 0 || section.day
+        section.day || section.exercises.length > 0
     )
     .map((section) => ({
       ...section,
@@ -312,15 +291,15 @@ function buildDaySections(
       ),
     }))
     .sort((a, b) => {
-      const dayOrderA =
+      const orderA =
         a.day?.order_index ??
         getDayPosition(a.key);
 
-      const dayOrderB =
+      const orderB =
         b.day?.order_index ??
         getDayPosition(b.key);
 
-      return dayOrderA - dayOrderB;
+      return orderA - orderB;
     });
 }
 
@@ -330,6 +309,10 @@ export function WorkoutDetailPage() {
 
   const [plan, setPlan] =
     useState<CompleteWorkoutPlan | null>(null);
+
+  const [selectedDayKey, setSelectedDayKey] =
+    useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -358,10 +341,10 @@ export function WorkoutDetailPage() {
       }
 
       setPlan(data);
-    } catch (err: unknown) {
+    } catch (loadError: unknown) {
       const message =
-        err instanceof Error
-          ? err.message
+        loadError instanceof Error
+          ? loadError.message
           : 'Erro ao carregar treino.';
 
       setError(message);
@@ -386,6 +369,15 @@ export function WorkoutDetailPage() {
 
     return buildDaySections(plan);
   }, [plan]);
+
+  const selectedSection = useMemo(() => {
+    return (
+      daySections.find(
+        (section) =>
+          section.key === selectedDayKey
+      ) || null
+    );
+  }, [daySections, selectedDayKey]);
 
   const totalSets = exercises.reduce(
     (sum, exercise) => {
@@ -424,7 +416,7 @@ export function WorkoutDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15 shadow-[0_18px_45px_rgba(255,42,48,0.22)]">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
             <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
           </div>
 
@@ -446,17 +438,14 @@ export function WorkoutDetailPage() {
     return (
       <div className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-white">
         <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
-            <AlertCircle className="h-8 w-8" />
-          </div>
+          <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
 
           <h1 className="mt-5 text-xl font-black text-white">
             Treino não encontrado
           </h1>
 
-          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
-            {error ||
-              'Este plano de treino não está disponível.'}
+          <p className="mt-2 text-sm text-red-200/80">
+            {error}
           </p>
 
           <button
@@ -480,14 +469,14 @@ export function WorkoutDetailPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-zinc-300 transition-all active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
           <span
             className={cn(
-              'rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-wide',
+              'rounded-full border px-4 py-2 text-[11px] font-black uppercase',
               expirationInfo.className
             )}
           >
@@ -498,7 +487,7 @@ export function WorkoutDetailPage() {
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-[#ff2a32]/16 via-white/[0.045] to-white/[0.025] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.5)]"
+          className="rounded-[34px] border border-white/10 bg-gradient-to-br from-[#ff2a32]/16 via-white/[0.045] to-white/[0.025] p-5"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -506,17 +495,17 @@ export function WorkoutDetailPage() {
                 Treino Premium
               </p>
 
-              <h1 className="mt-2 text-[28px] font-black uppercase italic leading-none tracking-[-0.06em] text-white">
+              <h1 className="mt-2 text-[28px] font-black uppercase italic leading-none text-white">
                 {plan.name}
               </h1>
 
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+              <p className="mt-3 text-sm text-zinc-400">
                 {plan.objective ||
                   'Treino personalizado para sua evolução.'}
               </p>
             </div>
 
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#ff2a32] text-white">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#ff2a32]">
               <Dumbbell className="h-6 w-6" />
             </div>
           </div>
@@ -550,31 +539,21 @@ export function WorkoutDetailPage() {
           <div className="mb-3 flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
 
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+            <p className="text-[11px] font-black uppercase text-zinc-500">
               Período do plano
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
-                Início
-              </p>
+            <DateCard
+              label="Início"
+              value={formatDate(plan.start_date)}
+            />
 
-              <p className="mt-1 text-sm font-black text-white">
-                {formatDate(plan.start_date)}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
-                Vencimento
-              </p>
-
-              <p className="mt-1 text-sm font-black text-white">
-                {formatDate(plan.end_date)}
-              </p>
-            </div>
+            <DateCard
+              label="Vencimento"
+              value={formatDate(plan.end_date)}
+            />
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
@@ -582,132 +561,150 @@ export function WorkoutDetailPage() {
           </p>
         </section>
 
-        {daySections.length > 0 && (
-          <section className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.035] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
+        <section className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.035] p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
 
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                Dias do treino
-              </p>
-            </div>
+            <p className="text-[11px] font-black uppercase text-zinc-500">
+              Selecione o treino do dia
+            </p>
+          </div>
 
-            <div className="flex flex-wrap gap-2">
-              {daySections.map((section) => (
-                <span
+          <div className="flex flex-wrap gap-2">
+            {daySections.map((section) => {
+              const selected =
+                section.key === selectedDayKey;
+
+              const today =
+                section.key === todayDayKey;
+
+              return (
+                <button
                   key={section.key}
+                  type="button"
+                  onClick={() =>
+                    setSelectedDayKey(section.key)
+                  }
                   className={cn(
-                    'rounded-full border px-3 py-1.5 text-[11px] font-black',
-                    section.key === todayDayKey
-                      ? 'border-[#ff2a32]/35 bg-[#ff2a32]/15 text-[#ff2a32]'
-                      : 'border-white/10 bg-white/[0.05] text-zinc-400'
+                    'rounded-full border px-4 py-2 text-[11px] font-black transition-all',
+                    selected
+                      ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
+                      : today
+                        ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
+                        : 'border-white/10 bg-white/[0.05] text-zinc-400'
                   )}
                 >
                   {DAY_LABELS[section.key] ||
                     section.key
                       .slice(0, 3)
                       .toUpperCase()}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         <section className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-[26px] border border-white/10 bg-white/[0.035] p-4 text-center">
-            <Flame className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
+          <StatisticCard
+            icon={Flame}
+            value={String(totalSets)}
+            label="Séries totais"
+          />
 
-            <p className="text-2xl font-black text-white">
-              {totalSets}
-            </p>
-
-            <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-              Séries totais
-            </p>
-          </div>
-
-          <div className="rounded-[26px] border border-white/10 bg-white/[0.035] p-4 text-center">
-            <Trophy className="mx-auto mb-2 h-5 w-5 text-yellow-400" />
-
-            <p className="text-2xl font-black text-white">
-              {daySections.length}
-            </p>
-
-            <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
-              Dias
-            </p>
-          </div>
+          <StatisticCard
+            icon={Trophy}
+            value={String(daySections.length)}
+            label="Dias"
+          />
         </section>
 
         {(totalDropSets > 0 || totalBiSets > 0) && (
           <section className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-[24px] border border-orange-400/20 bg-orange-400/[0.07] p-4 text-center">
-              <Zap className="mx-auto mb-2 h-5 w-5 text-orange-300" />
+            <StatisticCard
+              icon={Zap}
+              value={String(totalDropSets)}
+              label="Drop-sets"
+            />
 
-              <p className="text-xl font-black text-white">
-                {totalDropSets}
-              </p>
-
-              <p className="text-[10px] font-black uppercase text-orange-200/70">
-                Drop-sets
-              </p>
-            </div>
-
-            <div className="rounded-[24px] border border-purple-400/20 bg-purple-400/[0.07] p-4 text-center">
-              <Layers2 className="mx-auto mb-2 h-5 w-5 text-purple-300" />
-
-              <p className="text-xl font-black text-white">
-                {totalBiSets}
-              </p>
-
-              <p className="text-[10px] font-black uppercase text-purple-200/70">
-                Bi-sets
-              </p>
-            </div>
+            <StatisticCard
+              icon={Layers2}
+              value={String(totalBiSets)}
+              label="Bi-sets"
+            />
           </section>
         )}
 
-        <section className="mt-6 space-y-5">
+        <section className="mt-6 space-y-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ff2a32]">
-              Exercícios
+              Treinos do plano
             </p>
 
-            <h2 className="mt-1 text-xl font-black text-white">
-              Plano do treino
+            <h2 className="mt-1 text-xl font-black">
+              {selectedSection
+                ? DAY_NAMES[selectedSection.key] ||
+                  selectedSection.key
+                : 'Selecione um dia'}
             </h2>
           </div>
 
-          {exercises.length === 0 ? (
-            <EmptyWorkout />
+          {!selectedSection ? (
+            <div className="rounded-[30px] border border-white/10 bg-white/[0.035] p-7 text-center">
+              <CalendarDays className="mx-auto h-10 w-10 text-zinc-700" />
+
+              <h3 className="mt-4 text-lg font-black">
+                Escolha um dia do plano
+              </h3>
+
+              <p className="mt-2 text-sm text-zinc-500">
+                Selecione SEG, TER, QUA, QUI, SEX,
+                SÁB ou DOM para visualizar os
+                exercícios daquele dia.
+              </p>
+            </div>
           ) : (
-            daySections.map((section) => (
-              <DaySectionCard
-                key={section.key}
-                section={section}
-              />
-            ))
+            <DaySectionCard section={selectedSection} />
           )}
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-[50px] z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-3 pt-3 backdrop-blur-xl">
-        <div className="mx-auto max-w-lg">
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                `/student/workout-execution/${plan.id}`
-              )
-            }
-            disabled={exercises.length === 0}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-[14px] font-black uppercase tracking-wide text-white transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            <Play className="h-5 w-5" />
-            Iniciar treino
-          </button>
+      {selectedSection && (
+        <div className="fixed inset-x-0 bottom-[50px] z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-3 pt-3 backdrop-blur-xl">
+          <div className="mx-auto max-w-lg">
+            {selectedSection.key === todayDayKey ? (
+              <button
+                type="button"
+                disabled={
+                  selectedSection.exercises.length === 0
+                }
+                onClick={() =>
+                  navigate(
+                    `/student/workout-execution/${plan.id}?day=${selectedSection.key}`
+                  )
+                }
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase text-white disabled:opacity-50"
+              >
+                <Play className="h-5 w-5" />
+                Executar treino de hoje
+              </button>
+            ) : (
+              <div className="rounded-[22px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-center">
+                <p className="text-xs font-black uppercase text-amber-300">
+                  Treino bloqueado para hoje
+                </p>
+
+                <p className="mt-1 text-[11px] text-amber-100/70">
+                  O treino de{' '}
+                  {DAY_NAMES[selectedSection.key] ||
+                    selectedSection.key}{' '}
+                  só poderá ser executado no dia
+                  correspondente.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -739,36 +736,32 @@ function DaySectionCard({
     DAY_NAMES[section.key] ||
     'Treino';
 
-  const subtitle =
-    section.day?.notes || '';
-
   return (
     <div className="space-y-3">
       <div className="rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/[0.07] p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
+            <p className="text-[10px] font-black uppercase text-[#ff2a32]">
               {DAY_NAMES[section.key] ||
                 section.key}
-            </span>
+            </p>
 
-            <h3 className="mt-1 text-lg font-black text-white">
+            <h3 className="mt-1 text-lg font-black">
               {title}
             </h3>
           </div>
 
-          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-zinc-400">
-            {section.exercises.length}{' '}
-            exercício
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-black text-zinc-400">
+            {section.exercises.length} exercício
             {section.exercises.length === 1
               ? ''
               : 's'}
           </span>
         </div>
 
-        {subtitle && (
-          <p className="mt-3 text-xs leading-relaxed text-zinc-400">
-            {subtitle}
+        {section.day?.notes && (
+          <p className="mt-3 text-xs text-zinc-400">
+            {section.day.notes}
           </p>
         )}
       </div>
@@ -808,6 +801,16 @@ function DaySectionCard({
           />
         )
       )}
+
+      {section.exercises.length === 0 && (
+        <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-6 text-center">
+          <Dumbbell className="mx-auto h-9 w-9 text-zinc-700" />
+
+          <p className="mt-3 text-sm text-zinc-500">
+            Nenhum exercício cadastrado neste dia.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -820,7 +823,7 @@ function BiSetCard({
   exercises: WorkoutPlanExercise[];
 }) {
   return (
-    <div className="rounded-[30px] border border-purple-400/25 bg-purple-400/[0.07] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.3)]">
+    <div className="rounded-[30px] border border-purple-400/25 bg-purple-400/[0.07] p-4">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-400/15 px-3 py-1 text-[10px] font-black text-purple-200">
@@ -828,13 +831,13 @@ function BiSetCard({
             BI-SET
           </span>
 
-          <h3 className="mt-2 text-base font-black text-white">
+          <h3 className="mt-2 text-base font-black">
             {group.name || 'Executar em sequência'}
           </h3>
         </div>
 
         {group.rounds && (
-          <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1.5 text-[10px] font-bold text-purple-200">
+          <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-[10px] font-bold text-purple-200">
             {group.rounds} rodadas
           </span>
         )}
@@ -846,11 +849,11 @@ function BiSetCard({
             key={exercise.id}
             className="rounded-[22px] border border-white/10 bg-black/20 p-3"
           >
-            <p className="text-[9px] font-black uppercase tracking-wide text-purple-300">
+            <p className="text-[9px] font-black uppercase text-purple-300">
               Exercício {index + 1}
             </p>
 
-            <p className="mt-1 text-sm font-black text-white">
+            <p className="mt-1 text-sm font-black">
               {getExerciseName(exercise)}
             </p>
 
@@ -878,10 +881,10 @@ function BiSetCard({
       </div>
 
       <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 p-3">
-        <p className="text-xs leading-relaxed text-purple-100/80">
-          Execute os dois exercícios em sequência.
+        <p className="text-xs text-purple-100/80">
+          Execute os exercícios em sequência.
           {group.rest_after_seconds !== null &&
-            ` Descanse ${group.rest_after_seconds}s após completar os dois.`}
+            ` Descanse ${group.rest_after_seconds}s depois de concluir o bi-set.`}
         </p>
 
         {group.notes && (
@@ -901,14 +904,14 @@ function ExerciseCard({
   exercise: WorkoutPlanExercise;
   index: number;
 }) {
-  const observation =
-    getExerciseObservation(exercise);
-  const imageUrl = getExerciseImage(exercise);
-  const videoUrl = getExerciseVideo(exercise);
   const technique =
     exercise.technique_type || 'normal';
+
   const dropConfig =
     getDropSetConfig(exercise);
+
+  const observation =
+    getExerciseObservation(exercise);
 
   return (
     <motion.div
@@ -918,41 +921,41 @@ function ExerciseCard({
         duration: 0.25,
         delay: index * 0.04,
       }}
-      className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.28)]"
+      className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4"
     >
       <div className="flex items-start gap-4">
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[22px] border border-white/10 bg-black/30">
-          {videoUrl ? (
+          {exercise.video_url ? (
             <video
-              src={videoUrl}
+              src={exercise.video_url}
               muted
               loop
               autoPlay
               playsInline
               className="h-full w-full object-cover"
             />
-          ) : imageUrl ? (
+          ) : exercise.image_url ? (
             <img
-              src={imageUrl}
+              src={exercise.image_url}
               alt={getExerciseName(exercise)}
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[#ff2a32]">
-              <Dumbbell className="h-8 w-8" />
+            <div className="flex h-full items-center justify-center">
+              <Dumbbell className="h-8 w-8 text-[#ff2a32]" />
             </div>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
           {technique === 'drop_set' && (
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-orange-400/15 px-2.5 py-1 text-[9px] font-black text-orange-300">
+            <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-orange-400/15 px-2.5 py-1 text-[9px] font-black text-orange-300">
               <Zap className="h-3 w-3" />
               DROP-SET
             </span>
           )}
 
-          <h3 className="text-[16px] font-black leading-tight text-white">
+          <h3 className="text-[16px] font-black">
             {getExerciseName(exercise)}
           </h3>
 
@@ -977,7 +980,7 @@ function ExerciseCard({
 
             {exercise.rest_seconds !== null &&
               exercise.rest_seconds > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
                   <Timer className="h-3.5 w-3.5 text-[#ff2a32]" />
                   {exercise.rest_seconds}s
                 </span>
@@ -994,7 +997,9 @@ function ExerciseCard({
                 {dropConfig.drops !== undefined && (
                   <span>
                     {dropConfig.drops} queda
-                    {dropConfig.drops === 1 ? '' : 's'}
+                    {dropConfig.drops === 1
+                      ? ''
+                      : 's'}
                   </span>
                 )}
 
@@ -1027,7 +1032,7 @@ function ExerciseCard({
           )}
 
           {observation && (
-            <p className="mt-3 rounded-2xl border border-white/5 bg-black/20 p-3 text-xs leading-relaxed text-zinc-500">
+            <p className="mt-3 rounded-2xl border border-white/5 bg-black/20 p-3 text-xs text-zinc-500">
               {observation}
             </p>
           )}
@@ -1050,11 +1055,55 @@ function InfoCard({
     <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
       <Icon className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
 
-      <p className="truncate text-sm font-black text-white">
+      <p className="truncate text-sm font-black">
         {value}
       </p>
 
-      <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+      <p className="text-[9px] font-black uppercase text-zinc-600">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function DateCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+      <p className="text-[9px] font-black uppercase text-zinc-600">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-black">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StatisticCard({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: typeof Flame;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="rounded-[26px] border border-white/10 bg-white/[0.035] p-4 text-center">
+      <Icon className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
+
+      <p className="text-2xl font-black">
+        {value}
+      </p>
+
+      <p className="text-[10px] font-black uppercase text-zinc-600">
         {label}
       </p>
     </div>
@@ -1070,23 +1119,6 @@ function SmallTag({
     <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
       {children}
     </span>
-  );
-}
-
-function EmptyWorkout() {
-  return (
-    <div className="rounded-[30px] border border-white/10 bg-white/[0.035] p-8 text-center">
-      <Dumbbell className="mx-auto h-10 w-10 text-zinc-700" />
-
-      <h3 className="mt-4 text-lg font-black text-white">
-        Nenhum exercício
-      </h3>
-
-      <p className="mt-2 text-sm text-zinc-500">
-        Este plano ainda não possui exercícios
-        cadastrados.
-      </p>
-    </div>
   );
 }
 
