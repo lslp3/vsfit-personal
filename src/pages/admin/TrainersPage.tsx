@@ -1,194 +1,490 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, ChevronUp, Mail, Phone, Users, Calendar, Loader2 } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  useNavigate,
+} from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  AlertCircle,
+  Calendar,
+  ChevronRight,
+  CreditCard,
+  Loader2,
+  Mail,
+  Phone,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
+
 import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { getAllTrainers } from '../../services/trainerService';
-import { formatDate, formatPhone } from '../../lib/formatters';
+import {
+  formatDate,
+  formatPhone,
+} from '../../lib/formatters';
+import {
+  getAllTrainers,
+  type AdminTrainer,
+} from '../../services/trainerService';
 
-type CrefFilter = 'all' | 'approved' | 'pending' | 'rejected';
+type CrefFilter =
+  | 'all'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'not_submitted';
 
-const filters: { value: CrefFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'approved', label: 'Aprovados' },
-  { value: 'pending', label: 'Pendentes' },
-  { value: 'rejected', label: 'Rejeitados' },
+const filters: Array<{
+  value: CrefFilter;
+  label: string;
+}> = [
+  {
+    value: 'all',
+    label: 'Todos',
+  },
+  {
+    value: 'pending',
+    label: 'Pendentes',
+  },
+  {
+    value: 'approved',
+    label: 'Aprovados',
+  },
+  {
+    value: 'rejected',
+    label: 'Rejeitados',
+  },
+  {
+    value: 'not_submitted',
+    label: 'Não enviados',
+  },
 ];
+
+function getPlanLabel(
+  trainer: AdminTrainer
+) {
+  const plan =
+    trainer.subscription?.plan_slug ||
+    'free';
+
+  if (plan === 'premium') {
+    return 'Premium';
+  }
+
+  if (plan === 'pro') {
+    return 'Pro';
+  }
+
+  return 'Free';
+}
 
 export function TrainersPage() {
   const navigate = useNavigate();
-  const [trainers, setTrainers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<CrefFilter>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
+  const [
+    trainers,
+    setTrainers,
+  ] = useState<AdminTrainer[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState('');
+
+  const [
+    search,
+    setSearch,
+  ] = useState('');
+
+  const [
+    filter,
+    setFilter,
+  ] = useState<CrefFilter>('all');
+
+  const loadTrainers =
+    useCallback(async (
+      refresh = false
+    ) => {
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError('');
+
       try {
-        const data = await getAllTrainers();
+        const data =
+          await getAllTrainers();
+
         setTrainers(data);
-      } catch (err) {
-        console.error('Failed to load trainers:', err);
+      } catch (loadError) {
+        console.error(
+          '[TrainersPage] load:',
+          loadError
+        );
+
+        setError(
+          'Não foi possível carregar os personais.'
+        );
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
-    }
-    load();
-  }, []);
+    }, []);
 
-  const filtered = trainers.filter((t: any) => {
-    const matchesSearch =
-      !search ||
-      t.name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.email?.toLowerCase().includes(search.toLowerCase()) ||
-      t.cref?.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || t.cref_status === filter;
-    return matchesSearch && matchesFilter;
-  });
+  useEffect(() => {
+    void loadTrainers();
+  }, [loadTrainers]);
+
+  const counts = useMemo(() => {
+    return {
+      total: trainers.length,
+
+      pending: trainers.filter(
+        (trainer) =>
+          trainer.cref_status ===
+          'pending'
+      ).length,
+
+      approved: trainers.filter(
+        (trainer) =>
+          trainer.cref_status ===
+          'approved'
+      ).length,
+
+      notSubmitted: trainers.filter(
+        (trainer) =>
+          trainer.cref_status ===
+          'not_submitted'
+      ).length,
+    };
+  }, [trainers]);
+
+  const filtered =
+    useMemo(() => {
+      const normalizedSearch =
+        search
+          .trim()
+          .toLowerCase();
+
+      return trainers.filter(
+        (trainer) => {
+          const matchesFilter =
+            filter === 'all' ||
+            trainer.cref_status ===
+              filter;
+
+          const matchesSearch =
+            !normalizedSearch ||
+            trainer.name
+              ?.toLowerCase()
+              .includes(
+                normalizedSearch
+              ) ||
+            trainer.email
+              ?.toLowerCase()
+              .includes(
+                normalizedSearch
+              ) ||
+            trainer.cref
+              ?.toLowerCase()
+              .includes(
+                normalizedSearch
+              );
+
+          return (
+            matchesFilter &&
+            matchesSearch
+          );
+        }
+      );
+    }, [
+      trainers,
+      search,
+      filter,
+    ]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-vs-primary animate-spin" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#ff2a32]" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Personais</h1>
-        <p className="text-vs-muted text-sm mt-1">{trainers.length} personal trainers cadastrados</p>
+    <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: -10,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        className="flex items-start justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-2xl font-black text-white md:text-3xl">
+            Personais e CREF
+          </h1>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            Cadastros, planos e análise
+            manual de CREF.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            void loadTrainers(true)
+          }
+          disabled={refreshing}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-zinc-400 disabled:opacity-50"
+        >
+          <RefreshCw
+            className={`h-5 w-5 ${
+              refreshing
+                ? 'animate-spin'
+                : ''
+            }`}
+          />
+        </button>
       </motion.div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-vs-muted" />
-          <input
-            type="text"
-            placeholder="Buscar por nome, email ou CREF..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-field pl-10"
-          />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          {
+            label: 'Personais',
+            value: counts.total,
+          },
+          {
+            label: 'Pendentes',
+            value: counts.pending,
+          },
+          {
+            label: 'Aprovados',
+            value: counts.approved,
+          },
+          {
+            label: 'Não enviados',
+            value:
+              counts.notSubmitted,
+          },
+        ].map((item) => (
+          <Card
+            key={item.label}
+            className="p-4"
+          >
+            <p className="text-2xl font-black text-white">
+              {item.value}
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+              {item.label}
+            </p>
+          </Card>
+        ))}
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {filters.map((f) => (
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
+
+        <input
+          type="text"
+          value={search}
+          onChange={(event) =>
+            setSearch(
+              event.target.value
+            )
+          }
+          placeholder="Buscar por nome, email ou CREF..."
+          className="input-field pl-11"
+        />
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {filters.map((item) => (
           <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`chip transition-colors ${
-              filter === f.value ? 'chip-active' : ''
+            key={item.value}
+            type="button"
+            onClick={() =>
+              setFilter(item.value)
+            }
+            className={`chip shrink-0 ${
+              filter === item.value
+                ? 'chip-active'
+                : ''
             }`}
           >
-            {f.label}
+            {item.label}
           </button>
         ))}
       </div>
 
+      {error && (
+        <div className="flex items-start gap-3 rounded-[18px] border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+
+          <p>{error}</p>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <EmptyState
+          icon={
+            <Users className="h-8 w-8 text-zinc-600" />
+          }
           title="Nenhum personal encontrado"
-          description={search ? 'Tente alterar os filtros ou busca.' : 'Nenhum personal cadastrado ainda.'}
+          description="Altere a busca ou o filtro selecionado."
         />
       ) : (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { transition: { staggerChildren: 0.05 } },
-          }}
-          className="space-y-3"
-        >
-          {filtered.map((trainer: any) => (
-            <motion.div
-              key={trainer.id}
-              variants={{
-                hidden: { opacity: 0, y: 12 },
-                visible: { opacity: 1, y: 0 },
-              }}
-            >
+        <div className="space-y-3">
+          {filtered.map(
+            (trainer) => (
               <Card
-                className="p-4"
-                onClick={() => setExpandedId(expandedId === trainer.id ? null : trainer.id)}
+                key={trainer.id}
+                className="overflow-hidden p-0"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-vs-primary/20 to-orange-500/20 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-vs-primary">
-                        {trainer.name?.charAt(0)?.toUpperCase()}
-                      </span>
+                <div className="p-4 md:p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ff2a32]/15 text-base font-black text-[#ff2a32]">
+                      {trainer.name
+                        ?.charAt(0)
+                        .toUpperCase() ||
+                        'P'}
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-white truncate">{trainer.name}</p>
-                      <p className="text-xs text-vs-muted truncate">{trainer.email}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-black text-white">
+                          {trainer.name}
+                        </p>
+
+                        <Badge
+                          status={
+                            trainer.cref_status ||
+                            'not_submitted'
+                          }
+                        />
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-zinc-500">
+                        {trainer.email}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge status={trainer.cref_status || 'not_submitted'} />
-                    {expandedId === trainer.id ? (
-                      <ChevronUp className="w-4 h-4 text-vs-muted" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-vs-muted" />
-                    )}
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 border-t border-white/[0.07] pt-4 sm:grid-cols-2">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <ShieldCheck className="h-4 w-4 shrink-0" />
+
+                      <span>
+                        CREF:{' '}
+                        {trainer.cref ||
+                          'Não enviado'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Users className="h-4 w-4 shrink-0" />
+
+                      <span>
+                        {trainer.student_count}{' '}
+                        {trainer.student_count ===
+                        1
+                          ? 'aluno'
+                          : 'alunos'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <CreditCard className="h-4 w-4 shrink-0" />
+
+                      <span>
+                        Plano:{' '}
+                        {getPlanLabel(
+                          trainer
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Calendar className="h-4 w-4 shrink-0" />
+
+                      <span>
+                        Cadastro:{' '}
+                        {formatDate(
+                          trainer.created_at
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Mail className="h-4 w-4 shrink-0" />
+
+                      <span className="truncate">
+                        {trainer.email}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Phone className="h-4 w-4 shrink-0" />
+
+                      <span>
+                        {formatPhone(
+                          trainer.phone
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <AnimatePresence>
-                  {expandedId === trainer.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-4 pt-4 border-t border-vs-border grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="flex items-center gap-2 text-sm text-vs-muted">
-                          <Mail className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{trainer.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-vs-muted">
-                          <Phone className="w-4 h-4 shrink-0" />
-                          <span>{formatPhone(trainer.phone)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-vs-muted">
-                          <Users className="w-4 h-4 shrink-0" />
-                          <span>CREF: {trainer.cref || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-vs-muted">
-                          <Calendar className="w-4 h-4 shrink-0" />
-                          <span>Cadastro: {formatDate(trainer.created_at)}</span>
-                        </div>
-                      </div>
-                      {trainer.bio && (
-                        <p className="mt-3 text-sm text-vs-muted leading-relaxed">{trainer.bio}</p>
-                      )}
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/admin/trainer-approval');
-                          }}
-                          className="btn-ghost text-xs"
-                        >
-                          Gerenciar
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/admin/trainers/${trainer.id}/approve`
+                    )
+                  }
+                  className="flex w-full items-center justify-between border-t border-white/[0.07] bg-white/[0.025] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                >
+                  <span className="text-xs font-black uppercase tracking-[0.08em] text-[#ff2a32]">
+                    {trainer.cref_status ===
+                    'pending'
+                      ? 'Analisar CREF'
+                      : 'Ver cadastro'}
+                  </span>
+
+                  <ChevronRight className="h-4 w-4 text-[#ff2a32]" />
+                </button>
               </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+            )
+          )}
+        </div>
       )}
     </div>
   );
 }
+
+export default TrainersPage;

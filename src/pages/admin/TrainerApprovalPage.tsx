@@ -1,67 +1,171 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ShieldCheck, X, Check, Loader2, AlertTriangle } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import {
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Check,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
+
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { getAllTrainers, approveCref, rejectCref } from '../../services/trainerService';
-import { formatDate } from '../../lib/formatters';
+import {
+  formatDate,
+  formatPhone,
+} from '../../lib/formatters';
+import {
+  approveCref,
+  getTrainerProfile,
+  rejectCref,
+} from '../../services/trainerService';
+import type {
+  TrainerProfile,
+} from '../../types/database';
 
 export function TrainerApprovalPage() {
-  const [trainers, setTrainers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectModal, setRejectModal] = useState<{ open: boolean; trainerId: string; trainerName: string }>({
-    open: false,
-    trainerId: '',
-    trainerName: '',
-  });
-  const [rejectReason, setRejectReason] = useState('');
+  const { id } = useParams<{
+    id: string;
+  }>();
 
-  async function loadPending() {
-    setLoading(true);
-    try {
-      const all = await getAllTrainers();
-      setTrainers(all.filter((t: any) => t.cref_status === 'pending'));
-    } catch (err) {
-      console.error('Failed to load trainers:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const navigate = useNavigate();
+
+  const [trainer, setTrainer] =
+    useState<TrainerProfile | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [actionLoading, setActionLoading] =
+    useState<'approve' | 'reject' | null>(
+      null
+    );
+
+  const [error, setError] =
+    useState('');
+
+  const [rejectOpen, setRejectOpen] =
+    useState(false);
+
+  const [rejectReason, setRejectReason] =
+    useState('');
+
+  const loadTrainer =
+    useCallback(async () => {
+      if (!id) {
+        setError(
+          'Personal não identificado.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+
+      try {
+        const data =
+          await getTrainerProfile(id);
+
+        if (!data) {
+          throw new Error(
+            'Personal não encontrado.'
+          );
+        }
+
+        setTrainer(data);
+      } catch (loadError) {
+        console.error(
+          '[TrainerApprovalPage] load:',
+          loadError
+        );
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Erro ao carregar o personal.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [id]);
 
   useEffect(() => {
-    loadPending();
-  }, []);
+    void loadTrainer();
+  }, [loadTrainer]);
 
-  async function handleApprove(trainerId: string) {
-    setActionLoading(trainerId);
+  async function handleApprove() {
+    if (!trainer?.id) return;
+
+    setActionLoading('approve');
+    setError('');
+
     try {
-      await approveCref(trainerId);
-      setTrainers((prev) => prev.filter((t) => t.id !== trainerId));
-    } catch (err) {
-      console.error('Failed to approve CREF:', err);
+      await approveCref(trainer.id);
+
+      navigate('/admin/trainers', {
+        replace: true,
+      });
+    } catch (approveError) {
+      console.error(
+        '[TrainerApprovalPage] approve:',
+        approveError
+      );
+
+      setError(
+        'Não foi possível aprovar o CREF.'
+      );
     } finally {
       setActionLoading(null);
     }
   }
 
-  function openRejectModal(trainerId: string, trainerName: string) {
-    setRejectReason('');
-    setRejectModal({ open: true, trainerId, trainerName });
-  }
-
   async function handleReject() {
-    const { trainerId } = rejectModal;
-    if (!rejectReason.trim()) return;
-    setActionLoading(trainerId);
+    if (
+      !trainer?.id ||
+      !rejectReason.trim()
+    ) {
+      return;
+    }
+
+    setActionLoading('reject');
+    setError('');
+
     try {
-      await rejectCref(trainerId, rejectReason.trim());
-      setTrainers((prev) => prev.filter((t) => t.id !== trainerId));
-      setRejectModal({ open: false, trainerId: '', trainerName: '' });
-    } catch (err) {
-      console.error('Failed to reject CREF:', err);
+      await rejectCref(
+        trainer.id,
+        rejectReason
+      );
+
+      setRejectOpen(false);
+
+      navigate('/admin/trainers', {
+        replace: true,
+      });
+    } catch (rejectError) {
+      console.error(
+        '[TrainerApprovalPage] reject:',
+        rejectError
+      );
+
+      setError(
+        'Não foi possível rejeitar o CREF.'
+      );
     } finally {
       setActionLoading(null);
     }
@@ -69,138 +173,323 @@ export function TrainerApprovalPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-vs-primary animate-spin" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#ff2a32]" />
       </div>
     );
   }
 
+  if (!trainer) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-8">
+        <Card className="p-6 text-center">
+          <AlertCircle className="mx-auto h-9 w-9 text-red-400" />
+
+          <p className="mt-4 font-black text-white">
+            Personal não encontrado
+          </p>
+
+          <p className="mt-2 text-sm text-zinc-500">
+            {error}
+          </p>
+
+          <Button
+            className="mt-5"
+            onClick={() =>
+              navigate('/admin/trainers')
+            }
+          >
+            Voltar
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const hasCref =
+    Boolean(trainer.cref?.trim());
+
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Aprovação de CREF</h1>
-        <p className="text-vs-muted text-sm mt-1">
-          {trainers.length} {trainers.length === 1 ? 'personal aguardando' : 'personais aguardando'} aprovação
+    <div className="mx-auto max-w-4xl space-y-5 p-4 md:p-8">
+      <button
+        type="button"
+        onClick={() =>
+          navigate('/admin/trainers')
+        }
+        className="flex items-center gap-2 text-sm font-bold text-zinc-500 transition-colors hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar para personais
+      </button>
+
+      <div>
+        <h1 className="text-2xl font-black text-white md:text-3xl">
+          Verificação de CREF
+        </h1>
+
+        <p className="mt-1 text-sm text-zinc-500">
+          Revise os dados antes de
+          aprovar ou rejeitar.
         </p>
-      </motion.div>
+      </div>
 
-      {trainers.length === 0 ? (
-        <EmptyState
-          icon={<ShieldCheck className="w-8 h-8 text-green-400" />}
-          title="Nenhuma pendência"
-          description="Todos os CREFs foram processados."
-        />
+      {error && (
+        <div className="flex items-start gap-3 rounded-[18px] border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      <Card className="p-5 md:p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#ff2a32]/15 text-lg font-black text-[#ff2a32]">
+            {trainer.name
+              ?.charAt(0)
+              .toUpperCase() || 'P'}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-lg font-black text-white">
+                {trainer.name}
+              </h2>
+
+              <Badge
+                status={
+                  trainer.cref_status ||
+                  'not_submitted'
+                }
+              />
+            </div>
+
+            <p className="mt-1 truncate text-sm text-zinc-500">
+              {trainer.email}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 border-t border-white/[0.07] pt-5 sm:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-600">
+              Número do CREF
+            </p>
+
+            <p className="mt-2 text-base font-black text-white">
+              {trainer.cref ||
+                'Não enviado'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-600">
+              Data de envio
+            </p>
+
+            <p className="mt-2 text-sm font-bold text-white">
+              {formatDate(
+                trainer.cref_submitted_at
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Mail className="h-4 w-4" />
+
+            <span className="truncate">
+              {trainer.email}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Phone className="h-4 w-4" />
+
+            <span>
+              {formatPhone(
+                trainer.phone
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <MapPin className="h-4 w-4" />
+
+            <span>
+              {trainer.location || '—'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Calendar className="h-4 w-4" />
+
+            <span>
+              Cadastro:{' '}
+              {formatDate(
+                trainer.created_at
+              )}
+            </span>
+          </div>
+        </div>
+
+        {trainer.bio && (
+          <div className="mt-5 border-t border-white/[0.07] pt-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-600">
+              Apresentação
+            </p>
+
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+              {trainer.bio}
+            </p>
+          </div>
+        )}
+
+        {trainer.cref_rejection_reason && (
+          <div className="mt-5 rounded-[18px] border border-red-500/20 bg-red-500/10 p-4">
+            <p className="text-xs font-black uppercase text-red-300">
+              Motivo da última rejeição
+            </p>
+
+            <p className="mt-2 text-sm text-red-200">
+              {
+                trainer.cref_rejection_reason
+              }
+            </p>
+          </div>
+        )}
+      </Card>
+
+      <div className="flex items-start gap-3 rounded-[20px] border border-yellow-400/20 bg-yellow-400/[0.08] p-4">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-300" />
+
+        <div>
+          <p className="text-sm font-black text-yellow-200">
+            Verificação manual obrigatória
+          </p>
+
+          <p className="mt-1 text-xs leading-relaxed text-yellow-100/65">
+            Consulte o número informado
+            em uma fonte oficial do
+            CONFEF ou CREF antes de
+            aprovar.
+          </p>
+        </div>
+      </div>
+
+      {!hasCref ? (
+        <Card className="p-5 text-center">
+          <ShieldCheck className="mx-auto h-8 w-8 text-zinc-600" />
+
+          <p className="mt-3 font-black text-white">
+            CREF não enviado
+          </p>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            Este personal ainda não
+            enviou um número para
+            análise.
+          </p>
+        </Card>
       ) : (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { transition: { staggerChildren: 0.07 } },
-          }}
-          className="space-y-4"
-        >
-          {trainers.map((trainer: any) => (
-            <motion.div
-              key={trainer.id}
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-            >
-              <Card className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
-                      <span className="text-lg font-bold text-yellow-400">
-                        {trainer.name?.charAt(0)?.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{trainer.name}</p>
-                      <p className="text-sm text-vs-muted truncate">{trainer.email}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-vs-muted">
-                          CREF: {trainer.cref || '—'}
-                        </span>
-                        <span className="text-xs text-vs-muted">
-                          Enviado: {formatDate(trainer.cref_submitted_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button
+            onClick={() =>
+              void handleApprove()
+            }
+            loading={
+              actionLoading === 'approve'
+            }
+            disabled={
+              trainer.cref_status ===
+                'approved' ||
+              actionLoading !== null
+            }
+            className="h-14"
+          >
+            <Check className="h-5 w-5" />
 
-                {trainer.bio && (
-                  <p className="mt-3 text-sm text-vs-muted leading-relaxed">{trainer.bio}</p>
-                )}
+            {trainer.cref_status ===
+            'approved'
+              ? 'CREF aprovado'
+              : 'Aprovar CREF'}
+          </Button>
 
-                <div className="mt-4 flex gap-3">
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(trainer.id)}
-                    loading={actionLoading === trainer.id}
-                    className="flex-1"
-                  >
-                    <Check className="w-4 h-4" />
-                    Aprovar
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => openRejectModal(trainer.id, trainer.name)}
-                    disabled={actionLoading === trainer.id}
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4" />
-                    Rejeitar
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setRejectReason('');
+              setRejectOpen(true);
+            }}
+            disabled={
+              actionLoading !== null
+            }
+            className="h-14"
+          >
+            <X className="h-5 w-5" />
+            Rejeitar CREF
+          </Button>
+        </div>
       )}
 
       <Modal
-        open={rejectModal.open}
-        onClose={() => setRejectModal((prev) => ({ ...prev, open: false }))}
+        open={rejectOpen}
+        onClose={() =>
+          setRejectOpen(false)
+        }
         title="Rejeitar CREF"
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-400">Rejeitar CREF de {rejectModal.trainerName}</p>
-              <p className="text-xs text-vs-muted mt-1">Esta ação informará o personal sobre a rejeição.</p>
-            </div>
+          <div className="rounded-[16px] border border-red-500/20 bg-red-500/10 p-4">
+            <p className="text-sm font-black text-red-300">
+              {trainer.name}
+            </p>
+
+            <p className="mt-1 text-xs text-red-200/70">
+              O personal receberá uma
+              notificação com o motivo.
+            </p>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-vs-muted mb-1.5">Motivo da rejeição</label>
+            <label className="mb-2 block text-xs font-black uppercase tracking-[0.1em] text-zinc-500">
+              Motivo da rejeição
+            </label>
+
             <textarea
-              className="input-field min-h-[100px] resize-none"
-              placeholder="Descreva o motivo da rejeição..."
               value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+              onChange={(event) =>
+                setRejectReason(
+                  event.target.value
+                )
+              }
+              placeholder="Explique por que o CREF não foi aprovado..."
+              className="input-field min-h-[120px] resize-none"
             />
           </div>
+
           <div className="flex gap-3">
             <Button
               variant="secondary"
               className="flex-1"
-              onClick={() => setRejectModal((prev) => ({ ...prev, open: false }))}
+              onClick={() =>
+                setRejectOpen(false)
+              }
             >
               Cancelar
             </Button>
+
             <Button
               variant="danger"
               className="flex-1"
-              onClick={handleReject}
-              loading={actionLoading === rejectModal.trainerId}
-              disabled={!rejectReason.trim()}
+              onClick={() =>
+                void handleReject()
+              }
+              loading={
+                actionLoading === 'reject'
+              }
+              disabled={
+                !rejectReason.trim()
+              }
             >
-              <X className="w-4 h-4" />
-              Rejeitar
+              Confirmar
             </Button>
           </div>
         </div>
@@ -208,3 +497,5 @@ export function TrainerApprovalPage() {
     </div>
   );
 }
+
+export default TrainerApprovalPage;
