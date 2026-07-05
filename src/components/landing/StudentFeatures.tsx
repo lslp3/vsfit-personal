@@ -1,48 +1,130 @@
-import { Timer, History, Camera, Utensils, MessageSquare, Trophy } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  Camera,
+  MessageSquare,
+  TimerReset,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react';
+
+const items = [
+  {
+    icon: TimerReset,
+    label: 'Cronômetro de treino',
+  },
+  {
+    icon: TrendingUp,
+    label: 'Histórico de exercícios',
+  },
+  {
+    icon: Camera,
+    label: 'Fotos de evolução',
+  },
+  {
+    icon: MessageSquare,
+    label: 'Chat com o personal',
+  },
+  {
+    icon: Trophy,
+    label: 'Conquistas e sequência',
+  },
+];
 
 export function StudentFeatures() {
-  const highlights = [
-    { icon: <Timer className="w-5 h-5" />, text: 'Cronômetro de treino' },
-    { icon: <History className="w-5 h-5" />, text: 'Histórico de exercícios' },
-    { icon: <Camera className="w-5 h-5" />, text: 'Fotos de evolução' },
-    { icon: <Utensils className="w-5 h-5" />, text: 'Plano alimentar' },
-    { icon: <MessageSquare className="w-5 h-5" />, text: 'Chat com o personal' },
-    { icon: <Trophy className="w-5 h-5" />, text: 'Conquistas e sequência' },
-  ];
-
   return (
-    <section id="student" className="py-24 px-4 bg-[#090909]">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div className="text-center lg:text-left">
-          <span className="text-vs-primary text-xs font-bold uppercase tracking-widest mb-3 block">Para Alunos</span>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">Seu acompanhamento <span className="text-vs-primary">na palma da mão.</span></h2>
-          <p className="text-vs-muted mb-12 max-w-xl mx-auto lg:mx-0">O aluno recebe treinos, acompanha a evolução, visualiza o plano alimentar e conversa com o personal.</p>
-          
-          <div className="grid grid-cols-2 gap-4">
-            {highlights.map((h, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
-                <span className="text-vs-primary">{h.icon}</span>
-                <span className="text-white text-sm font-medium">{h.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+    <section
+      id="for-student"
+      className="px-4 py-24"
+    >
+      <div className="mx-auto max-w-7xl">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.92fr_1.08fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-[11px] font-black uppercase tracking-[0.22em] text-vs-primary">
+              Para alunos
+            </span>
 
-        <div className="relative flex justify-center">
-          <div className="relative w-full max-w-[300px] aspect-[9/19] bg-[#0D0D0F] border-[8px] border-[#1A1A1A] rounded-[40px] shadow-2xl overflow-hidden ring-1 ring-white/10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#1A1A1A] rounded-b-2xl z-20" />
-            <img 
-              src="/landing/student-home.webp" 
-              alt="VSFit Student App" 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = "https://via.placeholder.com/360x780/0D0D0F/FFFFFF?text=Student+View";
-              }}
-            />
-          </div>
-          <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-vs-primary/10 blur-[80px] rounded-full" />
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-white md:text-5xl">
+              Seu acompanhamento na palma da mão.
+            </h2>
+
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-400">
+              O aluno recebe treinos, acompanha a evolução, visualiza o plano
+              e conversa com o personal em um ambiente simples, organizado e
+              fácil de usar.
+            </p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              {items.map((item, index) => {
+                const Icon = item.icon;
+
+                return (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-vs-primary/15">
+                      <Icon className="h-5 w-5 text-vs-primary" />
+                    </div>
+
+                    <span className="text-sm font-bold text-white">
+                      {item.label}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.55, delay: 0.08 }}
+            className="grid gap-6 md:grid-cols-2"
+          >
+            <article className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.04]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Home do aluno
+                </p>
+              </div>
+
+              <img
+                src="/landing/student-home.png"
+                alt="Tela inicial do aluno no VSFit"
+                className="w-full object-cover object-top"
+                loading="lazy"
+              />
+            </article>
+
+            <article className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.04]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Progresso
+                </p>
+              </div>
+
+              <img
+                src="/landing/student-progress.png"
+                alt="Tela de progresso do aluno no VSFit"
+                className="w-full object-cover object-top"
+                loading="lazy"
+              />
+            </article>
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
+
+export default StudentFeatures;

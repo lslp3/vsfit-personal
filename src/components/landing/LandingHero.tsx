@@ -1,93 +1,154 @@
 import { motion } from 'framer-motion';
-import { DeviceAwareCTA } from './DeviceAwareCTA';
-import { CheckCircle2 } from 'lucide-react';
+import {
+  ArrowRight,
+  CheckCircle2,
+  MessageCircle,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+
+const WHATSAPP_NUMBER = '5534988398567';
+
+const WHATSAPP_MESSAGE =
+  'Olá! Gostaria de saber mais sobre o VSFit Personal.';
+
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE
+)}`;
 
 export function LandingHero() {
   return (
-    <section className="relative pt-32 pb-20 overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-vs-primary/10 blur-[120px] rounded-full -z-10" />
-      <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-vs-primary/5 blur-[100px] rounded-full -z-10" />
+    <section className="relative overflow-hidden px-4 pb-20 pt-14 md:pb-28 md:pt-20">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,42,50,0.16),transparent_34%)]" />
+      <div className="pointer-events-none absolute right-0 top-0 h-[520px] w-[520px] rounded-full bg-vs-primary/[0.08] blur-[130px]" />
 
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <motion.div 
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center lg:text-left flex flex-col items-center lg:items-start"
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.02fr_0.98fr]">
+        <motion.div
+          initial={{ opacity: 0, y: 26 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55 }}
+          className="max-w-3xl"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-vs-muted text-xs font-medium mb-6 tracking-wide uppercase">
-            <span className="w-2 h-2 rounded-full bg-vs-primary animate-pulse" />
-            Plataforma Fitness Completa
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-300">
+            <span className="h-2 w-2 rounded-full bg-vs-primary" />
+            Plataforma fitness completa
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6 tracking-tight">
-            Treinos, <span className="text-vs-primary">evolução</span> e gestão em um só lugar.
+          <h1 className="mt-6 text-5xl font-black leading-[0.95] tracking-[-0.06em] text-white md:text-7xl">
+            Treinos,{' '}
+            <span className="text-vs-primary">evolução</span> e gestão em um só
+            lugar.
           </h1>
 
-          <p className="text-lg text-vs-muted mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-            O VSFit conecta personal trainers e alunos com treinos personalizados, acompanhamento de progresso, nutrição, chat e gestão financeira.
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 md:text-xl">
+            O VSFit conecta personal trainers e alunos com treinos
+            personalizados, acompanhamento de progresso, comunicação e gestão em
+            uma única plataforma.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <DeviceAwareCTA className="w-full sm:w-auto h-14 px-8 text-base" />
-            <a 
-              href="/auth/login" 
-              className="w-full sm:w-auto px-8 h-14 rounded-2xl font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-center flex items-center justify-center"
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="#install"
+              className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl bg-vs-primary px-7 text-sm font-black text-white transition-all hover:bg-red-600 active:scale-[0.98]"
+            >
+              Instalar no celular
+              <ArrowRight className="h-4 w-4" />
+            </a>
+
+            <a
+              href="/auth/login"
+              className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-7 text-sm font-black text-white transition-all hover:bg-white/[0.09] active:scale-[0.98]"
             >
               Acessar versão web
             </a>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full sm:w-auto">
+          <div className="mt-8 flex flex-wrap gap-3">
             {[
               'Treinos personalizados',
               'Progresso em tempo real',
-              'Comunicação direta'
-            ].map((benefit, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-vs-muted font-medium bg-white/5 px-3 py-2 rounded-full border border-white/5">
-                <CheckCircle2 className="w-3 h-3 text-vs-primary" />
-                {benefit}
+              'Comunicação direta',
+            ].map((item) => (
+              <div
+                key={item}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-zinc-300"
+              >
+                <CheckCircle2 className="h-4 w-4 text-vs-primary" />
+                {item}
               </div>
             ))}
           </div>
 
-          <p className="mt-8 text-[11px] text-vs-muted/60 italic text-center lg:text-left">
-            Desenvolvido para personal trainers que desejam profissionalizar o atendimento.
+          <p className="mt-8 text-sm italic text-zinc-500">
+            Desenvolvido para personal trainers que desejam profissionalizar o
+            atendimento.
           </p>
         </motion.div>
 
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative flex justify-center items-center"
+        <motion.div
+          initial={{ opacity: 0, y: 26 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, delay: 0.1 }}
+          className="relative"
         >
-          {/* Device Mockup Container */}
-          <div className="relative w-full max-w-[320px] aspect-[9/19] bg-[#0D0D0F] border-[8px] border-[#1A1A1A] rounded-[40px] shadow-2xl overflow-hidden ring-1 ring-white/10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#1A1A1A] rounded-b-2xl z-20" />
-            
-            {/* Mockup screens with subtle floating animation */}
-            <motion.div 
-              animate={{ y: [0, -15, 0] }} 
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="relative w-full h-full overflow-hidden bg-black"
-            >
-               <img 
-                 src="/landing/dashboard.webp" 
-                 alt="VSFit Dashboard" 
-                 className="w-full h-full object-cover"
-                 onError={(e) => {
-                   e.currentTarget.src = "https://via.placeholder.com/360x780/0D0D0F/FFFFFF?text=VSFit+Dashboard";
-                 }}
-               />
-            </motion.div>
+          <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[0.04] p-3 shadow-[0_25px_100px_rgba(0,0,0,0.35)]">
+            <div className="overflow-hidden rounded-[28px] border border-white/10 bg-black">
+              <img
+                src="/landing/personal-dashboard.png"
+                alt="Dashboard do VSFit Personal"
+                className="w-full object-cover object-top"
+                loading="eager"
+              />
+            </div>
           </div>
 
-          {/* Decorative Elements */}
-          <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-vs-primary/20 blur-[100px] rounded-full" />
+          <div className="pointer-events-none absolute -left-4 top-8 hidden w-48 rounded-[22px] border border-white/10 bg-black/85 p-4 backdrop-blur-md md:block">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-vs-primary/15">
+                <Users className="h-5 w-5 text-vs-primary" />
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Gestão
+                </p>
+                <p className="text-sm font-bold text-white">
+                  Alunos, treinos e planos
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute -bottom-6 right-2 hidden w-52 rounded-[22px] border border-white/10 bg-black/85 p-4 backdrop-blur-md md:block">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-vs-primary/15">
+                <TrendingUp className="h-5 w-5 text-vs-primary" />
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Evolução
+                </p>
+                <p className="text-sm font-bold text-white">
+                  Acompanhe resultados reais
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/75 px-4 py-2 text-xs font-black text-white backdrop-blur-md transition-all hover:bg-black"
+          >
+            <MessageCircle className="h-4 w-4 text-[#25d366]" />
+            Suporte via WhatsApp
+          </a>
         </motion.div>
       </div>
     </section>
   );
 }
+
+export default LandingHero;

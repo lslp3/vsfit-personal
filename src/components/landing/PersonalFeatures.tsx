@@ -1,48 +1,147 @@
-import { Users, Layout, Activity, Utensils, CreditCard, Share2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  BarChart3,
+  CreditCard,
+  Dumbbell,
+  MessageSquare,
+  Users,
+} from 'lucide-react';
 
-interface FeatureCardProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}
-
-function FeatureCard({ icon, title, description }: FeatureCardProps) {
-  return (
-    <div className="p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-vs-primary/30 transition-all group cursor-default">
-      <div className="w-12 h-12 rounded-2xl bg-vs-primary/10 flex items-center justify-center text-vs-primary mb-4 group-hover:scale-110 transition-transform">
-        {icon}
-      </div>
-      <h3 className="text-white font-bold mb-2">{title}</h3>
-      <p className="text-vs-muted text-sm leading-relaxed">{description}</p>
-    </div>
-  );
-}
+const features = [
+  {
+    icon: Users,
+    title: 'Gestão de alunos',
+    description:
+      'Cadastre, acompanhe e organize seus alunos em um painel simples e prático.',
+  },
+  {
+    icon: Dumbbell,
+    title: 'Montador de treinos',
+    description:
+      'Crie planos por dia da semana, organize exercícios e use bi-set e drop-set.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Chat com alunos',
+    description:
+      'Mantenha a comunicação centralizada dentro da plataforma.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Financeiro',
+    description:
+      'Controle cobranças, pagamentos e acompanhe a situação financeira dos alunos.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Relatórios e evolução',
+    description:
+      'Visualize progresso, métricas e acompanhe a evolução de forma profissional.',
+  },
+];
 
 export function PersonalFeatures() {
-  const features = [
-    { icon: <Users className="w-6 h-6" />, title: 'Gestão de alunos', description: 'Cadastre, acompanhe e organize todos os seus alunos.' },
-    { icon: <Layout className="w-6 h-6" />, title: 'Montador de treinos', description: 'Crie, publique e atualize treinos personalizados.' },
-    { icon: <Activity className="w-6 h-6" />, title: 'Progresso e biometria', description: 'Acompanhe medidas, fotos e evolução corporal.' },
-    { icon: <Utensils className="w-6 h-6" />, title: 'Nutrição', description: 'Disponibilize planos alimentares organizados.' },
-    { icon: <CreditCard className="w-6 h-6" />, title: 'Financeiro', description: 'Controle cobranças, pagamentos e mensalidades.' },
-    { icon: <Share2 className="w-6 h-6" />, title: 'Captação de alunos', description: 'Compartilhe seu link e transforme visitantes em novos alunos.' },
-  ];
-
   return (
-    <section id="personal" className="py-24 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <span className="text-vs-primary text-xs font-bold uppercase tracking-widest mb-3 block">Para Personal Trainers</span>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">Menos planilhas. <span className="text-vs-primary">Mais resultados.</span></h2>
-          <p className="text-vs-muted max-w-2xl mx-auto">Organize alunos, treinos, avaliações, pagamentos e comunicação em uma plataforma profissional.</p>
-        </div>
+    <section
+      id="for-personal"
+      className="border-y border-white/5 bg-[#080808] px-4 py-24"
+    >
+      <div className="mx-auto max-w-7xl">
+        <div className="grid items-start gap-12 lg:grid-cols-[0.92fr_1.08fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-[11px] font-black uppercase tracking-[0.22em] text-vs-primary">
+              Para personal trainers
+            </span>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <FeatureCard key={i} icon={f.icon} title={f.title} description={f.description} />
-          ))}
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-white md:text-5xl">
+              Mais controle na rotina. Mais qualidade no atendimento.
+            </h2>
+
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-400">
+              O VSFit foi pensado para o personal que precisa organizar alunos,
+              criar treinos, acompanhar resultados e manter o atendimento em um
+              só lugar.
+            </p>
+
+            <div className="mt-8 space-y-3">
+              {features.map((feature, index) => {
+                const Icon = feature.icon;
+
+                return (
+                  <motion.div
+                    key={feature.title}
+                    initial={{ opacity: 0, x: -12 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.35, delay: index * 0.05 }}
+                    className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-vs-primary/15">
+                        <Icon className="h-5 w-5 text-vs-primary" />
+                      </div>
+
+                      <div>
+                        <h3 className="text-base font-black text-white">
+                          {feature.title}
+                        </h3>
+                        <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.55, delay: 0.08 }}
+            className="grid gap-6 md:grid-cols-2"
+          >
+            <article className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.04]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Gestão de alunos
+                </p>
+              </div>
+
+              <img
+                src="/landing/personal-students.png"
+                alt="Tela de gestão de alunos do VSFit"
+                className="w-full object-cover object-top"
+                loading="lazy"
+              />
+            </article>
+
+            <article className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.04]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Montador de treinos
+                </p>
+              </div>
+
+              <img
+                src="/landing/personal-workout-builder.png"
+                alt="Tela do montador de treinos do VSFit"
+                className="w-full object-cover object-top"
+                loading="lazy"
+              />
+            </article>
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
+
+export default PersonalFeatures;
