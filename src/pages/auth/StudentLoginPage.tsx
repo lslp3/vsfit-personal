@@ -1,27 +1,64 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import {
+  useState,
+  type FormEvent,
+} from 'react';
+import {
+  Link,
+  useNavigate,
+} from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, GraduationCap, Loader2 } from 'lucide-react';
-import { Input } from '../../components/ui/Input';
+import {
+  GraduationCap,
+  Loader2,
+  Lock,
+  LogIn,
+  Mail,
+} from 'lucide-react';
+
+import vsfitLogo from '../../assets/brand/vsfit-logo.png';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/authStore';
 import * as authService from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
+
+function normalizeJoinedStudent(value: any) {
+  if (Array.isArray(value)) {
+    return value[0] || null;
+  }
+
+  return value || null;
+}
 
 export function StudentLoginPage() {
   const navigate = useNavigate();
-  const { setUser, setStudentData } = useAuthStore();
+
+  const {
+    setUser,
+    setStudentData,
+  } = useAuthStore();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] =
+    useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const [error, setError] = useState('');
+  const [loading, setLoading] =
+    useState(false);
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
     setError('');
 
-    if (!email.trim() || !password.trim()) {
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (
+      !normalizedEmail ||
+      !password.trim()
+    ) {
       setError('Preencha todos os campos.');
       return;
     }
@@ -29,125 +66,213 @@ export function StudentLoginPage() {
     setLoading(true);
 
     try {
-      const data = await authService.loginStudent(email, password);
-      const normalizedEmail = email.trim().toLowerCase();
-      const authUserId = data.user!.id;
+      const loginData =
+        await authService.login(
+          normalizedEmail,
+          password
+        );
 
-      console.log('[STUDENT LOGIN] auth user:', authUserId);
-      console.log('[STUDENT LOGIN] email:', normalizedEmail);
+      const authUser = loginData.user;
 
+      if (!authUser?.id) {
+        throw new Error(
+          'Usuário não identificado.'
+        );
+      }
+
+      let account: any = null;
       let student: any = null;
 
-      const { data: accountByAuthUserId } = await supabase
+      const {
+        data: accountByAuth,
+        error: accountByAuthError,
+      } = await supabase
         .from('student_accounts')
-        .select('*, student:students(*)')
-        .eq('auth_user_id', authUserId)
+        .select(
+          '*, student:students(*)'
+        )
+        .eq(
+          'auth_user_id',
+          authUser.id
+        )
         .maybeSingle();
 
-      console.log('[STUDENT LOGIN] account by auth_user_id:', accountByAuthUserId);
+      if (accountByAuthError) {
+        console.warn(
+          '[StudentLoginPage] account auth:',
+          accountByAuthError
+        );
+      }
 
-      if (accountByAuthUserId) {
-        const raw = Array.isArray(accountByAuthUserId.student)
-          ? accountByAuthUserId.student[0]
-          : accountByAuthUserId.student;
-        student = raw;
-        setStudentData(student, accountByAuthUserId);
+      if (accountByAuth) {
+        account = accountByAuth;
+        student = normalizeJoinedStudent(
+          accountByAuth.student
+        );
       }
 
       if (!student) {
-        const { data: accountByEmail } = await supabase
+        const {
+          data: accountByEmail,
+          error: accountByEmailError,
+        } = await supabase
           .from('student_accounts')
-          .select('*, student:students(*)')
+          .select(
+            '*, student:students(*)'
+          )
           .eq('email', normalizedEmail)
           .maybeSingle();
 
-        if (accountByEmail) {
-          const raw = Array.isArray(accountByEmail.student)
-            ? accountByEmail.student[0]
-            : accountByEmail.student;
-          student = raw;
-          setStudentData(student, accountByEmail);
+        if (accountByEmailError) {
+          console.warn(
+            '[StudentLoginPage] account email:',
+            accountByEmailError
+          );
+        }
 
-          if (!accountByEmail.auth_user_id) {
-            await supabase
+        if (accountByEmail) {
+          account = accountByEmail;
+
+          student =
+            normalizeJoinedStudent(
+              accountByEmail.student
+            );
+
+          if (
+            !accountByEmail.auth_user_id
+          ) {
+            const {
+              error: updateAccountError,
+            } = await supabase
               .from('student_accounts')
-              .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
-              .eq('student_id', student.id);
+              .update({
+                auth_user_id:
+                  authUser.id,
+                updated_at:
+                  new Date().toISOString(),
+              })
+              .eq(
+                'id',
+                accountByEmail.id
+              );
+
+            if (updateAccountError) {
+              console.warn(
+                '[StudentLoginPage] update account:',
+                updateAccountError
+              );
+            }
+
+            account = {
+              ...accountByEmail,
+              auth_user_id:
+                authUser.id,
+            };
           }
         }
       }
 
       if (!student) {
-        const { data: studentByEmail } = await supabase
+        const {
+          data: studentByEmail,
+          error: studentError,
+        } = await supabase
           .from('students')
           .select('*')
           .eq('email', normalizedEmail)
           .maybeSingle();
 
-        console.log('[STUDENT LOGIN] student by email:', studentByEmail);
+        if (studentError) {
+          console.warn(
+            '[StudentLoginPage] student email:',
+            studentError
+          );
+        }
 
         if (studentByEmail) {
           student = studentByEmail;
 
-          const { data: upserted } = await supabase
-            .from('student_accounts')
-            .upsert(
-              {
-                student_id: studentByEmail.id,
-                email: normalizedEmail,
-                auth_user_id: authUserId,
-                is_active: true,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'student_id' }
-            )
-            .select()
-            .single();
-
-          setStudentData(student, upserted as any || null);
+          account = {
+            id: null,
+            student_id:
+              studentByEmail.id,
+            auth_user_id:
+              authUser.id,
+            email: normalizedEmail,
+            is_active: true,
+          };
         }
       }
 
-      if (!student) {
+      if (!student?.id) {
         await supabase.auth.signOut();
-        setError('Perfil de aluno não encontrado.');
-        setLoading(false);
-        return;
+
+        throw new Error(
+          'Perfil de aluno não encontrado.'
+        );
       }
 
-      const { data: profile } = await supabase
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', authUserId)
+        .eq('id', authUser.id)
         .maybeSingle();
 
-      if (!profile) {
-        await supabase.from('user_profiles').insert({
-          id: authUserId,
-          email: normalizedEmail,
-          name: student.name || normalizedEmail.split('@')[0],
-          role: 'student',
-        }).maybeSingle();
+      if (profileError) {
+        console.warn(
+          '[StudentLoginPage] profile:',
+          profileError
+        );
       }
 
-      setUser(data.user, profile || {
-        id: authUserId,
-        email: normalizedEmail,
-        name: student.name || normalizedEmail.split('@')[0],
-        role: 'student',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, null);
+      const now =
+        new Date().toISOString();
 
-      console.log('[STUDENT LOGIN] student:', student);
-      console.log('[STUDENT LOGIN] real student id:', student?.id);
+      const studentProfile =
+        profile || {
+          id: authUser.id,
+          email:
+            authUser.email ||
+            normalizedEmail,
+          name:
+            student.name ||
+            student.full_name ||
+            'Aluno',
+          role: 'student',
+          created_at: now,
+          updated_at: now,
+        };
 
-      navigate('/student/home', { replace: true });
-    } catch (err: any) {
+      setUser(
+        authUser,
+        studentProfile as any,
+        null
+      );
+
+      setStudentData(
+        student,
+        account
+      );
+
+      navigate('/student/home', {
+        replace: true,
+      });
+    } catch (loginError: any) {
+      console.error(
+        '[StudentLoginPage] login error:',
+        loginError
+      );
+
       const message =
-        err?.message === 'Invalid login credentials'
+        loginError?.message ===
+        'Invalid login credentials'
           ? 'Email ou senha inválidos.'
-          : err?.message || 'Erro ao fazer login. Tente novamente.';
+          : loginError?.message ||
+            'Erro ao entrar como aluno.';
+
       setError(message);
     } finally {
       setLoading(false);
@@ -155,27 +280,64 @@ export function StudentLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-10">
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.4,
+          ease: 'easeOut',
+        }}
         className="w-full max-w-sm"
       >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-vs-primary to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-vs-primary/20">
-            <span className="text-white font-black text-2xl tracking-tight">VS</span>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="flex h-24 w-24 items-center justify-center p-1">
+            <img
+              src={vsfitLogo}
+              alt="VSFit Aluno"
+              draggable={false}
+              className="h-full w-full select-none object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white">Área do Aluno</h1>
-          <p className="text-vs-muted text-sm mt-1">Acesse seus treinos</p>
+
+          <div className="mt-4 flex items-center gap-2 text-[#ff2a32]">
+            <GraduationCap className="h-4 w-4" />
+
+            <p className="text-[10px] font-black uppercase tracking-[0.28em]">
+              VSFit Aluno
+            </p>
+          </div>
+
+          <h1 className="mt-3 text-[30px] font-black tracking-[-0.05em] text-white">
+            Bem-vindo
+          </h1>
+
+          <p className="mt-1 text-sm font-medium text-zinc-500">
+            Acesse seus treinos e evolução
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-[#0d0d0e] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
+        >
           {error && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400"
+              initial={{
+                opacity: 0,
+                height: 0,
+              }}
+              animate={{
+                opacity: 1,
+                height: 'auto',
+              }}
+              className="rounded-[14px] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
             >
               {error}
             </motion.div>
@@ -186,7 +348,9 @@ export function StudentLoginPage() {
             type="email"
             placeholder="seu@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) =>
+              setEmail(event.target.value)
+            }
             icon={<Mail size={18} />}
             autoComplete="email"
           />
@@ -196,24 +360,54 @@ export function StudentLoginPage() {
             type="password"
             placeholder="Sua senha"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
             icon={<Lock size={18} />}
             autoComplete="current-password"
           />
 
-          <Button type="submit" loading={loading} className="w-full">
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <GraduationCap size={18} />}
-            Entrar
+          <div className="text-right">
+            <Link
+              to="/auth/forgot-password"
+              className="text-xs font-semibold text-zinc-500 transition-colors hover:text-[#ff2a32]"
+            >
+              Esqueceu a senha?
+            </Link>
+          </div>
+
+          <Button
+            type="submit"
+            loading={loading}
+            className="h-14 w-full rounded-[16px] text-sm font-black"
+          >
+            {loading ? (
+              <Loader2
+                size={19}
+                className="animate-spin"
+              />
+            ) : (
+              <LogIn size={19} />
+            )}
+
+            <span>ENTRAR COMO ALUNO</span>
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-vs-muted">
-          É personal trainer?{' '}
-          <Link to="/auth/login" className="text-vs-primary font-medium hover:underline">
-            Acessar como personal
-          </Link>
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-zinc-500">
+            É personal?{' '}
+            <Link
+              to="/auth/login"
+              className="font-bold text-[#ff2a32] hover:underline"
+            >
+              Acessar área do personal
+            </Link>
+          </p>
+        </div>
       </motion.div>
     </div>
   );
 }
+
+export default StudentLoginPage;

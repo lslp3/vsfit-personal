@@ -8,25 +8,39 @@ import {
   Clock,
   Dumbbell,
   Flame,
+  Layers2,
   Loader2,
   Play,
   Search,
   Sparkles,
   Target,
   Trophy,
+  Zap,
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
+import type {
+  CompleteWorkoutPlan,
+  WorkoutLog,
+  WorkoutPlan,
+} from '../../types/database';
 
 type FilterType = 'all' | 'today' | 'pending' | 'completed';
 
 type StudentWorkoutsState = {
   student: any | null;
-  workouts: any[];
-  logs: any[];
+  workouts: CompleteWorkoutPlan[];
+  logs: WorkoutLog[];
+};
+
+type ExpirationStatus = {
+  rank: number;
+  label: string;
+  description: string;
+  className: string;
 };
 
 const filters: { key: FilterType; label: string }[] = [
@@ -36,202 +50,97 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'completed', label: 'Concluídos' },
 ];
 
-const WEEK_DAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
-
 const DAY_LABELS: Record<string, string> = {
+  dom: 'DOM',
+  seg: 'SEG',
+  ter: 'TER',
+  qua: 'QUA',
+  qui: 'QUI',
+  sex: 'SEX',
+  sab: 'SÁB',
   Sunday: 'DOM',
   Monday: 'SEG',
   Tuesday: 'TER',
   Wednesday: 'QUA',
   Thursday: 'QUI',
   Friday: 'SEX',
-  Saturday: 'SAB',
+  Saturday: 'SÁB',
 };
 
+const DAY_ALIASES: Record<string, string> = {
+  Sunday: 'dom',
+  Monday: 'seg',
+  Tuesday: 'ter',
+  Wednesday: 'qua',
+  Thursday: 'qui',
+  Friday: 'sex',
+  Saturday: 'sab',
+  sunday: 'dom',
+  monday: 'seg',
+  tuesday: 'ter',
+  wednesday: 'qua',
+  thursday: 'qui',
+  friday: 'sex',
+  saturday: 'sab',
+  dom: 'dom',
+  seg: 'seg',
+  ter: 'ter',
+  qua: 'qua',
+  qui: 'qui',
+  sex: 'sex',
+  sab: 'sab',
+};
+
+function normalizeDayKey(value?: string | null) {
+  if (!value) return '';
+
+  return DAY_ALIASES[value] || value;
+}
+
 function getTodayDayKey() {
-  return WEEK_DAYS[new Date().getDay()];
+  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][new Date().getDay()];
 }
 
-function getWorkoutName(workout: any) {
-  return (
-    workout?.name ||
-    workout?.title ||
-    workout?.workout_name ||
-    workout?.plan_name ||
-    'Treino personalizado'
-  );
+function getWorkoutName(workout: CompleteWorkoutPlan) {
+  return workout.name || 'Treino personalizado';
 }
 
-function getWorkoutObjective(workout: any) {
-  return workout?.objective || workout?.goal || workout?.focus || 'Treino personalizado';
+function getWorkoutObjective(workout: CompleteWorkoutPlan) {
+  return workout.objective || 'Treino personalizado';
 }
 
-function getWorkoutLevel(workout: any) {
-  return workout?.level || workout?.difficulty || 'Seu nível';
+function getWorkoutLevel(workout: CompleteWorkoutPlan) {
+  return workout.level || 'Seu nível';
 }
 
-function getWorkoutDuration(workout: any) {
-  return (
-    workout?.duration_minutes ||
-    workout?.duration ||
-    workout?.estimated_duration ||
-    workout?.time ||
-    null
-  );
+function getWorkoutDuration(workout: CompleteWorkoutPlan) {
+  return workout.duration_minutes || null;
 }
 
-function getWorkoutUpdatedTime(workout: any) {
-  const raw =
-    workout?.updated_at ||
-    workout?.updatedAt ||
-    workout?.created_at ||
-    workout?.createdAt ||
-    '';
-
-  const time = new Date(raw).getTime();
+function getWorkoutUpdatedTime(workout: CompleteWorkoutPlan) {
+  const time = new Date(workout.updated_at || workout.created_at).getTime();
 
   return Number.isFinite(time) ? time : 0;
 }
 
-function isVisibleWorkout(workout: any) {
-  const status = String(workout?.status || '').toLowerCase();
-
-  return status !== 'draft' && status !== 'rascunho' && status !== 'archived';
+function isVisibleWorkout(workout: WorkoutPlan) {
+  return workout.status === 'published';
 }
 
-function normalizeArray(value: any) {
-  if (Array.isArray(value)) return value;
+function parseDateOnly(value?: string | null) {
+  if (!value) return null;
 
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
+  const date = new Date(`${value}T12:00:00`);
 
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
+  return Number.isFinite(date.getTime()) ? date : null;
 }
 
-function getWorkoutExercises(workout: any) {
-  const planExercises = normalizeArray(workout?.workout_plan_exercises);
+function formatDate(value?: string | null) {
+  const date = parseDateOnly(value);
 
-  if (planExercises.length > 0) return planExercises;
+  if (!date) return 'Não definida';
 
-  const directExercises = normalizeArray(workout?.exercises);
-
-  if (directExercises.length > 0) return directExercises;
-
-  const dayGroups = normalizeArray(workout?.dayGroups || workout?.day_groups);
-
-  return dayGroups.flatMap((group: any) => normalizeArray(group?.exercises));
-}
-
-function getWorkoutDayGroups(workout: any) {
-  const planExercises = normalizeArray(workout?.workout_plan_exercises);
-
-  if (planExercises.length > 0) {
-    const grouped = planExercises.reduce<Record<string, any[]>>((acc, exercise: any) => {
-      const key = exercise?.day_key || exercise?.dayKey || '_default';
-
-      if (!acc[key]) acc[key] = [];
-
-      acc[key].push(exercise);
-
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).map(([dayKey, exercises]) => ({
-      dayKey,
-      dayLabel: DAY_LABELS[dayKey] || 'DIA',
-      exercises,
-    }));
-  }
-
-  const dayGroups = normalizeArray(workout?.dayGroups || workout?.day_groups);
-
-  if (dayGroups.length > 0) return dayGroups;
-
-  const scheduleDays = normalizeArray(workout?.scheduleDays || workout?.scheduledays);
-
-  return scheduleDays.map((dayKey: string) => ({
-    dayKey,
-    dayLabel: DAY_LABELS[dayKey] || 'DIA',
-    exercises: [],
-  }));
-}
-
-function getWorkoutScheduleDays(workout: any) {
-  const directDays = normalizeArray(workout?.scheduleDays || workout?.scheduledays);
-
-  if (directDays.length > 0) return directDays;
-
-  return getWorkoutDayGroups(workout)
-    .map((group: any) => group?.dayKey || group?.day || group?.day_key)
-    .filter(Boolean);
-}
-
-function isTodayWorkout(workout: any) {
-  const today = getTodayDayKey();
-  const scheduleDays = getWorkoutScheduleDays(workout);
-
-  if (scheduleDays.length === 0) return false;
-
-  return scheduleDays.some((day: string) => String(day) === today);
-}
-
-function getLogWorkoutId(log: any) {
-  return (
-    log?.workout_plan_id ||
-    log?.workout_id ||
-    log?.plan_id ||
-    log?.workoutPlanId ||
-    log?.workoutId ||
-    ''
-  );
-}
-
-function isCompletedLog(log: any) {
-  const status = String(log?.status || '').toLowerCase();
-
-  return (
-    status === 'completed' ||
-    status === 'complete' ||
-    status === 'done' ||
-    Boolean(log?.completed_at) ||
-    Boolean(log?.completedAt)
-  );
-}
-
-function isWorkoutCompleted(workout: any, logs: any[]) {
-  return logs.some((log) => {
-    const logWorkoutId = getLogWorkoutId(log);
-
-    return logWorkoutId === workout.id && isCompletedLog(log);
-  });
-}
-
-function getWorkoutLastCompleted(workout: any, logs: any[]) {
-  const completedLogs = logs
-    .filter((log) => getLogWorkoutId(log) === workout.id && isCompletedLog(log))
-    .sort((a, b) => {
-      const dateA = new Date(a.completed_at || a.created_at || a.date || '').getTime();
-      const dateB = new Date(b.completed_at || b.created_at || b.date || '').getTime();
-
-      return dateB - dateA;
-    });
-
-  return completedLogs[0] || null;
+  return date.toLocaleDateString('pt-BR');
 }
 
 function formatShortDate(value?: string | null) {
@@ -245,6 +154,108 @@ function formatShortDate(value?: string | null) {
     day: '2-digit',
     month: 'short',
   });
+}
+
+function getExpirationStatus(endDate?: string | null): ExpirationStatus {
+  const end = parseDateOnly(endDate);
+
+  if (!end) {
+    return {
+      rank: 3,
+      label: 'Sem vencimento',
+      description: 'Plano sem data final.',
+      className: 'border-white/10 bg-white/[0.05] text-zinc-400',
+    };
+  }
+
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+
+  const days = Math.ceil(
+    (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (days < 0) {
+    return {
+      rank: 0,
+      label: 'Vencido',
+      description: `Venceu há ${Math.abs(days)} dia${Math.abs(days) === 1 ? '' : 's'}.`,
+      className: 'border-red-400/25 bg-red-400/10 text-red-300',
+    };
+  }
+
+  if (days <= 7) {
+    return {
+      rank: 1,
+      label: days === 0 ? 'Vence hoje' : `Vence em ${days} dia${days === 1 ? '' : 's'}`,
+      description: `Vencimento em ${formatDate(endDate)}.`,
+      className: 'border-amber-400/25 bg-amber-400/10 text-amber-300',
+    };
+  }
+
+  return {
+    rank: 2,
+    label: 'Vigente',
+    description: `${days} dias restantes.`,
+    className: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
+  };
+}
+
+function getWorkoutScheduleDays(workout: CompleteWorkoutPlan) {
+  if (workout.workout_days.length > 0) {
+    return [...workout.workout_days]
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((day) => normalizeDayKey(day.day_key))
+      .filter(Boolean);
+  }
+
+  const uniqueDays = new Set<string>();
+
+  workout.workout_plan_exercises.forEach((exercise) => {
+    const key = normalizeDayKey(exercise.day_key);
+
+    if (key) uniqueDays.add(key);
+  });
+
+  const order = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+
+  return [...uniqueDays].sort(
+    (a, b) => order.indexOf(a) - order.indexOf(b)
+  );
+}
+
+function isTodayWorkout(workout: CompleteWorkoutPlan) {
+  return getWorkoutScheduleDays(workout).includes(getTodayDayKey());
+}
+
+function getLogWorkoutId(log: WorkoutLog) {
+  return log.workout_plan_id || '';
+}
+
+function isCompletedLog(log: WorkoutLog) {
+  return log.status === 'completed' || Boolean(log.completed_at);
+}
+
+function isWorkoutCompleted(workout: CompleteWorkoutPlan, logs: WorkoutLog[]) {
+  return logs.some(
+    (log) => getLogWorkoutId(log) === workout.id && isCompletedLog(log)
+  );
+}
+
+function getWorkoutLastCompleted(
+  workout: CompleteWorkoutPlan,
+  logs: WorkoutLog[]
+) {
+  return logs
+    .filter(
+      (log) => getLogWorkoutId(log) === workout.id && isCompletedLog(log)
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.completed_at || a.created_at).getTime();
+      const dateB = new Date(b.completed_at || b.created_at).getTime();
+
+      return dateB - dateA;
+    })[0] || null;
 }
 
 function getStudentInitials(name?: string) {
@@ -262,25 +273,26 @@ function getStudentName(student: any) {
   return student?.name || student?.full_name || 'Aluno';
 }
 
-async function hydrateWorkoutWithExercises(workout: any) {
-  if (getWorkoutExercises(workout).length > 0) return workout;
+function countDropSets(workout: CompleteWorkoutPlan) {
+  return workout.workout_plan_exercises.filter(
+    (exercise) => exercise.technique_type === 'drop_set'
+  ).length;
+}
 
+function countBiSets(workout: CompleteWorkoutPlan) {
+  return workout.workout_exercise_groups.filter(
+    (group) => group.group_type === 'bi_set'
+  ).length;
+}
+
+async function hydrateWorkout(
+  workout: WorkoutPlan
+): Promise<CompleteWorkoutPlan | null> {
   try {
-    const detail = await workoutService.getWorkoutPlanById(workout.id);
-
-    return {
-      ...workout,
-      ...detail,
-      id: workout.id,
-      workout_plan_exercises:
-        (detail as any)?.workout_plan_exercises ||
-        workout?.workout_plan_exercises ||
-        [],
-    };
-  } catch (err) {
-    console.error('[StudentWorkoutsPage] hydrate workout error:', err);
-
-    return workout;
+    return await workoutService.getWorkoutPlanById(workout.id);
+  } catch (error) {
+    console.error('[StudentWorkoutsPage] hydrate workout error:', error);
+    return null;
   }
 }
 
@@ -289,7 +301,6 @@ export function StudentWorkoutsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
@@ -300,7 +311,7 @@ export function StudentWorkoutsPage() {
   });
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   async function loadData() {
@@ -315,11 +326,13 @@ export function StudentWorkoutsPage() {
       const authUser = authData.user;
 
       if (!authUser?.id) {
-        setError('Sessão do aluno não encontrada. Faça login novamente.');
-        return;
+        throw new Error('Sessão do aluno não encontrada. Faça login novamente.');
       }
 
-      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
+      const accountResult = await studentService.getStudentAccountByAuthUser(
+        authUser.id
+      );
+
       let studentData = accountResult?.student || null;
 
       if (!studentData) {
@@ -327,46 +340,51 @@ export function StudentWorkoutsPage() {
       }
 
       if (!studentData?.id) {
-        setError('Perfil do aluno não encontrado.');
-        return;
+        throw new Error('Perfil do aluno não encontrado.');
       }
 
       const [workoutsData, logsData] = await Promise.all([
-        workoutService.getWorkoutPlansByStudent(studentData.id).catch((err: any) => {
-          console.error('[StudentWorkoutsPage] workouts error:', err);
-          return [];
-        }),
-        workoutService.getWorkoutLogsByStudent(studentData.id).catch((err: any) => {
-          console.error('[StudentWorkoutsPage] logs error:', err);
-          return [];
-        }),
+        workoutService.getWorkoutPlansByStudent(studentData.id),
+        workoutService.getWorkoutLogsByStudent(studentData.id),
       ]);
 
-      const visibleWorkouts = Array.isArray(workoutsData)
-        ? workoutsData.filter(isVisibleWorkout)
-        : [];
+      const visibleWorkouts = workoutsData.filter(isVisibleWorkout);
 
-      const hydratedWorkouts = await Promise.all(
-        visibleWorkouts.map((workout) => hydrateWorkoutWithExercises(workout))
+      const hydratedResults = await Promise.all(
+        visibleWorkouts.map((workout) => hydrateWorkout(workout))
       );
 
       setData({
         student: studentData,
-        workouts: hydratedWorkouts,
-        logs: Array.isArray(logsData) ? logsData : [],
+        workouts: hydratedResults.filter(
+          (workout): workout is CompleteWorkoutPlan => Boolean(workout)
+        ),
+        logs: logsData,
       });
-    } catch (err: any) {
-      console.error('[StudentWorkoutsPage] loadData error:', err);
-      setError(err?.message || 'Erro ao carregar treinos.');
+    } catch (loadError: unknown) {
+      const message =
+        loadError instanceof Error
+          ? loadError.message
+          : 'Erro ao carregar treinos.';
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
   const orderedWorkouts = useMemo(() => {
-    return [...data.workouts].sort(
-      (a, b) => getWorkoutUpdatedTime(b) - getWorkoutUpdatedTime(a)
-    );
+    return [...data.workouts].sort((a, b) => {
+      const expirationDifference =
+        getExpirationStatus(a.end_date).rank -
+        getExpirationStatus(b.end_date).rank;
+
+      if (expirationDifference !== 0) {
+        return expirationDifference;
+      }
+
+      return getWorkoutUpdatedTime(b) - getWorkoutUpdatedTime(a);
+    });
   }, [data.workouts]);
 
   const filteredWorkouts = useMemo(() => {
@@ -378,9 +396,9 @@ export function StudentWorkoutsPage() {
 
       const matchesSearch =
         !query ||
-        String(getWorkoutName(workout)).toLowerCase().includes(query) ||
-        String(getWorkoutObjective(workout)).toLowerCase().includes(query) ||
-        String(getWorkoutLevel(workout)).toLowerCase().includes(query);
+        getWorkoutName(workout).toLowerCase().includes(query) ||
+        getWorkoutObjective(workout).toLowerCase().includes(query) ||
+        getWorkoutLevel(workout).toLowerCase().includes(query);
 
       const matchesFilter =
         activeFilter === 'all' ||
@@ -392,31 +410,34 @@ export function StudentWorkoutsPage() {
     });
   }, [orderedWorkouts, data.logs, search, activeFilter]);
 
-  const todayCount = useMemo(() => {
-    return orderedWorkouts.filter(isTodayWorkout).length;
-  }, [orderedWorkouts]);
+  const todayCount = useMemo(
+    () => orderedWorkouts.filter(isTodayWorkout).length,
+    [orderedWorkouts]
+  );
 
-  const completedCount = useMemo(() => {
-    return orderedWorkouts.filter((workout) => isWorkoutCompleted(workout, data.logs)).length;
-  }, [orderedWorkouts, data.logs]);
+  const completedCount = useMemo(
+    () =>
+      orderedWorkouts.filter((workout) =>
+        isWorkoutCompleted(workout, data.logs)
+      ).length,
+    [orderedWorkouts, data.logs]
+  );
 
   const pendingCount = Math.max(orderedWorkouts.length - completedCount, 0);
-
-  function handleOpenWorkout(workout: any) {
-    navigate(`/student/workout-detail/${workout.id}`);
-  }
 
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-88px)] items-center justify-center bg-[#050505] px-6 text-white">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15 shadow-[0_18px_45px_rgba(255,42,48,0.22)]">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
             <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
           </div>
 
           <div>
             <p className="text-sm font-black text-white">Carregando treinos...</p>
-            <p className="mt-1 text-xs text-zinc-500">Buscando seus planos publicados.</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Buscando seus planos publicados.
+            </p>
           </div>
         </div>
       </div>
@@ -427,19 +448,19 @@ export function StudentWorkoutsPage() {
     return (
       <div className="min-h-[calc(100vh-88px)] bg-[#050505] px-4 pb-28 pt-8 text-white">
         <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
-            <AlertCircle className="h-8 w-8" />
-          </div>
+          <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
 
-          <h1 className="mt-5 text-xl font-black text-white">Não foi possível carregar</h1>
+          <h1 className="mt-5 text-xl font-black text-white">
+            Não foi possível carregar
+          </h1>
 
-          <p className="mt-2 text-sm leading-relaxed text-red-200/80">
+          <p className="mt-2 text-sm text-red-200/80">
             {error || 'Perfil do aluno não encontrado.'}
           </p>
 
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => void loadData()}
             className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
           >
             TENTAR NOVAMENTE
@@ -452,9 +473,9 @@ export function StudentWorkoutsPage() {
   return (
     <div className="min-h-screen bg-[#050505] px-4 pb-32 pt-6 text-white">
       <div className="mx-auto max-w-lg space-y-5">
-        <section className="overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
+        <section className="rounded-[32px] border border-white/10 bg-white/[0.045] p-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-lg font-black text-[#ff2a32]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-lg font-black text-[#ff2a32]">
               {getStudentInitials(getStudentName(data.student))}
             </div>
 
@@ -463,40 +484,34 @@ export function StudentWorkoutsPage() {
                 Área do aluno
               </p>
 
-              <h1 className="mt-1 text-[25px] font-black uppercase italic tracking-[-0.05em] text-white">
+              <h1 className="mt-1 text-[25px] font-black uppercase italic text-white">
                 Meus Treinos
               </h1>
 
-              <p className="mt-1 truncate text-[12px] font-medium text-zinc-500">
+              <p className="mt-1 truncate text-[12px] text-zinc-500">
                 {getStudentName(data.student)}, seus treinos publicados estão aqui.
               </p>
             </div>
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-2">
-            <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
-              <Dumbbell className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
-              <p className="text-lg font-black text-white">{orderedWorkouts.length}</p>
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
-                Total
-              </p>
-            </div>
+            <SummaryBox
+              icon={Dumbbell}
+              value={orderedWorkouts.length}
+              label="Total"
+            />
 
-            <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
-              <CalendarDays className="mx-auto mb-2 h-4 w-4 text-blue-400" />
-              <p className="text-lg font-black text-white">{todayCount}</p>
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
-                Hoje
-              </p>
-            </div>
+            <SummaryBox
+              icon={CalendarDays}
+              value={todayCount}
+              label="Hoje"
+            />
 
-            <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
-              <CheckCircle2 className="mx-auto mb-2 h-4 w-4 text-emerald-400" />
-              <p className="text-lg font-black text-white">{completedCount}</p>
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
-                Feitos
-              </p>
-            </div>
+            <SummaryBox
+              icon={CheckCircle2}
+              value={completedCount}
+              label="Feitos"
+            />
           </div>
         </section>
 
@@ -507,7 +522,7 @@ export function StudentWorkoutsPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar treino..."
-            className="w-full rounded-[20px] border border-white/10 bg-white/[0.045] py-4 pl-11 pr-4 text-sm font-medium text-white outline-none placeholder:text-zinc-600 focus:border-[#ff2a32]/40"
+            className="w-full rounded-[20px] border border-white/10 bg-white/[0.045] py-4 pl-11 pr-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#ff2a32]/40"
           />
         </div>
 
@@ -518,9 +533,9 @@ export function StudentWorkoutsPage() {
               type="button"
               onClick={() => setActiveFilter(filter.key)}
               className={cn(
-                'min-h-[42px] rounded-[15px] px-2 text-[10px] font-black uppercase tracking-wide transition-all',
+                'min-h-[42px] rounded-[15px] px-2 text-[10px] font-black uppercase',
                 activeFilter === filter.key
-                  ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/20 text-[#ff2a32] shadow-[0_8px_20px_rgba(255,42,48,0.12)]'
+                  ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/20 text-[#ff2a32]'
                   : 'text-zinc-500'
               )}
             >
@@ -530,32 +545,20 @@ export function StudentWorkoutsPage() {
         </div>
 
         {filteredWorkouts.length === 0 ? (
-          <div className="py-10">
-            <div className="rounded-[32px] border border-white/10 bg-white/[0.035] p-8 text-center">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-white/5 bg-white/[0.03]">
-                <Dumbbell className="h-10 w-10 text-zinc-700" />
-              </div>
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.035] p-8 text-center">
+            <Dumbbell className="mx-auto h-10 w-10 text-zinc-700" />
 
-              <h2 className="mt-6 text-xl font-black text-white">
-                {orderedWorkouts.length === 0 ? 'Nenhum treino liberado' : 'Nenhum resultado'}
-              </h2>
+            <h2 className="mt-6 text-xl font-black text-white">
+              {orderedWorkouts.length === 0
+                ? 'Nenhum treino liberado'
+                : 'Nenhum resultado'}
+            </h2>
 
-              <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                {orderedWorkouts.length === 0
-                  ? 'Quando seu personal publicar um treino, ele aparecerá aqui.'
-                  : 'Tente alterar a busca ou o filtro selecionado.'}
-              </p>
-
-              {activeFilter !== 'all' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveFilter('all')}
-                  className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
-                >
-                  VER TODOS
-                </button>
-              )}
-            </div>
+            <p className="mt-2 text-sm text-zinc-500">
+              {orderedWorkouts.length === 0
+                ? 'Quando seu personal publicar um treino, ele aparecerá aqui.'
+                : 'Tente alterar a busca ou o filtro selecionado.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -563,23 +566,26 @@ export function StudentWorkoutsPage() {
               const completed = isWorkoutCompleted(workout, data.logs);
               const lastCompleted = getWorkoutLastCompleted(workout, data.logs);
               const today = isTodayWorkout(workout);
-              const exercises = getWorkoutExercises(workout);
               const days = getWorkoutScheduleDays(workout);
-              const duration = getWorkoutDuration(workout);
+              const expiration = getExpirationStatus(workout.end_date);
+              const dropSets = countDropSets(workout);
+              const biSets = countBiSets(workout);
 
               return (
                 <button
                   key={workout.id}
                   type="button"
-                  onClick={() => handleOpenWorkout(workout)}
-                  className="w-full rounded-[30px] border border-white/10 bg-white/[0.045] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition-all active:scale-[0.98]"
+                  onClick={() =>
+                    navigate(`/student/workout-detail/${workout.id}`)
+                  }
+                  className="w-full rounded-[30px] border border-white/10 bg-white/[0.045] p-4 text-left transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-start gap-4">
                     <div
                       className={cn(
                         'mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]',
                         completed
-                          ? 'border border-emerald-400/20 bg-emerald-400/12 text-emerald-400'
+                          ? 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-400'
                           : today
                             ? 'border border-[#ff2a32]/25 bg-[#ff2a32]/15 text-[#ff2a32]'
                             : 'border border-white/10 bg-white/[0.05] text-zinc-400'
@@ -597,11 +603,26 @@ export function StudentWorkoutsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
-                            {today ? 'Treino de hoje' : completed ? 'Concluído' : 'Treino liberado'}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
+                              {today
+                                ? 'Treino de hoje'
+                                : completed
+                                  ? 'Concluído'
+                                  : 'Treino liberado'}
+                            </p>
 
-                          <h3 className="mt-1 truncate text-[20px] font-black tracking-[-0.03em] text-white">
+                            <span
+                              className={cn(
+                                'rounded-full border px-2.5 py-1 text-[9px] font-black uppercase',
+                                expiration.className
+                              )}
+                            >
+                              {expiration.label}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-1 truncate text-[20px] font-black text-white">
                             {getWorkoutName(workout)}
                           </h3>
                         </div>
@@ -609,49 +630,58 @@ export function StudentWorkoutsPage() {
                         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-zinc-700" />
                       </div>
 
-                      <p className="mt-2 text-[14px] font-medium text-zinc-400">
+                      <p className="mt-2 text-[14px] text-zinc-400">
                         {getWorkoutObjective(workout)}
                       </p>
 
-                      {days.length > 0 && (
-                        <div className="mt-3">
-                          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
-                            Dias do treino
-                          </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <DateBox label="Início" value={formatDate(workout.start_date)} />
+                        <DateBox
+                          label="Vencimento"
+                          value={formatDate(workout.end_date)}
+                        />
+                      </div>
 
-                          <div className="flex flex-wrap gap-1.5">
-                            {days.slice(0, 7).map((day: string) => (
-                              <span
-                                key={`${workout.id}-${day}`}
-                                className={cn(
-                                  'rounded-full border px-2.5 py-1 text-[10px] font-black',
-                                  day === getTodayDayKey()
-                                    ? 'border-[#ff2a32]/30 bg-[#ff2a32]/15 text-[#ff2a32]'
-                                    : 'border-white/10 bg-white/[0.04] text-zinc-400'
-                                )}
-                              >
-                                {DAY_LABELS[day] || String(day).slice(0, 3).toUpperCase()}
-                              </span>
-                            ))}
-                          </div>
+                      <p className="mt-2 text-[11px] text-zinc-500">
+                        {expiration.description}
+                      </p>
+
+                      {days.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {days.map((day) => (
+                            <span
+                              key={`${workout.id}-${day}`}
+                              className={cn(
+                                'rounded-full border px-2.5 py-1 text-[10px] font-black',
+                                day === getTodayDayKey()
+                                  ? 'border-[#ff2a32]/30 bg-[#ff2a32]/15 text-[#ff2a32]'
+                                  : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                              )}
+                            >
+                              {DAY_LABELS[day] || day.slice(0, 3).toUpperCase()}
+                            </span>
+                          ))}
                         </div>
                       )}
 
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
-                          <Clock className="h-3.5 w-3.5" />
-                          {duration || '--'} min
-                        </span>
+                        <Tag icon={Clock}>
+                          {getWorkoutDuration(workout) || '--'} min
+                        </Tag>
 
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
-                          <Target className="h-3.5 w-3.5" />
-                          {getWorkoutLevel(workout)}
-                        </span>
+                        <Tag icon={Target}>{getWorkoutLevel(workout)}</Tag>
 
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
-                          <Dumbbell className="h-3.5 w-3.5" />
-                          {exercises.length} exercício{exercises.length === 1 ? '' : 's'}
-                        </span>
+                        <Tag icon={Dumbbell}>
+                          {workout.workout_plan_exercises.length} exercícios
+                        </Tag>
+
+                        {dropSets > 0 && (
+                          <Tag icon={Zap}>{dropSets} drop-set</Tag>
+                        )}
+
+                        {biSets > 0 && (
+                          <Tag icon={Layers2}>{biSets} bi-set</Tag>
+                        )}
                       </div>
 
                       <div className="mt-4 flex items-center justify-between gap-3">
@@ -659,8 +689,7 @@ export function StudentWorkoutsPage() {
                           {completed && lastCompleted
                             ? `Último: ${formatShortDate(
                                 lastCompleted.completed_at ||
-                                  lastCompleted.created_at ||
-                                  lastCompleted.date
+                                  lastCompleted.created_at
                               )}`
                             : 'Toque para abrir'}
                         </p>
@@ -710,14 +739,16 @@ export function StudentWorkoutsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center">
               <p className="text-2xl font-black text-[#ff2a32]">{pendingCount}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
+              <p className="mt-1 text-[10px] font-black uppercase text-zinc-600">
                 Pendentes
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center">
-              <p className="text-2xl font-black text-emerald-400">{completedCount}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
+              <p className="text-2xl font-black text-emerald-400">
+                {completedCount}
+              </p>
+              <p className="mt-1 text-[10px] font-black uppercase text-zinc-600">
                 Concluídos
               </p>
             </div>
@@ -725,6 +756,48 @@ export function StudentWorkoutsPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function SummaryBox({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: typeof Dumbbell;
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
+      <Icon className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
+      <p className="text-lg font-black text-white">{value}</p>
+      <p className="text-[9px] font-black uppercase text-zinc-600">{label}</p>
+    </div>
+  );
+}
+
+function DateBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+      <p className="text-[9px] font-black uppercase text-zinc-600">{label}</p>
+      <p className="mt-1 text-xs font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function Tag({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof Clock;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
+      <Icon className="h-3.5 w-3.5" />
+      {children}
+    </span>
   );
 }
 

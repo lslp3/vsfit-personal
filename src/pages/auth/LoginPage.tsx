@@ -14,7 +14,7 @@ import {
   Mail,
 } from 'lucide-react';
 
-import { BrandMark } from '../../components/brand/BrandMark';
+import vsfitLogo from '../../assets/brand/vsfit-logo.png';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
@@ -37,10 +37,15 @@ export function LoginPage() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
     setError('');
 
-    if (!email.trim() || !password.trim()) {
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (
+      !normalizedEmail ||
+      !password.trim()
+    ) {
       setError('Preencha todos os campos.');
       return;
     }
@@ -48,10 +53,19 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await authService.login(
-        email,
-        password
-      );
+      const loginData =
+        await authService.login(
+          normalizedEmail,
+          password
+        );
+
+      const userId = loginData.user?.id;
+
+      if (!userId || !loginData.user) {
+        throw new Error(
+          'Não foi possível identificar o usuário.'
+        );
+      }
 
       const {
         data: profile,
@@ -59,43 +73,64 @@ export function LoginPage() {
       } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', data.user!.id)
+        .eq('id', userId)
         .single();
 
       if (profileError || !profile) {
-        setError('Perfil não encontrado.');
-        setLoading(false);
-        return;
+        throw new Error(
+          'Perfil do usuário não encontrado.'
+        );
       }
 
       const {
         data: trainerProfile,
+        error: trainerError,
       } = await supabase
         .from('trainer_profiles')
         .select('*')
-        .eq('id', data.user!.id)
-        .single();
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (trainerError) {
+        console.warn(
+          '[LoginPage] trainer profile:',
+          trainerError
+        );
+      }
 
       setUser(
-        data.user,
+        loginData.user,
         profile,
-        trainerProfile
+        trainerProfile || null
       );
 
       if (profile.role === 'personal') {
         navigate('/personal/dashboard', {
           replace: true,
         });
-      } else if (profile.role === 'admin') {
+
+        return;
+      }
+
+      if (profile.role === 'admin') {
         navigate('/admin/dashboard', {
           replace: true,
         });
-      } else {
-        setError(
-          'Acesso não autorizado para esta área.'
-        );
+
+        return;
       }
+
+      await supabase.auth.signOut();
+
+      setError(
+        'Esta conta não possui acesso à área do personal.'
+      );
     } catch (loginError: any) {
+      console.error(
+        '[LoginPage] login error:',
+        loginError
+      );
+
       const message =
         loginError?.message ===
         'Invalid login credentials'
@@ -110,31 +145,33 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 py-10">
-      <div className="pointer-events-none absolute left-1/2 top-[-180px] h-[380px] w-[380px] -translate-x-1/2 rounded-full bg-[#ff2a32]/10 blur-[120px]" />
-
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-10">
       <motion.div
         initial={{
           opacity: 0,
-          y: 22,
+          y: 20,
         }}
         animate={{
           opacity: 1,
           y: 0,
         }}
         transition={{
-          duration: 0.45,
+          duration: 0.4,
           ease: 'easeOut',
         }}
-        className="relative w-full max-w-sm"
+        className="w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center text-center">
-          <BrandMark
-            size="xl"
-            className="rounded-[24px]"
-          />
+          <div className="flex h-24 w-24 items-center justify-center p-1">
+            <img
+              src={vsfitLogo}
+              alt="VSFit Personal"
+              draggable={false}
+              className="h-full w-full select-none object-contain"
+            />
+          </div>
 
-          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.28em] text-[#ff2a32]">
+          <p className="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-[#ff2a32]">
             VSFit Personal
           </p>
 
@@ -149,7 +186,7 @@ export function LoginPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-white/[0.035] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-[#0d0d0e] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
         >
           {error && (
             <motion.div

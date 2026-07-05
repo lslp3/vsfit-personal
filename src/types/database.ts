@@ -1,5 +1,28 @@
 import type { PlanSlug } from '../lib/planLimits';
 
+export type JsonPrimitive = string | number | boolean | null;
+
+export type JsonValue =
+  | JsonPrimitive
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type WorkoutTechniqueType =
+  | 'normal'
+  | 'drop_set'
+  | 'bi_set';
+
+export type WorkoutRenewalStatus =
+  | 'none'
+  | 'renewed';
+
+export interface DropSetConfig {
+  drops?: number;
+  reduction_percent?: number;
+  rest_between_drops_seconds?: number;
+  notes?: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -110,6 +133,39 @@ export interface WorkoutPlan {
   level: string | null;
   duration_minutes: number | null;
   status: 'draft' | 'published' | 'archived';
+
+  start_date: string | null;
+  end_date: string | null;
+  renewal_status: WorkoutRenewalStatus | string | null;
+  renewed_from_plan_id: string | null;
+  renewal_created_at: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkoutDay {
+  id: string;
+  workout_plan_id: string;
+  weekday: number | null;
+  day_key: string | null;
+  order_index: number;
+  name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkoutExerciseGroup {
+  id: string;
+  workout_day_id: string;
+  workout_plan_id: string;
+  group_type: 'bi_set' | string;
+  name: string | null;
+  order_index: number;
+  rounds: number | null;
+  rest_after_seconds: number | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -118,8 +174,18 @@ export interface WorkoutPlanExercise {
   id: string;
   workout_plan_id: string;
   exercise_id: string | null;
+
+  workout_day_id: string | null;
+  exercise_group_id: string | null;
+
   day_key: string | null;
   order_index: number;
+  execution_order: number | null;
+  group_order: number | null;
+
+  technique_type: WorkoutTechniqueType | null;
+  technique_config: DropSetConfig | JsonValue | null;
+
   name: string;
   sets: string | null;
   reps: string | null;
@@ -127,7 +193,24 @@ export interface WorkoutPlanExercise {
   suggested_weight: string | null;
   observation: string | null;
   tempo: string | null;
+
+  image_url?: string | null;
+  video_url?: string | null;
+  muscle_group?: string | null;
+  category?: string | null;
+  equipment?: string | null;
+  difficulty?: string | null;
+  instructions?: string | null;
+  tips?: string | null;
+
   created_at: string;
+  updated_at?: string | null;
+}
+
+export interface CompleteWorkoutPlan extends WorkoutPlan {
+  workout_days: WorkoutDay[];
+  workout_exercise_groups: WorkoutExerciseGroup[];
+  workout_plan_exercises: WorkoutPlanExercise[];
 }
 
 export interface WorkoutLog {
@@ -197,14 +280,15 @@ export interface Subscription {
 
 export interface SubscriptionPlan {
   id: string;
-  slug: PlanSlug; // Use the PlanSlug type for consistency
+  slug: PlanSlug;
   name: string;
-  price_monthly: number; // Renamed from price
+  price_monthly: number;
   student_limit: number;
   features: string[];
   is_active: boolean;
   created_at: string;
 }
+
 export interface SignupLink {
   id: string;
   trainer_id: string;

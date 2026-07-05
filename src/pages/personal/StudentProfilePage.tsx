@@ -37,7 +37,12 @@ import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
-import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../../lib/formatters';
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatPhone,
+} from '../../lib/formatters';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
 import * as paymentService from '../../services/paymentService';
@@ -51,7 +56,13 @@ import type {
   Message,
 } from '../../types/database';
 
-type TabKey = 'resumo' | 'treinos' | 'progresso' | 'financeiro' | 'chat' | 'dados';
+type TabKey =
+  | 'resumo'
+  | 'treinos'
+  | 'progresso'
+  | 'financeiro'
+  | 'chat'
+  | 'dados';
 
 const tabs: { key: TabKey; label: string; icon: ElementType }[] = [
   { key: 'resumo', label: 'Resumo', icon: User },
@@ -168,9 +179,13 @@ function AccessBadge({ student }: { student: Student }) {
     student.app_access_status === 'invited';
 
   const isBlocked =
-    student.app_access_status === 'blocked' || student.login_enabled === false;
+    student.app_access_status === 'blocked' ||
+    student.login_enabled === false;
 
-  if (isBlocked && (student.auth_user_id || (accounts as any)?.auth_user_id)) {
+  if (
+    isBlocked &&
+    (student.auth_user_id || (accounts as any)?.auth_user_id)
+  ) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-400/10 px-2.5 py-1 text-[11px] font-bold text-red-300">
         <Lock className="h-3 w-3" />
@@ -363,7 +378,10 @@ export function StudentProfilePage() {
 
       setChatInput('');
 
-      const updated = await messageService.getMessages(trainerProfile.id, student.id);
+      const updated = await messageService.getMessages(
+        trainerProfile.id,
+        student.id
+      );
       setMessages(updated);
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -375,10 +393,19 @@ export function StudentProfilePage() {
 
     try {
       const newStatus = student.login_enabled
-        ? { login_enabled: false, app_access_status: 'blocked' as const }
-        : { login_enabled: true, app_access_status: 'active' as const };
+        ? {
+            login_enabled: false,
+            app_access_status: 'blocked' as const,
+          }
+        : {
+            login_enabled: true,
+            app_access_status: 'active' as const,
+          };
 
-      const updated = await studentService.updateStudent(student.id, newStatus);
+      const updated = await studentService.updateStudent(
+        student.id,
+        newStatus
+      );
       setStudent(updated);
     } catch (err) {
       console.error('Failed to toggle access:', err);
@@ -392,9 +419,20 @@ export function StudentProfilePage() {
     setPasswordError('');
 
     try {
-      const studentName = student.name || student.email?.split('@')[0] || 'Aluno';
-      const { resetStudentPassword } = await import('../../services/resetStudentPassword');
-      const tempPassword = await resetStudentPassword(student.id, student.email, studentName);
+      const studentName =
+        student.name ||
+        student.email?.split('@')[0] ||
+        'Aluno';
+
+      const { resetStudentPassword } = await import(
+        '../../services/resetStudentPassword'
+      );
+
+      const tempPassword = await resetStudentPassword(
+        student.id,
+        student.email,
+        studentName
+      );
 
       setGeneratedCredentials({
         email: student.email,
@@ -406,7 +444,10 @@ export function StudentProfilePage() {
       setCredentialsModalOpen(true);
     } catch (err: any) {
       console.error('[RESET STUDENT PASSWORD]', err);
-      setPasswordError(err?.message || 'Erro ao resetar senha do aluno.');
+      setPasswordError(
+        err?.message || 'Erro ao resetar senha do aluno.'
+      );
+
       setTimeout(() => setPasswordError(''), 4000);
     } finally {
       setResettingPassword(false);
@@ -440,14 +481,20 @@ Acesse o app e altere sua senha após o primeiro login.`;
     const phone = normalizeWhatsappPhone(student.phone);
 
     if (phone) {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      window.open(
+        `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,
+        '_blank'
+      );
       return;
     }
 
     navigator.clipboard
       .writeText(msg)
       .then(() => {
-        setPasswordError('Telefone não informado. Mensagem copiada para envio manual.');
+        setPasswordError(
+          'Telefone não informado. Mensagem copiada para envio manual.'
+        );
+
         setTimeout(() => setPasswordError(''), 4000);
       })
       .catch(() => {});
@@ -472,9 +519,14 @@ Acesse o app e altere sua senha após o primeiro login.`;
 
         <EmptyState
           title="Aluno não encontrado"
-          description={error || 'O aluno solicitado não foi encontrado'}
+          description={
+            error || 'O aluno solicitado não foi encontrado'
+          }
           action={
-            <Button variant="secondary" onClick={() => navigate(-1)}>
+            <Button
+              variant="secondary"
+              onClick={() => navigate(-1)}
+            >
               Voltar
             </Button>
           }
@@ -484,7 +536,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
       <Header
         title="Perfil do Aluno"
         showBack
@@ -499,7 +551,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
         }
       />
 
-      <div className="mx-auto max-w-lg px-4 pb-32 pt-4">
+      <div className="mx-auto w-full min-w-0 max-w-lg overflow-x-hidden px-4 pb-32 pt-4">
         <div className="mb-6 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
           <div className="flex items-center gap-4">
             <StudentAvatar student={student} />
@@ -531,21 +583,27 @@ Acesse o app e altere sua senha após o primeiro login.`;
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  'flex min-h-[46px] flex-col items-center justify-center gap-1 rounded-[16px] px-2 text-[10px] font-black uppercase tracking-wide transition-all',
+                  'flex min-h-[46px] min-w-0 flex-col items-center justify-center gap-1 rounded-[16px] px-1 text-[10px] font-black uppercase tracking-wide transition-all',
                   activeTab === tab.key
                     ? 'border border-[#ff2a32]/30 bg-[#ff2a32]/20 text-[#ff2a32] shadow-[0_8px_20px_rgba(255,42,48,0.12)]'
                     : 'text-zinc-500'
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="max-w-full truncate">
+                  {tab.label}
+                </span>
               </button>
             );
           })}
         </div>
 
         {activeTab === 'resumo' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
             <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-5">
               <div className="mb-4 flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
@@ -563,13 +621,15 @@ Acesse o app e altere sua senha após o primeiro login.`;
                     <Phone className="h-4 w-4 text-zinc-400" />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                       Telefone
                     </p>
 
-                    <p className="text-sm font-black text-white">
-                      {student.phone ? formatPhone(student.phone) : '—'}
+                    <p className="break-words text-sm font-black text-white">
+                      {student.phone
+                        ? formatPhone(student.phone)
+                        : '—'}
                     </p>
                   </div>
                 </div>
@@ -579,13 +639,15 @@ Acesse o app e altere sua senha após o primeiro login.`;
                     <Calendar className="h-4 w-4 text-zinc-400" />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                       Nascimento
                     </p>
 
-                    <p className="text-sm font-black text-white">
-                      {student.birth_date ? formatDate(student.birth_date) : '—'}
+                    <p className="break-words text-sm font-black text-white">
+                      {student.birth_date
+                        ? formatDate(student.birth_date)
+                        : '—'}
                     </p>
                   </div>
                 </div>
@@ -604,22 +666,22 @@ Acesse o app e altere sua senha após o primeiro login.`;
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                     Objetivo
                   </p>
 
-                  <p className="text-sm font-black text-white">
+                  <p className="break-words text-sm font-black text-white">
                     {goals?.objective || '—'}
                   </p>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                     Nível
                   </p>
 
-                  <p className="text-sm font-black text-white">
+                  <p className="break-words text-sm font-black text-white">
                     {goals?.level || '—'}
                   </p>
                 </div>
@@ -627,17 +689,23 @@ Acesse o app e altere sua senha após o primeiro login.`;
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
-                <p className="text-3xl font-black text-[#ff2a32]">{workouts.length}</p>
+              <div className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
+                <p className="text-3xl font-black text-[#ff2a32]">
+                  {workouts.length}
+                </p>
 
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500">
                   Treinos
                 </p>
               </div>
 
-              <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
+              <div className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-6 text-center">
                 <p className="text-3xl font-black text-emerald-400">
-                  {payments.filter((payment) => payment.status === 'paid').length}
+                  {
+                    payments.filter(
+                      (payment) => payment.status === 'paid'
+                    ).length
+                  }
                 </p>
 
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500">
@@ -649,16 +717,24 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
 
         {activeTab === 'treinos' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="min-w-0 space-y-6"
+          >
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <h3 className="min-w-0 text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
                 Planos de Treino
               </h3>
 
               <button
                 type="button"
-                onClick={() => navigate(`/personal/workout-builder?studentId=${student.id}`)}
-                className="flex items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
+                onClick={() =>
+                  navigate(
+                    `/personal/workout-builder?studentId=${student.id}`
+                  )
+                }
+                className="flex shrink-0 items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" />
                 NOVO
@@ -678,7 +754,11 @@ Acesse o app e altere sua senha após o primeiro login.`;
                   action={
                     <button
                       type="button"
-                      onClick={() => navigate(`/personal/workout-builder?studentId=${student.id}`)}
+                      onClick={() =>
+                        navigate(
+                          `/personal/workout-builder?studentId=${student.id}`
+                        )
+                      }
                       className="mt-6 rounded-2xl bg-[#ff2a32] px-8 py-4 text-[14px] font-black text-white shadow-[0_15px_40px_rgba(255,42,48,0.3)] transition-all active:scale-95"
                     >
                       CRIAR PRIMEIRO TREINO
@@ -687,47 +767,57 @@ Acesse o app e altere sua senha após o primeiro login.`;
                 />
               </div>
             ) : (
-              <div className="grid gap-3">
+              <div className="grid w-full min-w-0 max-w-full gap-3 overflow-hidden">
                 {workouts.map((workout) => (
-                  <div
+                  <button
                     key={workout.id}
-                    onClick={() => navigate(`/personal/workout-builder/${workout.id}`)}
-                    className="cursor-pointer rounded-[24px] border border-white/5 bg-white/[0.03] p-4 transition-all hover:border-white/10 active:scale-[0.98]"
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/personal/workout-builder?studentId=${student.id}&workoutId=${workout.id}`
+                      )
+                    }
+                    className="block w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/5 bg-white/[0.03] p-4 text-left transition-all hover:border-white/10 active:scale-[0.98]"
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex w-full min-w-0 items-start gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#ff2a32]/10 bg-[#ff2a32]/10">
                         <Dumbbell className="h-6 w-6 text-[#ff2a32]" />
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="truncate text-[15px] font-black tracking-tight text-white">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex min-w-0 items-start gap-2">
+                          <h4 className="min-w-0 flex-1 break-words text-[14px] font-black leading-tight tracking-tight text-white">
                             {workout.name}
                           </h4>
 
-                          <Badge status={workout.status} />
+                          <div className="shrink-0">
+                            <Badge status={workout.status} />
+                          </div>
                         </div>
 
-                        <p className="mt-1 truncate text-[12px] font-medium text-zinc-400">
-                          {workout.objective || 'Treino Geral'} • {workout.level || 'Todos os níveis'}
+                        <p className="mt-1 min-w-0 break-words text-[11px] font-medium leading-relaxed text-zinc-400">
+                          {workout.objective || 'Treino Geral'} •{' '}
+                          {workout.level || 'Todos os níveis'}
                         </p>
 
-                        <div className="mt-4 flex items-center gap-4">
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500">
+                        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold text-zinc-500">
                             <Clock className="h-3.5 w-3.5" />
                             {workout.duration_minutes || '--'} min
                           </div>
 
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500">
-                            <Activity className="h-3.5 w-3.5" />
-                            Frequência Livre
+                          <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold text-zinc-500">
+                            <Activity className="h-3.5 w-3.5 shrink-0" />
+                            <span className="break-words">
+                              Frequência Livre
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      <ChevronRight className="mt-4 h-5 w-5 text-zinc-700" />
+                      <ChevronRight className="mt-3 h-5 w-5 shrink-0 text-zinc-700" />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -735,7 +825,11 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
 
         {activeTab === 'progresso' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
                 Histórico de Medidas
@@ -744,7 +838,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
               <button
                 type="button"
                 onClick={() => navigate('/personal/progress')}
-                className="flex items-center gap-2 rounded-full border border-white/5 bg-white/[0.04] px-4 py-2 text-[11px] font-black tracking-wide text-zinc-400 transition-all active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-white/5 bg-white/[0.04] px-4 py-2 text-[11px] font-black tracking-wide text-zinc-400 transition-all active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" />
                 NOVA
@@ -766,55 +860,64 @@ Acesse o app e altere sua senha após o primeiro login.`;
             ) : (
               <div className="grid gap-4">
                 {metrics.map((metric) => (
-                  <div key={metric.id} className="rounded-[24px] border border-white/5 bg-white/[0.03] p-5">
+                  <div
+                    key={metric.id}
+                    className="min-w-0 rounded-[24px] border border-white/5 bg-white/[0.03] p-5"
+                  >
                     <div className="mb-4 flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
                         <Calendar className="h-3.5 w-3.5 text-blue-400" />
                       </div>
 
-                      <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                      <p className="min-w-0 break-words text-[11px] font-black uppercase tracking-widest text-zinc-500">
                         {formatDateTime(metric.created_at)}
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       {metric.weight && (
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-3">
+                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
                           <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                             Peso
                           </span>
 
-                          <p className="text-lg font-black text-white">{metric.weight}kg</p>
+                          <p className="break-words text-lg font-black text-white">
+                            {metric.weight}kg
+                          </p>
                         </div>
                       )}
 
                       {metric.height && (
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-3">
+                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
                           <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                             Altura
                           </span>
 
-                          <p className="text-lg font-black text-white">{metric.height}m</p>
+                          <p className="break-words text-lg font-black text-white">
+                            {metric.height}m
+                          </p>
                         </div>
                       )}
 
                       {metric.body_fat && (
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-3">
+                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
                           <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                             Gordura
                           </span>
 
-                          <p className="text-lg font-black text-blue-400">{metric.body_fat}%</p>
+                          <p className="break-words text-lg font-black text-blue-400">
+                            {metric.body_fat}%
+                          </p>
                         </div>
                       )}
 
                       {metric.muscle_mass && (
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-3">
+                        <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-3">
                           <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                             Massa
                           </span>
 
-                          <p className="text-lg font-black text-emerald-400">
+                          <p className="break-words text-lg font-black text-emerald-400">
                             {metric.muscle_mass}kg
                           </p>
                         </div>
@@ -828,7 +931,11 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
 
         {activeTab === 'financeiro' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
                 Financeiro
@@ -837,7 +944,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="flex items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-full bg-[#ff2a32] px-4 py-2 text-[11px] font-black tracking-wide text-white shadow-[0_12px_35px_rgba(255,42,48,0.22)] transition-all active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" />
                 NOVO
@@ -868,24 +975,32 @@ Acesse o app e altere sua senha após o primeiro login.`;
             ) : (
               <div className="grid gap-3">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="rounded-[24px] border border-white/5 bg-white/[0.03] p-5 transition-all active:scale-[0.98]">
-                    <div className="flex items-start justify-between gap-4">
+                  <div
+                    key={payment.id}
+                    className="min-w-0 overflow-hidden rounded-[24px] border border-white/5 bg-white/[0.03] p-5 transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <p className="text-xl font-black text-white">
+                        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
+                          <p className="min-w-0 break-words text-xl font-black text-white">
                             {formatCurrency(payment.amount)}
                           </p>
 
-                          <Badge status={payment.status} />
+                          <div className="shrink-0">
+                            <Badge status={payment.status} />
+                          </div>
                         </div>
 
-                        <p className="truncate text-[13px] font-bold text-zinc-300">
+                        <p className="break-words text-[13px] font-bold text-zinc-300">
                           {payment.description || 'Sem descrição'}
                         </p>
 
-                        <div className="mt-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-                          <Calendar className="h-3.5 w-3.5" />
-                          Vencimento: {formatDate(payment.due_date)}
+                        <div className="mt-3 flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          <span className="break-words">
+                            Vencimento:{' '}
+                            {formatDate(payment.due_date)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -897,7 +1012,11 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
 
         {activeTab === 'chat' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-black uppercase tracking-[0.15em] text-zinc-500">
                 Conversa
@@ -906,13 +1025,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
               <button
                 type="button"
                 onClick={() => navigate('/personal/chat')}
-                className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] font-black text-white"
+                className="shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] font-black text-white"
               >
                 ABRIR CHAT
               </button>
             </div>
 
-            <div className="hide-scrollbar flex max-h-[500px] flex-col gap-4 overflow-y-auto px-1">
+            <div className="hide-scrollbar flex max-h-[500px] min-w-0 flex-col gap-4 overflow-y-auto px-1">
               {messages.length === 0 ? (
                 <div className="py-12">
                   <EmptyState
@@ -922,26 +1041,32 @@ Acesse o app e altere sua senha após o primeiro login.`;
                 </div>
               ) : (
                 messages.map((message) => {
-                  const isPersonal = message.sender_role === 'personal';
+                  const isPersonal =
+                    message.sender_role === 'personal';
 
                   return (
                     <div
                       key={message.id}
-                      className={cn('flex', isPersonal ? 'justify-end' : 'justify-start')}
+                      className={cn(
+                        'flex min-w-0',
+                        isPersonal
+                          ? 'justify-end'
+                          : 'justify-start'
+                      )}
                     >
                       <div
                         className={cn(
-                          'max-w-[85%] rounded-[20px] px-4 py-3 shadow-lg',
+                          'max-w-[85%] min-w-0 overflow-hidden rounded-[20px] px-4 py-3 shadow-lg',
                           isPersonal
                             ? 'rounded-tr-sm bg-[#ff2a32] text-white'
                             : 'rounded-tl-sm border border-white/5 bg-white/[0.06] text-white'
                         )}
                       >
-                        <p className="text-sm font-medium leading-relaxed">
+                        <p className="break-words text-sm font-medium leading-relaxed">
                           {message.content}
                         </p>
 
-                        <p className="mt-1.5 text-[9px] font-bold uppercase tracking-wider opacity-60">
+                        <p className="mt-1.5 break-words text-[9px] font-bold uppercase tracking-wider opacity-60">
                           {formatDateTime(message.created_at)}
                         </p>
                       </div>
@@ -951,14 +1076,19 @@ Acesse o app e altere sua senha após o primeiro login.`;
               )}
             </div>
 
-            <div className="flex gap-2 border-t border-white/5 pt-4">
+            <div className="flex min-w-0 gap-2 border-t border-white/5 pt-4">
               <input
                 type="text"
                 value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                onKeyDown={(event) => event.key === 'Enter' && handleSendMessage()}
+                onChange={(event) =>
+                  setChatInput(event.target.value)
+                }
+                onKeyDown={(event) =>
+                  event.key === 'Enter' &&
+                  handleSendMessage()
+                }
                 placeholder="Escreva sua mensagem..."
-                className="w-full rounded-[18px] border border-white/10 bg-white/[0.045] px-5 py-3.5 text-sm font-medium placeholder:text-zinc-600 transition-all focus:border-[#ff2a32]/40 focus:bg-white/[0.06] focus:outline-none"
+                className="min-w-0 flex-1 rounded-[18px] border border-white/10 bg-white/[0.045] px-5 py-3.5 text-sm font-medium placeholder:text-zinc-600 transition-all focus:border-[#ff2a32]/40 focus:bg-white/[0.06] focus:outline-none"
               />
 
               <button
@@ -974,7 +1104,11 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
 
         {activeTab === 'dados' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
             <div className="rounded-[24px] border border-white/5 bg-white/[0.03] p-6">
               <div className="mb-6 flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
@@ -1010,11 +1144,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
                   >
                     {student.login_enabled ? (
                       <>
-                        <Lock className="h-4 w-4" /> BLOQUEAR
+                        <Lock className="h-4 w-4" />
+                        BLOQUEAR
                       </>
                     ) : (
                       <>
-                        <Unlock className="h-4 w-4" /> LIBERAR ACESSO
+                        <Unlock className="h-4 w-4" />
+                        LIBERAR ACESSO
                       </>
                     )}
                   </button>
@@ -1037,11 +1173,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
                   >
                     {resettingPassword ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> GERANDO...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        GERANDO...
                       </>
                     ) : (
                       <>
-                        <Key className="h-4 w-4" /> RESETAR SENHA
+                        <Key className="h-4 w-4" />
+                        RESETAR SENHA
                       </>
                     )}
                   </button>
@@ -1068,35 +1206,37 @@ Acesse o app e altere sua senha após o primeiro login.`;
 
               {goals ? (
                 <div className="grid gap-4">
-                  <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                       Frequência Semanal
                     </p>
 
-                    <p className="text-sm font-black text-white">
+                    <p className="break-words text-sm font-black text-white">
                       {goals.weekly_frequency
                         ? `${goals.weekly_frequency}x por semana`
                         : 'Não informada'}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                       Peso Alvo
                     </p>
 
-                    <p className="text-sm font-black text-[#ff2a32]">
-                      {goals.target_weight ? `${goals.target_weight}kg` : 'Não informado'}
+                    <p className="break-words text-sm font-black text-[#ff2a32]">
+                      {goals.target_weight
+                        ? `${goals.target_weight}kg`
+                        : 'Não informado'}
                     </p>
                   </div>
 
                   {goals.goal_notes && (
-                    <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                    <div className="min-w-0 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                         Observações
                       </p>
 
-                      <p className="text-xs font-medium leading-relaxed text-zinc-400">
+                      <p className="break-words text-xs font-medium leading-relaxed text-zinc-400">
                         {goals.goal_notes}
                       </p>
                     </div>
@@ -1112,41 +1252,70 @@ Acesse o app e altere sua senha após o primeiro login.`;
         )}
       </div>
 
-      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Editar Aluno">
+      <Modal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Editar Aluno"
+      >
         <div className="space-y-4">
           <Input
             label="Nome"
             value={editForm.name}
-            onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                name: event.target.value,
+              })
+            }
           />
 
           <Input
             label="Email"
             type="email"
             value={editForm.email}
-            onChange={(event) => setEditForm({ ...editForm, email: event.target.value })}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                email: event.target.value,
+              })
+            }
           />
 
           <Input
             label="Telefone"
             value={editForm.phone}
-            onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                phone: event.target.value,
+              })
+            }
           />
 
           <Input
             label="Data de Nascimento"
             type="date"
             value={editForm.birthDate}
-            onChange={(event) => setEditForm({ ...editForm, birthDate: event.target.value })}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                birthDate: event.target.value,
+              })
+            }
           />
 
           <Button onClick={handleEditStudent}>
-            <Save className="h-4 w-4" /> Salvar Alterações
+            <Save className="h-4 w-4" />
+            Salvar Alterações
           </Button>
         </div>
       </Modal>
 
-      <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Novo Pagamento">
+      <Modal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        title="Novo Pagamento"
+      >
         <div className="space-y-4">
           <Input
             label="Valor"
@@ -1154,21 +1323,36 @@ Acesse o app e altere sua senha após o primeiro login.`;
             step="0.01"
             placeholder="0,00"
             value={paymentForm.amount}
-            onChange={(event) => setPaymentForm({ ...paymentForm, amount: event.target.value })}
+            onChange={(event) =>
+              setPaymentForm({
+                ...paymentForm,
+                amount: event.target.value,
+              })
+            }
           />
 
           <Input
             label="Data de Vencimento"
             type="date"
             value={paymentForm.dueDate}
-            onChange={(event) => setPaymentForm({ ...paymentForm, dueDate: event.target.value })}
+            onChange={(event) =>
+              setPaymentForm({
+                ...paymentForm,
+                dueDate: event.target.value,
+              })
+            }
           />
 
           <Input
             label="Descrição"
             placeholder="Ex: Mensalidade Junho"
             value={paymentForm.description}
-            onChange={(event) => setPaymentForm({ ...paymentForm, description: event.target.value })}
+            onChange={(event) =>
+              setPaymentForm({
+                ...paymentForm,
+                description: event.target.value,
+              })
+            }
           />
 
           <div className="space-y-2">
@@ -1181,7 +1365,12 @@ Acesse o app e altere sua senha após o primeiro login.`;
                 <button
                   key={method.value}
                   type="button"
-                  onClick={() => setPaymentForm({ ...paymentForm, method: method.value })}
+                  onClick={() =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      method: method.value,
+                    })
+                  }
                   className={cn(
                     'min-h-12 rounded-2xl border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
                     paymentForm.method === method.value
@@ -1196,7 +1385,8 @@ Acesse o app e altere sua senha após o primeiro login.`;
           </div>
 
           <Button onClick={handleCreatePayment}>
-            <Plus className="h-4 w-4" /> Criar Pagamento
+            <Plus className="h-4 w-4" />
+            Criar Pagamento
           </Button>
         </div>
       </Modal>
@@ -1206,7 +1396,9 @@ Acesse o app e altere sua senha após o primeiro login.`;
           <button
             type="button"
             aria-label="Fechar"
-            onClick={() => setCredentialsModalOpen(false)}
+            onClick={() =>
+              setCredentialsModalOpen(false)
+            }
             className="absolute inset-0"
           />
 
@@ -1215,7 +1407,9 @@ Acesse o app e altere sua senha após o primeiro login.`;
 
             <button
               type="button"
-              onClick={() => setCredentialsModalOpen(false)}
+              onClick={() =>
+                setCredentialsModalOpen(false)
+              }
               className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300"
             >
               <X className="h-5 w-5" />
@@ -1246,7 +1440,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
                     Aluno
                   </p>
 
-                  <p className="mt-1 text-[14px] font-black text-white">
+                  <p className="mt-1 break-words text-[14px] font-black text-white">
                     {generatedCredentials.studentName}
                   </p>
                 </div>
@@ -1266,7 +1460,7 @@ Acesse o app e altere sua senha após o primeiro login.`;
                     Senha temporária
                   </p>
 
-                  <p className="mt-1 text-[18px] font-black tracking-wide text-[#ff2a32]">
+                  <p className="mt-1 break-all text-[18px] font-black tracking-wide text-[#ff2a32]">
                     {generatedCredentials.password}
                   </p>
                 </div>
@@ -1280,11 +1474,13 @@ Acesse o app e altere sua senha após o primeiro login.`;
                 >
                   {copiedText ? (
                     <span className="flex items-center justify-center gap-1.5">
-                      <Check className="h-4 w-4" /> Copiado
+                      <Check className="h-4 w-4" />
+                      Copiado
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-1.5">
-                      <Copy className="h-4 w-4" /> Copiar
+                      <Copy className="h-4 w-4" />
+                      Copiar
                     </span>
                   )}
                 </button>
@@ -1295,14 +1491,17 @@ Acesse o app e altere sua senha após o primeiro login.`;
                   className="h-12 rounded-[18px] border border-white/10 bg-white/[0.06] text-[14px] font-black text-white active:scale-[0.98]"
                 >
                   <span className="flex items-center justify-center gap-1.5">
-                    <Send className="h-4 w-4" /> WhatsApp
+                    <Send className="h-4 w-4" />
+                    WhatsApp
                   </span>
                 </button>
               </div>
 
               <button
                 type="button"
-                onClick={() => setCredentialsModalOpen(false)}
+                onClick={() =>
+                  setCredentialsModalOpen(false)
+                }
                 className="mt-3 h-12 w-full rounded-[18px] bg-[#ff2a32] text-[14px] font-black text-white shadow-[0_18px_45px_rgba(255,42,48,0.32)] active:scale-[0.98]"
               >
                 Fechar
