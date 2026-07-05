@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
 };
@@ -28,64 +29,134 @@ serve(async (req) => {
 
   try {
     if (req.method !== "POST") {
-      return jsonResponse({ success: false, error: "Método não permitido." }, 405);
+      return jsonResponse(
+        {
+          success: false,
+          error: "Método não permitido.",
+        },
+        405
+      );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
-    const mercadoPagoToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-    const mercadoPagoPlanProId = Deno.env.get("MERCADOPAGO_PLAN_PRO_ID");
-    const mercadoPagoPlanPremiumId = Deno.env.get("MERCADOPAGO_PLAN_PREMIUM_ID");
+    const supabaseUrl =
+      Deno.env.get("SUPABASE_URL");
 
-    if (!supabaseUrl) throw new Error("SUPABASE_URL não configurada.");
-    if (!serviceRoleKey) throw new Error("SERVICE_ROLE_KEY não configurada.");
-    if (!mercadoPagoToken) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado.");
-    if (!mercadoPagoPlanProId) throw new Error("MERCADOPAGO_PLAN_PRO_ID não configurado.");
-    if (!mercadoPagoPlanPremiumId) throw new Error("MERCADOPAGO_PLAN_PREMIUM_ID não configurado.");
+    const serviceRoleKey =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+      Deno.env.get("SERVICE_ROLE_KEY");
 
-    const authHeader = req.headers.get("Authorization");
+    const mercadoPagoToken =
+      Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
 
-    if (!authHeader) {
-      throw new Error("Usuário não autenticado.");
+    const mercadoPagoPlanProId =
+      Deno.env.get("MERCADOPAGO_PLAN_PRO_ID");
+
+    const mercadoPagoPlanPremiumId =
+      Deno.env.get("MERCADOPAGO_PLAN_PREMIUM_ID");
+
+    if (!supabaseUrl) {
+      throw new Error(
+        "SUPABASE_URL não configurada."
+      );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    if (!serviceRoleKey) {
+      throw new Error(
+        "Chave service role não configurada."
+      );
+    }
 
-    const token = authHeader.replace("Bearer ", "");
+    if (!mercadoPagoToken) {
+      throw new Error(
+        "MERCADOPAGO_ACCESS_TOKEN não configurado."
+      );
+    }
 
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (
+      !mercadoPagoPlanProId ||
+      !mercadoPagoPlanPremiumId
+    ) {
+      throw new Error(
+        "IDs dos planos do Mercado Pago não configurados."
+      );
+    }
 
-    if (userError || !userData.user) {
+    const authHeader =
+      req.headers.get("Authorization");
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new Error(
+        "Usuário não autenticado."
+      );
+    }
+
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    const token =
+      authHeader.replace("Bearer ", "");
+
+    const {
+      data: userData,
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(
+      token
+    );
+
+    if (
+      userError ||
+      !userData.user?.id
+    ) {
       throw new Error("Sessão inválida.");
     }
 
     const user = userData.user;
 
-    const body = await req.json();
-    const planSlug = String(body.planSlug || "").toLowerCase();
+    const body =
+      await req.json();
 
-    if (planSlug !== "pro" && planSlug !== "premium") {
+    const planSlug =
+      String(body.planSlug || "")
+        .trim()
+        .toLowerCase();
+
+    if (
+      planSlug !== "pro" &&
+      planSlug !== "premium"
+    ) {
       throw new Error("Plano inválido.");
     }
 
     const mercadoPagoPlanId =
-      planSlug === "pro" ? mercadoPagoPlanProId : mercadoPagoPlanPremiumId;
+      planSlug === "pro"
+        ? mercadoPagoPlanProId
+        : mercadoPagoPlanPremiumId;
 
-    const { data: trainer, error: trainerError } = await supabaseAdmin
+    const {
+      data: trainer,
+      error: trainerError,
+    } = await supabaseAdmin
       .from("trainer_profiles")
-      .select("*")
-      .eq("email", user.email)
+      .select("id, email, name")
+      .eq("id", user.id)
       .maybeSingle();
 
-    if (trainerError) throw trainerError;
+    if (trainerError) {
+      throw trainerError;
+    }
 
     if (!trainer) {
-      throw new Error("Perfil do personal não encontrado.");
+      throw new Error(
+        "Perfil do personal não encontrado."
+      );
     }
 
     const planResponse = await fetch(
@@ -93,53 +164,86 @@ serve(async (req) => {
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${mercadoPagoToken}`,
-          "Content-Type": "application/json",
+          Authorization:
+            `Bearer ${mercadoPagoToken}`,
+          "Content-Type":
+            "application/json",
         },
       }
     );
 
-    const planData = await planResponse.json();
+    const planData =
+      await planResponse
+        .json()
+        .catch(() => ({}));
 
     if (!planResponse.ok) {
-      console.error("[MERCADO PAGO PLAN ERROR]", planData);
-      throw new Error(planData?.message || "Erro ao buscar plano no Mercado Pago.");
+      console.error(
+        "[MERCADO PAGO PLAN ERROR]",
+        planData
+      );
+
+      throw new Error(
+        planData?.message ||
+        "Erro ao buscar plano no Mercado Pago."
+      );
     }
 
-    const checkoutUrl = planData?.init_point;
+    const checkoutUrl =
+      planData?.init_point;
 
     if (!checkoutUrl) {
-      console.error("[MERCADO PAGO PLAN NO INIT POINT]", planData);
-      throw new Error("Mercado Pago não retornou o link init_point do plano.");
+      throw new Error(
+        "Mercado Pago não retornou o link de checkout."
+      );
     }
 
-    await supabaseAdmin.from("subscriptions").upsert(
-      {
+    const now =
+      new Date().toISOString();
+
+    const {
+      data: attempt,
+      error: attemptError,
+    } = await supabaseAdmin
+      .from("subscription_checkout_attempts")
+      .insert({
         trainer_id: trainer.id,
-        plan_slug: planSlug,
-        status: "pending",
-        payment_provider: "mercadopago",
-        mercadopago_plan_id: mercadoPagoPlanId,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "trainer_id",
-      }
-    );
+        target_plan_slug: planSlug,
+        provider: "mercadopago",
+        provider_plan_id:
+          mercadoPagoPlanId,
+        checkout_url: checkoutUrl,
+        status: "created",
+        created_at: now,
+        updated_at: now,
+      })
+      .select("id")
+      .single();
+
+    if (attemptError) {
+      throw attemptError;
+    }
 
     return jsonResponse({
       success: true,
       url: checkoutUrl,
       provider: "mercadopago",
       plan_id: mercadoPagoPlanId,
+      checkout_attempt_id: attempt.id,
     });
   } catch (error) {
-    console.error("[CREATE MERCADOPAGO SUBSCRIPTION]", error);
+    console.error(
+      "[CREATE MERCADOPAGO SUBSCRIPTION]",
+      error
+    );
 
     return jsonResponse(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Erro ao abrir assinatura.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro ao abrir assinatura.",
       },
       400
     );
