@@ -23,6 +23,11 @@ import {
 import { supabase } from '../../lib/supabase';
 import * as studentService from '../../services/studentService';
 import {
+  formatWorkoutPlanDate,
+  isWorkoutPlanExpired,
+  notifyTrainerAboutExpiredPlan,
+} from '../../services/workoutExpirationService';
+import {
   getWorkoutPlanById,
   saveWorkoutLog,
 } from '../../services/workoutService';
@@ -81,12 +86,6 @@ function normalizeDayKey(value?: string | null) {
   if (!value) return '';
 
   return DAY_ALIASES[value] || value;
-}
-
-function getTodayDayKey() {
-  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][
-    new Date().getDay()
-  ];
 }
 
 function formatDuration(seconds: number) {
@@ -396,6 +395,7 @@ async function notifyTrainer({
       console.warn(
         '[WorkoutExecutionPage] user_id do personal não encontrado.'
       );
+
       return;
     }
 
@@ -461,13 +461,18 @@ function getSavedLogId(log: unknown) {
 }
 
 export function WorkoutExecutionPage() {
-  const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const { id } =
+    useParams<{ id: string }>();
+
+  const [searchParams] =
+    useSearchParams();
+
   const navigate = useNavigate();
 
-  const selectedDayKey = normalizeDayKey(
-    searchParams.get('day')
-  );
+  const selectedDayKey =
+    normalizeDayKey(
+      searchParams.get('day')
+    );
 
   const [student, setStudent] =
     useState<any | null>(null);
@@ -483,7 +488,8 @@ export function WorkoutExecutionPage() {
   const [saving, setSaving] =
     useState(false);
 
-  const [error, setError] = useState('');
+  const [error, setError] =
+    useState('');
 
   const [
     currentExerciseIndex,
@@ -511,11 +517,15 @@ export function WorkoutExecutionPage() {
   const [isCompleted, setIsCompleted] =
     useState(false);
 
-  const [completedExercises, setCompletedExercises] =
-    useState<CompletedExercise[]>([]);
+  const [
+    completedExercises,
+    setCompletedExercises,
+  ] = useState<CompletedExercise[]>([]);
 
-  const [elapsedSeconds, setElapsedSeconds] =
-    useState(0);
+  const [
+    elapsedSeconds,
+    setElapsedSeconds,
+  ] = useState(0);
 
   const startedAtRef = useRef(
     new Date().toISOString()
@@ -528,17 +538,19 @@ export function WorkoutExecutionPage() {
   useEffect(() => {
     if (isCompleted) return;
 
-    const interval = window.setInterval(() => {
-      const startedAt = new Date(
-        startedAtRef.current
-      ).getTime();
+    const interval =
+      window.setInterval(() => {
+        const startedAt = new Date(
+          startedAtRef.current
+        ).getTime();
 
-      setElapsedSeconds(
-        Math.floor(
-          (Date.now() - startedAt) / 1000
-        )
-      );
-    }, 1000);
+        setElapsedSeconds(
+          Math.floor(
+            (Date.now() - startedAt) /
+              1000
+          )
+        );
+      }, 1000);
 
     return () =>
       window.clearInterval(interval);
@@ -547,17 +559,24 @@ export function WorkoutExecutionPage() {
   useEffect(() => {
     if (!isResting) return;
 
-    const interval = window.setInterval(() => {
-      setRestTimeLeft((previous) => {
-        if (previous <= 1) {
-          window.clearInterval(interval);
-          finishRest();
-          return 0;
-        }
+    const interval =
+      window.setInterval(() => {
+        setRestTimeLeft(
+          (previous) => {
+            if (previous <= 1) {
+              window.clearInterval(
+                interval
+              );
 
-        return previous - 1;
-      });
-    }, 1000);
+              finishRest();
+
+              return 0;
+            }
+
+            return previous - 1;
+          }
+        );
+      }, 1000);
 
     return () =>
       window.clearInterval(interval);
@@ -571,6 +590,8 @@ export function WorkoutExecutionPage() {
     setLoading(true);
     setError('');
     setPlan(null);
+    setStudent(null);
+    setSaving(false);
 
     try {
       if (!id) {
@@ -581,30 +602,38 @@ export function WorkoutExecutionPage() {
 
       if (!selectedDayKey) {
         throw new Error(
-          'Selecione o dia do treino antes de iniciar.'
+          'Selecione o treino que deseja executar.'
         );
       }
 
-      const today = getTodayDayKey();
-
-      if (selectedDayKey !== today) {
-        throw new Error(
-          `O treino de ${
-            DAY_NAMES[selectedDayKey] ||
-            selectedDayKey
-          } não pode ser executado hoje.`
-        );
-      }
-
-      const [studentData, planData] =
-        await Promise.all([
-          resolveLoggedStudent(),
-          getWorkoutPlanById(id),
-        ]);
+      const [
+        studentData,
+        planData,
+      ] = await Promise.all([
+        resolveLoggedStudent(),
+        getWorkoutPlanById(id),
+      ]);
 
       if (!planData) {
         throw new Error(
           'Plano de treino não encontrado.'
+        );
+      }
+
+      if (
+        isWorkoutPlanExpired(
+          planData.end_date
+        )
+      ) {
+        await notifyTrainerAboutExpiredPlan({
+          student: studentData,
+          plan: planData,
+        });
+
+        throw new Error(
+          `Este plano venceu em ${formatWorkoutPlanDate(
+            planData.end_date
+          )}. Solicite ao seu personal a atualização ou criação de um novo plano.`
         );
       }
 
@@ -614,9 +643,11 @@ export function WorkoutExecutionPage() {
           selectedDayKey
         );
 
-      if (dayExercises.length === 0) {
+      if (
+        dayExercises.length === 0
+      ) {
         throw new Error(
-          'Este dia não possui exercícios cadastrados.'
+          'Este treino não possui exercícios cadastrados.'
         );
       }
 
@@ -625,10 +656,19 @@ export function WorkoutExecutionPage() {
       setCurrentExerciseIndex(0);
       setCurrentSet(1);
       setCompletedExercises([]);
+      setIsResting(false);
+      setRestTimeLeft(0);
+      setRestDuration(0);
+      setRestMode('exercise');
+      setRestTitle('Descanso');
       setIsCompleted(false);
+      setElapsedSeconds(0);
+
       startedAtRef.current =
         new Date().toISOString();
-    } catch (loadError: unknown) {
+    } catch (
+      loadError: unknown
+    ) {
       const message =
         loadError instanceof Error
           ? loadError.message
@@ -649,20 +689,28 @@ export function WorkoutExecutionPage() {
       plan,
       selectedDayKey
     );
-  }, [plan, selectedDayKey]);
+  }, [
+    plan,
+    selectedDayKey,
+  ]);
 
   const dayGroups = useMemo(() => {
     if (!plan) return [];
 
-    const selectedDayIds = new Set(
-      plan.workout_days
-        .filter(
-          (day) =>
-            normalizeDayKey(day.day_key) ===
-            selectedDayKey
-        )
-        .map((day) => day.id)
-    );
+    const selectedDayIds =
+      new Set(
+        plan.workout_days
+          .filter(
+            (day) =>
+              normalizeDayKey(
+                day.day_key
+              ) ===
+              selectedDayKey
+          )
+          .map(
+            (day) => day.id
+          )
+      );
 
     return plan.workout_exercise_groups.filter(
       (group) =>
@@ -670,41 +718,63 @@ export function WorkoutExecutionPage() {
           group.workout_day_id
         )
     );
-  }, [plan, selectedDayKey]);
+  }, [
+    plan,
+    selectedDayKey,
+  ]);
 
   const currentExercise =
-    exercises[currentExerciseIndex] || null;
+    exercises[
+      currentExerciseIndex
+    ] || null;
 
   const nextExercise =
-    exercises[currentExerciseIndex + 1] ||
-    null;
+    exercises[
+      currentExerciseIndex + 1
+    ] || null;
 
-  const currentGroup = currentExercise
-    ? getExerciseGroup(
-        currentExercise,
-        dayGroups
-      )
-    : null;
+  const currentGroup =
+    currentExercise
+      ? getExerciseGroup(
+          currentExercise,
+          dayGroups
+        )
+      : null;
 
-  const safeTotalSets = currentExercise
-    ? getExerciseSets(currentExercise)
-    : 1;
+  const safeTotalSets =
+    currentExercise
+      ? getExerciseSets(
+          currentExercise
+        )
+      : 1;
 
-  const exerciseName = currentExercise
-    ? getExerciseName(currentExercise)
-    : 'Exercício';
+  const exerciseName =
+    currentExercise
+      ? getExerciseName(
+          currentExercise
+        )
+      : 'Exercício';
 
-  const exerciseReps = currentExercise
-    ? getExerciseReps(currentExercise)
-    : '—';
+  const exerciseReps =
+    currentExercise
+      ? getExerciseReps(
+          currentExercise
+        )
+      : '—';
 
-  const exerciseWeight = currentExercise
-    ? getExerciseWeight(currentExercise)
-    : '—';
+  const exerciseWeight =
+    currentExercise
+      ? getExerciseWeight(
+          currentExercise
+        )
+      : '—';
 
-  const dropConfig = currentExercise
-    ? getDropSetConfig(currentExercise)
-    : {};
+  const dropConfig =
+    currentExercise
+      ? getDropSetConfig(
+          currentExercise
+        )
+      : {};
 
   const progressPercent =
     exercises.length > 0
@@ -744,9 +814,16 @@ export function WorkoutExecutionPage() {
     const nextIndex =
       currentExerciseIndex + 1;
 
-    if (nextIndex < exercises.length) {
-      setCurrentExerciseIndex(nextIndex);
+    if (
+      nextIndex <
+      exercises.length
+    ) {
+      setCurrentExerciseIndex(
+        nextIndex
+      );
+
       setCurrentSet(1);
+
       return;
     }
 
@@ -759,8 +836,10 @@ export function WorkoutExecutionPage() {
 
     if (restMode === 'set') {
       setCurrentSet(
-        (previous) => previous + 1
+        (previous) =>
+          previous + 1
       );
+
       return;
     }
 
@@ -768,72 +847,103 @@ export function WorkoutExecutionPage() {
   }
 
   function handleCompleteSet() {
-    if (!currentExercise) return;
+    if (!currentExercise) {
+      return;
+    }
 
-    if (currentSet < safeTotalSets) {
+    if (
+      currentSet <
+      safeTotalSets
+    ) {
       const rest =
-        getExerciseRest(currentExercise);
+        getExerciseRest(
+          currentExercise
+        );
 
       if (rest > 0) {
         startRest({
           seconds: rest,
           mode: 'set',
-          title: 'Descanso entre séries',
+          title:
+            'Descanso entre séries',
         });
 
         return;
       }
 
       setCurrentSet(
-        (previous) => previous + 1
+        (previous) =>
+          previous + 1
       );
 
       return;
     }
 
-    const completed: CompletedExercise = {
-      exerciseId: currentExercise.id,
-      exerciseName,
-      setsCompleted: safeTotalSets,
-      repsCompleted: exerciseReps,
-      weightUsed: exerciseWeight,
-    };
+    const completed: CompletedExercise =
+      {
+        exerciseId:
+          currentExercise.id,
 
-    setCompletedExercises((previous) => {
-      const alreadyCompleted =
-        previous.some(
-          (exercise) =>
-            exercise.exerciseId ===
-            currentExercise.id
-        );
+        exerciseName,
 
-      if (alreadyCompleted) {
-        return previous;
+        setsCompleted:
+          safeTotalSets,
+
+        repsCompleted:
+          exerciseReps,
+
+        weightUsed:
+          exerciseWeight,
+      };
+
+    setCompletedExercises(
+      (previous) => {
+        const alreadyCompleted =
+          previous.some(
+            (exercise) =>
+              exercise.exerciseId ===
+              currentExercise.id
+          );
+
+        if (alreadyCompleted) {
+          return previous;
+        }
+
+        return [
+          ...previous,
+          completed,
+        ];
       }
-
-      return [...previous, completed];
-    });
+    );
 
     if (!nextExercise) {
       setIsCompleted(true);
+
       return;
     }
 
     const transitionRest =
       getTransitionRest({
-        exercise: currentExercise,
+        exercise:
+          currentExercise,
+
         nextExercise,
+
         groups: dayGroups,
       });
 
     if (transitionRest > 0) {
       startRest({
-        seconds: transitionRest,
+        seconds:
+          transitionRest,
+
         mode: 'exercise',
-        title: getTransitionTitle(
-          currentExercise,
-          dayGroups
-        ),
+
+        title:
+          getTransitionTitle(
+            currentExercise,
+            dayGroups
+          ),
       });
 
       return;
@@ -868,36 +978,56 @@ export function WorkoutExecutionPage() {
         );
 
       const trainerId =
-        getTrainerId(student, plan);
+        getTrainerId(
+          student,
+          plan
+        );
 
-      const log = await saveWorkoutLog({
-        student_id: student.id,
-        trainer_id: trainerId,
-        workout_plan_id: plan.id,
-        started_at:
-          startedAtRef.current,
-        completed_at: completedAt,
-        duration_seconds:
-          durationSeconds,
-        status: 'completed',
-        exercises_data:
-          completedExercises.map(
-            (exercise) => ({
-              exercise_id:
-                exercise.exerciseId,
-              exercise_name:
-                exercise.exerciseName,
-              sets_completed:
-                exercise.setsCompleted,
-              reps_completed:
-                exercise.repsCompleted,
-              weight_used:
-                exercise.weightUsed,
-              day_key:
-                selectedDayKey,
-            })
-          ),
-      });
+      const log =
+        await saveWorkoutLog({
+          student_id:
+            student.id,
+
+          trainer_id:
+            trainerId,
+
+          workout_plan_id:
+            plan.id,
+
+          started_at:
+            startedAtRef.current,
+
+          completed_at:
+            completedAt,
+
+          duration_seconds:
+            durationSeconds,
+
+          status: 'completed',
+
+          exercises_data:
+            completedExercises.map(
+              (exercise) => ({
+                exercise_id:
+                  exercise.exerciseId,
+
+                exercise_name:
+                  exercise.exerciseName,
+
+                sets_completed:
+                  exercise.setsCompleted,
+
+                reps_completed:
+                  exercise.repsCompleted,
+
+                weight_used:
+                  exercise.weightUsed,
+
+                day_key:
+                  selectedDayKey,
+              })
+            ),
+        });
 
       await notifyTrainer({
         student,
@@ -907,7 +1037,8 @@ export function WorkoutExecutionPage() {
         completedAt,
       });
 
-      const logId = getSavedLogId(log);
+      const logId =
+        getSavedLogId(log);
 
       navigate(
         `/student/workout-completed/${
@@ -917,7 +1048,9 @@ export function WorkoutExecutionPage() {
           replace: true,
         }
       );
-    } catch (saveError: unknown) {
+    } catch (
+      saveError: unknown
+    ) {
       const message =
         saveError instanceof Error
           ? saveError.message
@@ -942,7 +1075,10 @@ export function WorkoutExecutionPage() {
     );
   }
 
-  if (error && !plan) {
+  if (
+    error &&
+    !plan
+  ) {
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
         <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
@@ -1015,7 +1151,10 @@ export function WorkoutExecutionPage() {
 
                 <p className="mt-3 text-sm text-zinc-400">
                   Parabéns,{' '}
-                  {getStudentName(student)}.
+                  {getStudentName(
+                    student
+                  )}
+                  .
                 </p>
 
                 <div className="mt-6 grid grid-cols-3 gap-2">
@@ -1109,8 +1248,12 @@ export function WorkoutExecutionPage() {
         ) : isResting ? (
           <motion.main
             key="rest"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
             className="flex min-h-screen items-center px-4"
           >
             <div className="mx-auto w-full max-w-lg rounded-[38px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-6 text-center">
@@ -1161,8 +1304,12 @@ export function WorkoutExecutionPage() {
         ) : (
           <motion.main
             key="execution"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
             className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-5"
           >
             <header>
@@ -1185,7 +1332,8 @@ export function WorkoutExecutionPage() {
                   <p className="text-xs text-zinc-500">
                     {DAY_NAMES[
                       selectedDayKey
-                    ] || selectedDayKey}
+                    ] ||
+                      selectedDayKey}
                   </p>
                 </div>
 
@@ -1199,8 +1347,10 @@ export function WorkoutExecutionPage() {
               <div className="mt-4 flex justify-between text-xs">
                 <span className="text-zinc-500">
                   Exercício{' '}
-                  {currentExerciseIndex + 1}{' '}
-                  de {exercises.length}
+                  {currentExerciseIndex +
+                    1}{' '}
+                  de{' '}
+                  {exercises.length}
                 </span>
 
                 <span className="font-black text-[#ff2a32]">
@@ -1267,7 +1417,9 @@ export function WorkoutExecutionPage() {
                       currentExercise.technique_type ||
                       'normal'
                     }
-                    group={currentGroup}
+                    group={
+                      currentGroup
+                    }
                     groupOrder={
                       currentExercise.group_order
                     }
@@ -1278,26 +1430,33 @@ export function WorkoutExecutionPage() {
                   </h1>
 
                   <p className="mt-2 text-xs font-black uppercase text-[#ff2a32]">
-                    Série {currentSet} de{' '}
+                    Série {currentSet}{' '}
+                    de{' '}
                     {safeTotalSets}
                   </p>
 
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <MetricCard
                       label="Repetições"
-                      value={exerciseReps}
+                      value={
+                        exerciseReps
+                      }
                     />
 
                     <MetricCard
                       label="Carga"
-                      value={exerciseWeight}
+                      value={
+                        exerciseWeight
+                      }
                     />
                   </div>
 
                   {currentExercise.technique_type ===
                     'drop_set' && (
                     <DropSetPanel
-                      config={dropConfig}
+                      config={
+                        dropConfig
+                      }
                     />
                   )}
 
@@ -1331,7 +1490,9 @@ export function WorkoutExecutionPage() {
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {observation}
+                        {
+                          observation
+                        }
                       </p>
                     </div>
                   )}
@@ -1341,12 +1502,15 @@ export function WorkoutExecutionPage() {
 
             <button
               type="button"
-              onClick={handleCompleteSet}
+              onClick={
+                handleCompleteSet
+              }
               className="flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase"
             >
               <CheckCircle2 className="h-6 w-6" />
 
-              {currentSet < safeTotalSets
+              {currentSet <
+              safeTotalSets
                 ? 'Concluir série'
                 : nextExercise
                   ? 'Próximo exercício'
@@ -1377,16 +1541,20 @@ function TechniqueBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-[11px] font-black text-purple-300">
         <Layers2 className="h-3.5 w-3.5" />
+
         BI-SET • EXERCÍCIO{' '}
         {groupOrder || 1}
       </span>
     );
   }
 
-  if (technique === 'drop_set') {
+  if (
+    technique === 'drop_set'
+  ) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/20 bg-orange-400/10 px-3 py-1 text-[11px] font-black text-orange-300">
         <Zap className="h-3.5 w-3.5" />
+
         DROP-SET
       </span>
     );
@@ -1395,6 +1563,7 @@ function TechniqueBadge({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ff2a32]/20 bg-[#ff2a32]/10 px-3 py-1 text-[11px] font-black text-[#ff2a32]">
       <Zap className="h-3.5 w-3.5" />
+
       EXERCÍCIO NORMAL
     </span>
   );
@@ -1412,10 +1581,15 @@ function DropSetPanel({
       </p>
 
       <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-300">
-        {config.drops !== undefined && (
+        {config.drops !==
+          undefined && (
           <span>
-            {config.drops} queda
-            {config.drops === 1 ? '' : 's'}
+            {config.drops}{' '}
+            queda
+            {config.drops ===
+            1
+              ? ''
+              : 's'}
           </span>
         )}
 
@@ -1423,7 +1597,10 @@ function DropSetPanel({
           undefined && (
           <span>
             • Redução de{' '}
-            {config.reduction_percent}%
+            {
+              config.reduction_percent
+            }
+            %
           </span>
         )}
 
