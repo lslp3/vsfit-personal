@@ -1,99 +1,148 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+
+import { BrandMark } from '../brand/BrandMark';
 import { DeviceAwareCTA } from './DeviceAwareCTA';
 
 export function LandingHeader() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { name: 'Recursos', href: '#features' },
-    { name: 'Para Personal', href: '#personal' },
-    { name: 'Para Aluno', href: '#student' },
-    { name: 'Como instalar', href: '#install' },
-    { name: 'Dúvidas', href: '#faq' },
+    {
+      name: 'Recursos',
+      href: '#features',
+    },
+    {
+      name: 'Para Personal',
+      href: '#for-personal',
+    },
+    {
+      name: 'Para Aluno',
+      href: '#for-student',
+    },
+    {
+      name: 'Planos',
+      href: '#plans',
+    },
+    {
+      name: 'Como acessar',
+      href: '#install',
+    },
+    {
+      name: 'Dúvidas',
+      href: '#faq',
+    },
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
-      <div className="absolute inset-0 bg-[#050505]/80 backdrop-blur-md border-b border-white/5"></div>
-      
-      <div className="relative max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3 group cursor-pointer">
-          <div className="relative w-10 h-10 overflow-hidden rounded-lg bg-white/5 flex items-center justify-center">
-            <img 
-              src="/src/assets/brand/vsfit-logo.png" 
-              alt="VSFit Logo" 
-              className="w-full h-full object-contain p-2"
-            />
-          </div>
-          <span className="text-white font-bold text-lg tracking-tight">
-            VSFit <span className="text-vs-primary">Personal</span>
-          </span>
-        </div>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-[#050505]/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4">
+        <a
+          href="/"
+          aria-label="Página inicial do VSFit Personal"
+          className="flex min-w-0 items-center gap-3"
+        >
+          <BrandMark
+            size="sm"
+            className="shrink-0"
+          />
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8">
-          <nav className="flex items-center gap-6">
-            {navLinks.map(link => (
-              <a 
-                key={link.name} 
-                href={link.href} 
-                className="text-sm font-medium text-vs-muted hover:text-white transition-colors"
+          <span className="truncate text-lg font-black tracking-tight text-white">
+            VSFit{' '}
+            <span className="text-vs-primary">
+              Personal
+            </span>
+          </span>
+        </a>
+
+        <div className="hidden items-center gap-7 lg:flex">
+          <nav className="flex items-center gap-5">
+            {navLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.href}
+                className="text-sm font-semibold text-zinc-400 transition-colors hover:text-white"
               >
                 {link.name}
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-3 pl-6 border-l border-white/10">
-            <a 
-              href="/auth/login" 
-              className="text-sm font-medium text-white/70 hover:text-white transition-colors px-4 py-2"
+
+          <div className="flex items-center gap-3 border-l border-white/10 pl-6">
+            <a
+              href="/auth/login"
+              className="px-3 py-2 text-sm font-bold text-zinc-300 transition-colors hover:text-white"
             >
               Entrar
             </a>
-            <DeviceAwareCTA className="py-2 px-4 text-xs h-9" />
+
+            <DeviceAwareCTA className="h-10 rounded-xl px-5 py-0 text-xs" />
           </div>
         </div>
 
-        {/* Mobile Trigger */}
-        <div className="md:hidden flex items-center gap-3">
-          <DeviceAwareCTA className="py-2 px-3 text-xs h-9" />
-          <button 
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+        <div className="flex items-center gap-2 lg:hidden">
+          <DeviceAwareCTA className="hidden h-10 max-w-[180px] rounded-xl px-4 py-0 text-xs min-[390px]:flex" />
+
+          <button
+            type="button"
+            onClick={() => setIsOpen((current) => !current)}
+            aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white"
           >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 left-0 right-0 bg-[#090909] border-b border-white/10 p-4 md:hidden"
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: -12,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: -12,
+            }}
+            className="absolute inset-x-0 top-[72px] border-b border-white/10 bg-[#080808] p-4 lg:hidden"
           >
-            <nav className="flex flex-col gap-2">
-              {navLinks.map(link => (
-                <a 
-                  key={link.name} 
-                  href={link.href} 
+            <nav className="mx-auto flex max-w-7xl flex-col gap-1">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-3 rounded-xl text-vs-muted hover:text-white hover:bg-white/5 transition-all"
+                  className="rounded-xl px-4 py-3 text-sm font-semibold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
                   {link.name}
                 </a>
               ))}
-              <div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-3">
-                <a 
-                  href="/auth/login" 
-                  className="w-full py-3 text-center rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all"
+
+              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
+                <a
+                  href="/auth/login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex min-h-[48px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-sm font-black text-white"
                 >
-                  Entrar
+                  Login Personal
+                </a>
+
+                <a
+                  href="/auth/student-login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex min-h-[48px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-sm font-black text-white"
+                >
+                  Login Aluno
                 </a>
               </div>
             </nav>
@@ -103,3 +152,5 @@ export function LandingHeader() {
     </header>
   );
 }
+
+export default LandingHeader;

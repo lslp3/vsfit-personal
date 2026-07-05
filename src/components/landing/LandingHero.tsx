@@ -18,7 +18,7 @@ const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent
 
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden px-4 pb-20 pt-14 md:pb-28 md:pt-20">
+    <section className="relative overflow-hidden px-4 pb-20 pt-28 md:pb-28 md:pt-36">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,42,50,0.16),transparent_34%)]" />
       <div className="pointer-events-none absolute right-0 top-0 h-[520px] w-[520px] rounded-full bg-vs-primary/[0.08] blur-[130px]" />
 
