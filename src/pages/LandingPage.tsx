@@ -36,44 +36,6 @@ type Plan = {
   badge?: string;
 };
 
-const SCREENSHOTS = [
-  {
-    src: '/landing/personal-dashboard.png',
-    title: 'Dashboard do personal',
-    description:
-      'Visão geral de alunos, treinos, pagamentos, notificações e atividades.',
-    tag: 'Gestão',
-  },
-  {
-    src: '/landing/personal-students.png',
-    title: 'Gestão de alunos',
-    description:
-      'Organize alunos, acompanhe status, acesso, treinos e informações importantes.',
-    tag: 'Alunos',
-  },
-  {
-    src: '/landing/personal-workout-builder.png',
-    title: 'Montador de treinos',
-    description:
-      'Crie treinos por dia, configure séries, cargas, descanso, bi-set e drop-set.',
-    tag: 'Treinos',
-  },
-  {
-    src: '/landing/student-home.png',
-    title: 'Aplicativo do aluno',
-    description:
-      'Treino do dia, sequência semanal, atalhos e acompanhamento em um só lugar.',
-    tag: 'Aluno',
-  },
-  {
-    src: '/landing/student-progress.png',
-    title: 'Progresso e evolução',
-    description:
-      'Medidas, peso, fotos e histórico para acompanhar os resultados de verdade.',
-    tag: 'Evolução',
-  },
-];
-
 const PLANS: Plan[] = [
   {
     name: 'Free',
@@ -157,61 +119,6 @@ function SectionHeading({
         {description}
       </p>
     </div>
-  );
-}
-
-function ScreenshotCard({
-  screenshot,
-  index,
-}: {
-  screenshot: (typeof SCREENSHOTS)[number];
-  index: number;
-}) {
-  return (
-    <motion.article
-      initial={{
-        opacity: 0,
-        y: 24,
-      }}
-      whileInView={{
-        opacity: 1,
-        y: 0,
-      }}
-      viewport={{
-        once: true,
-        amount: 0.2,
-      }}
-      transition={{
-        duration: 0.5,
-        delay: index * 0.06,
-      }}
-      className="group overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.035]"
-    >
-      <div className="relative overflow-hidden border-b border-white/10 bg-[#080808]">
-        <div className="absolute left-4 top-4 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">
-          {screenshot.tag}
-        </div>
-
-        <img
-          src={screenshot.src}
-          alt={screenshot.title}
-          loading="lazy"
-          className="aspect-[9/16] w-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.02]"
-        />
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
-      </div>
-
-      <div className="p-5">
-        <h3 className="text-base font-black text-white">
-          {screenshot.title}
-        </h3>
-
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          {screenshot.description}
-        </p>
-      </div>
-    </motion.article>
   );
 }
 
@@ -359,35 +266,6 @@ export default function LandingPage() {
 
         <PersonalFeatures />
 
-        <section
-          id="features"
-          className="border-y border-white/5 bg-[#090909] px-4 py-24"
-        >
-          <div className="mx-auto max-w-7xl">
-            <SectionHeading
-              eyebrow="Conheça a plataforma"
-              title="Telas reais. Recursos que fazem parte da rotina."
-              description="Veja como o VSFit organiza o trabalho do personal e entrega uma experiência simples para o aluno."
-            />
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
-              {SCREENSHOTS.map(
-                (screenshot, index) => (
-                  <ScreenshotCard
-                    key={
-                      screenshot.src
-                    }
-                    screenshot={
-                      screenshot
-                    }
-                    index={index}
-                  />
-                )
-              )}
-            </div>
-          </div>
-        </section>
-
         <StudentFeatures />
 
         <section
@@ -445,9 +323,14 @@ export default function LandingPage() {
                   O APK oficial será disponibilizado nesta página.
                 </p>
 
-                <span className="mt-4 inline-flex rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase text-yellow-300">
-                  Em breve
-                </span>
+                <a
+                  href="/VSFit-Personal-v1.0.0.apk"
+                  download
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase text-vs-primary transition-all hover:bg-white/[0.1]"
+                >
+                  Download APK
+                  <ArrowRight className="h-3 w-3" />
+                </a>
               </div>
 
               <div className="rounded-[26px] border border-white/10 bg-white/[0.035] p-5">

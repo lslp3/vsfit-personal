@@ -90,6 +90,12 @@ export async function getCurrentSubscription(trainerId: string): Promise<Subscri
       .select('*')
       .eq('trainer_id', trainerId);
 
+    console.log('[DEBUG SUBSCRIPTION RAW]', {
+  trainerId,
+  data,
+  error
+});
+
     if (error) {
       console.error('[SubscriptionService] getCurrentSubscription error:', error);
       return null;
@@ -104,21 +110,25 @@ export async function getCurrentSubscription(trainerId: string): Promise<Subscri
       return null;
     }
 
-    const activeSubscriptions = data.filter((item: any) => isActiveStatus(item.status));
+   const activeSubscriptions = data.filter((item: any) => {
+  return isActiveStatus(item.status);
+});
 
     if (activeSubscriptions.length === 0) {
       return null;
     }
 
     const premium = activeSubscriptions.find(
-      (item: any) => normalizeDbPlanSlug(item.plan_slug) === 'premium'
-    );
+  (item: any) =>
+    normalizeDbPlanSlug(item.plan_slug || item.plan) === 'premium'
+);
 
     if (premium) return premium as Subscription;
 
     const pro = activeSubscriptions.find(
-      (item: any) => normalizeDbPlanSlug(item.plan_slug) === 'pro'
-    );
+  (item: any) =>
+    normalizeDbPlanSlug(item.plan_slug || item.plan) === 'pro'
+);
 
     if (pro) return pro as Subscription;
 
@@ -138,7 +148,9 @@ export async function getCurrentPlanSlug(trainerId: string): Promise<PlanSlug> {
       return 'free';
     }
 
-    const planSlug = normalizeDbPlanSlug(subscription.plan_slug);
+   const planSlug = normalizeDbPlanSlug(
+  subscription.plan_slug || (subscription as any).plan
+);
 
     console.log('[SubscriptionService] Plano atual encontrado:', {
       trainerId,

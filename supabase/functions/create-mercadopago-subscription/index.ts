@@ -159,44 +159,55 @@ serve(async (req) => {
       );
     }
 
-    const planResponse = await fetch(
-      `https://api.mercadopago.com/preapproval_plan/${mercadoPagoPlanId}`,
+    const preapprovalResponse = await fetch(
+      `https://api.mercadopago.com/preapproval`,
       {
-        method: "GET",
+        method: "POST",
         headers: {
           Authorization:
             `Bearer ${mercadoPagoToken}`,
           "Content-Type":
             "application/json",
         },
+        body: JSON.stringify({
+          preapproval_plan_id: mercadoPagoPlanId,
+          external_reference: trainer.id,
+          payer_email: trainer.email,
+        }),
       }
     );
 
-    const planData =
-      await planResponse
+    const preapprovalData =
+      await preapprovalResponse
         .json()
         .catch(() => ({}));
 
-    if (!planResponse.ok) {
-      console.error(
-        "[MERCADO PAGO PLAN ERROR]",
-        planData
-      );
+   if (!preapprovalResponse.ok) {
+  console.error(
+    "MERCADO PAGO ERRO:",
+    JSON.stringify(preapprovalData, null, 2)
+  );
+
+  throw new Error(
+    JSON.stringify(preapprovalData)
+  );
+}
 
       throw new Error(
-        planData?.message ||
-        "Erro ao buscar plano no Mercado Pago."
+        preapprovalData?.message ||
+          "Erro ao criar pré-aprovação no Mercado Pago."
       );
     }
 
     const checkoutUrl =
-      planData?.init_point;
+      preapprovalData?.init_point;
 
     if (!checkoutUrl) {
       throw new Error(
         "Mercado Pago não retornou o link de checkout."
       );
     }
+
 
     const now =
       new Date().toISOString();

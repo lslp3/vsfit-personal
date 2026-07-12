@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   AlertCircle,
   CheckCircle2,
   Dumbbell,
   Loader2,
   Send,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Input, Textarea } from '../../components/ui/Input';
-import * as signupService from '../../services/signupService';
+import { Input, Textarea } from "../../components/ui/Input";
+import * as signupService from "../../services/signupService";
 
 type SignupData = {
   link: any;
@@ -17,7 +17,7 @@ type SignupData = {
 };
 
 function getTrainerName(trainer: any) {
-  return trainer?.name || trainer?.full_name || trainer?.email || 'Personal';
+  return trainer?.name || trainer?.full_name || trainer?.email || "Personal";
 }
 
 export function SignupPublicPage() {
@@ -25,17 +25,17 @@ export function SignupPublicPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [signupData, setSignupData] = useState<SignupData | null>(null);
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    birthDate: '',
-    goal: '',
-    message: '',
+    name: "",
+    email: "",
+    phone: "",
+    birthDate: "",
+    goal: "",
+    message: "",
   });
 
   useEffect(() => {
@@ -44,26 +44,26 @@ export function SignupPublicPage() {
 
   async function loadSignupLink() {
     if (!slug) {
-      setError('Link de cadastro inválido.');
+      setError("Link de cadastro inválido.");
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const data = await signupService.getTrainerBySignupLink(slug);
 
       if (!data?.link) {
-        setError('Este link não está disponível ou foi desativado.');
+        setError("Este link não está disponível ou foi desativado.");
         return;
       }
 
       setSignupData(data);
     } catch (err: any) {
-      console.error('[SignupPublicPage] load error:', err);
-      setError(err?.message || 'Erro ao carregar link de cadastro.');
+      console.error("[SignupPublicPage] load error:", err);
+      setError(err?.message || "Erro ao carregar link de cadastro.");
     } finally {
       setLoading(false);
     }
@@ -75,18 +75,18 @@ export function SignupPublicPage() {
     if (!signupData?.link) return;
 
     if (!formData.name.trim() || !formData.email.trim()) {
-      setError('Nome e email são obrigatórios.');
+      setError("Nome e email são obrigatórios.");
       return;
     }
 
     setSubmitting(true);
-    setError('');
+    setError("");
 
     try {
       await signupService.submitSignupLead({
         signup_link_id: signupData.link.id,
-        coach_id: signupData.link.coach_id,
-        coach_auth_user_id: signupData.link.coach_auth_user_id || null,
+        trainer_id: signupData.link.trainer_id,
+        trainer_auth_user_id: signupData.link.trainer_auth_user_id || null,
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim() || null,
@@ -97,16 +97,16 @@ export function SignupPublicPage() {
 
       setSuccess(true);
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        birthDate: '',
-        goal: '',
-        message: '',
+        name: "",
+        email: "",
+        phone: "",
+        birthDate: "",
+        goal: "",
+        message: "",
       });
     } catch (err: any) {
-      console.error('[SignupPublicPage] submit error:', err);
-      setError(err?.message || 'Erro ao enviar cadastro.');
+      console.error("[SignupPublicPage] submit error:", err);
+      setError(err?.message || "Erro ao enviar cadastro.");
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +120,9 @@ export function SignupPublicPage() {
             <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
           </div>
 
-          <p className="text-sm font-black text-zinc-300">Carregando cadastro...</p>
+          <p className="text-sm font-black text-zinc-300">
+            Carregando cadastro...
+          </p>
         </div>
       </div>
     );
@@ -157,7 +159,8 @@ export function SignupPublicPage() {
           </h1>
 
           <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-            Preencha seu cadastro para ser acompanhado por {getTrainerName(signupData?.trainer)}.
+            Preencha seu cadastro para ser acompanhado por{" "}
+            {getTrainerName(signupData?.trainer)}.
           </p>
 
           {signupData?.link?.message && (
@@ -170,9 +173,12 @@ export function SignupPublicPage() {
         {success ? (
           <section className="rounded-[30px] border border-emerald-400/20 bg-emerald-400/10 p-6 text-center">
             <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-300" />
-            <h2 className="mt-5 text-xl font-black text-white">Cadastro enviado!</h2>
+            <h2 className="mt-5 text-xl font-black text-white">
+              Cadastro enviado!
+            </h2>
             <p className="mt-2 text-sm leading-relaxed text-emerald-100/80">
-              Seu cadastro foi enviado com sucesso. O personal entrará em contato com você.
+              Seu cadastro foi enviado com sucesso. O personal entrará em
+              contato com você.
             </p>
           </section>
         ) : (
@@ -185,7 +191,9 @@ export function SignupPublicPage() {
                 label="Nome completo *"
                 placeholder="Seu nome"
                 value={formData.name}
-                onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, name: event.target.value })
+                }
               />
 
               <Input
@@ -193,35 +201,45 @@ export function SignupPublicPage() {
                 type="email"
                 placeholder="seuemail@exemplo.com"
                 value={formData.email}
-                onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, email: event.target.value })
+                }
               />
 
               <Input
                 label="Telefone"
                 placeholder="(34) 99999-9999"
                 value={formData.phone}
-                onChange={(event) => setFormData({ ...formData, phone: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, phone: event.target.value })
+                }
               />
 
               <Input
                 label="Data de nascimento"
                 type="date"
                 value={formData.birthDate}
-                onChange={(event) => setFormData({ ...formData, birthDate: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, birthDate: event.target.value })
+                }
               />
 
               <Input
                 label="Objetivo"
                 placeholder="Ex: emagrecimento, hipertrofia..."
                 value={formData.goal}
-                onChange={(event) => setFormData({ ...formData, goal: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, goal: event.target.value })
+                }
               />
 
               <Textarea
                 label="Mensagem"
                 placeholder="Conte um pouco sobre você, rotina ou objetivo..."
                 value={formData.message}
-                onChange={(event) => setFormData({ ...formData, message: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, message: event.target.value })
+                }
               />
 
               {error && (

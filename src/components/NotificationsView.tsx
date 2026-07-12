@@ -184,6 +184,7 @@ function getTypeLabel(type?: string | null) {
     system: 'Sistema',
     milestone: 'Meta',
     trainer_student_workout_completed: 'Treino concluído',
+    trainer_student_plan_expired: 'Plano vencido',
     signup_lead_created: 'Novo cadastro',
     payment: 'Pagamento',
     billing: 'Financeiro',
@@ -204,7 +205,7 @@ function getTypeIcon(type?: string | null) {
 function getTypeStyle(type?: string | null) {
   const value = String(type || '').toLowerCase();
 
-  if (value.includes('workout')) {
+  if (value.includes('workout') || value.includes('plan_expired')) {
     return {
       badge: 'border-blue-500/25 bg-blue-500/15 text-blue-300',
       icon: 'border-blue-500/25 bg-blue-500/15 text-blue-300',
@@ -440,10 +441,10 @@ export default function NotificationsView(_props: NotificationsViewProps) {
   }
 
   return (
-    <main className="relative -mx-4 -my-8 min-h-[100dvh] w-[calc(100%+2rem)] overflow-x-hidden bg-[#050505] text-white md:-mx-8 md:w-[calc(100%+4rem)] lg:mx-0 lg:my-0 lg:min-h-0 lg:w-full lg:bg-transparent">
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(255,43,43,0.13),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(255,43,43,0.08),transparent_34%)] lg:hidden" />
+      <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#050505] text-white lg:bg-transparent">
+        <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(255,43,43,0.13),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(255,43,43,0.08),transparent_34%)] lg:hidden" />
 
-      <section className="relative z-10 mx-auto w-full max-w-[393px] overflow-x-hidden px-4 pb-44 pt-5 lg:max-w-none lg:px-0 lg:pb-8 lg:pt-0">
+        <section className="relative z-10 mx-auto w-full max-w-[393px] overflow-x-hidden px-4 pb-44 pt-5 lg:max-w-none lg:px-0 lg:pb-8 lg:pt-0">
         <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[12px] font-black uppercase tracking-[0.24em] text-[#FF2B2B]">

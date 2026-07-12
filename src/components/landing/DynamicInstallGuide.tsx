@@ -25,7 +25,6 @@ export function DynamicInstallGuide() {
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-vs-primary/15">
             <QrCode className="h-5 w-5 text-vs-primary" />
           </div>
-
           <div>
             <p className="text-sm font-black text-white">
               Acesse no celular
@@ -49,7 +48,6 @@ export function DynamicInstallGuide() {
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
             Link de acesso
           </p>
-
           <a
             href={APP_URL}
             target="_blank"
@@ -69,22 +67,22 @@ export function DynamicInstallGuide() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-vs-primary/15">
                 <Smartphone className="h-5 w-5 text-vs-primary" />
               </div>
-
               <div>
                 <h3 className="text-xl font-black text-white">Android</h3>
                 <p className="mt-1 text-sm text-zinc-400">
-                  O APK oficial será disponibilizado em breve nesta página.
+                  Baixe o aplicativo oficial para Android e organize seus treinos.
                 </p>
               </div>
             </div>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-zinc-500">
-              <Download className="h-5 w-5" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-vs-primary text-white shadow-lg transition-all hover:bg-red-600">
+              <a href="/VSFit-Personal-v1.0.0.apk" download>
+                <Download className="h-5 w-5" />
+              </a>
             </div>
           </div>
-
-          <div className="mt-4 inline-flex rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-yellow-300">
-            APK em breve
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase text-vs-primary transition-all hover:bg-white/[0.1]">
+            <span className="text-white/50">Versão</span>
+            v1.0.0
           </div>
         </div>
 
@@ -93,14 +91,12 @@ export function DynamicInstallGuide() {
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-vs-primary/15">
               <Share2 className="h-5 w-5 text-vs-primary" />
             </div>
-
             <div>
               <h3 className="text-xl font-black text-white">iPhone</h3>
               <p className="mt-1 text-sm text-zinc-400">
                 Abra o VSFit pelo Safari, toque em Compartilhar e depois em
                 “Adicionar à Tela de Início”.
               </p>
-
               <div className="mt-4 space-y-2">
                 {[
                   'Abra o link no Safari',
@@ -108,10 +104,7 @@ export function DynamicInstallGuide() {
                   'Selecione “Adicionar à Tela de Início”',
                   'Confirme para instalar',
                 ].map((step) => (
-                  <div
-                    key={step}
-                    className="flex items-center gap-2 text-sm text-zinc-300"
-                  >
+                  <div key={step} className="flex items-center gap-2 text-sm text-zinc-300">
                     <CheckCircle2 className="h-4 w-4 text-vs-primary" />
                     {step}
                   </div>
@@ -127,7 +120,6 @@ export function DynamicInstallGuide() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-vs-primary/15">
                 <Globe2 className="h-5 w-5 text-vs-primary" />
               </div>
-
               <div>
                 <h3 className="text-xl font-black text-white">Acesso web</h3>
                 <p className="mt-1 text-sm text-zinc-400">
@@ -135,7 +127,6 @@ export function DynamicInstallGuide() {
                 </p>
               </div>
             </div>
-
             <a
               href="/auth/login"
               className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm font-black text-white transition-all hover:bg-white/[0.1]"

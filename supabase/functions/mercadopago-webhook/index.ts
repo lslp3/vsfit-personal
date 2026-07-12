@@ -664,36 +664,57 @@ async function processPreapproval({
   const now =
     new Date().toISOString();
 
-  const {
-    error,
-  } = await supabaseAdmin
-    .from("subscriptions")
-    .upsert(
-      {
-        trainer_id: trainer.id,
-        plan: planSlug,
-        plan_slug: planSlug,
-        status,
-        provider_status:
-          providerStatus,
-        student_limit:
-          studentLimit,
-        payment_provider:
-          "mercadopago",
-        mercadopago_preapproval_id:
-          preapprovalId,
-        mercadopago_plan_id:
-          providerPlanId,
-        current_period_start:
-          periodStart,
-        current_period_end:
-          periodEnd,
-        last_webhook_at: now,
-        updated_at: now,
-      },
-      {
-        onConflict: "trainer_id",
-      }
+    const {
+      error,
+    } = await supabaseAdmin
+      .from("subscriptions")
+      .upsert(
+        {
+          trainer_id: trainer.id,
+          plan: planSlug,
+          plan_slug: planSlug,
+          status,
+          provider_status:
+            providerStatus,
+          student_limit:
+            studentLimit,
+          payment_provider:
+            "mercadopago",
+          mercadopago_preapproval_id:
+            preapprovalId,
+          mercadopago_plan_id:
+            providerPlanId,
+          current_period_start:
+            periodStart,
+          current_period_end:
+            periodEnd,
+          last_webhook_at: now,
+          updated_at: now,
+        },
+        {
+          onConflict: "trainer_id",
+        }
+      )
+      .select("last_payment_id, last_payment_status, last_payment_amount, last_payment_at")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Restaura campos de pagamento se eles já existiam, para evitar que o preapproval os apague
+    if (data?.last_payment_id) {
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          last_payment_id: data.last_payment_id,
+          last_payment_status: data.last_payment_status,
+          last_payment_amount: data.last_payment_amount,
+          last_payment_at: data.last_payment_at,
+        })
+        .eq("trainer_id", trainer.id);
+    }
+
     );
 
   if (error) {

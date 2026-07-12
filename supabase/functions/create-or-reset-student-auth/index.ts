@@ -18,18 +18,19 @@ function jsonResponse(
       status,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/json',
+        'Content-Type':
+          'application/json',
       },
     }
   );
 }
 
-function normalizeEmail(value: unknown) {
+function normalizeEmail(
+  value: unknown
+) {
   return String(value || '')
     .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .normalize("NFKC");
+    .toLowerCase();
 }
 
 async function findAuthUserByEmail(
@@ -158,7 +159,7 @@ serve(async (request) => {
           auth: {
             autoRefreshToken: false,
             persistSession: false,
-          }
+          },
         }
       );
 
@@ -283,6 +284,7 @@ serve(async (request) => {
           id,
           trainer_id,
           auth_user_id,
+          name,
           email
         `)
         .eq('id', studentId)
@@ -320,45 +322,30 @@ serve(async (request) => {
       );
     }
 
-    const studentEmailNormalized = normalizeEmail(student.email);
-    const bodyEmailNormalized = normalizeEmail(body.email);
-    const email = studentEmailNormalized || bodyEmailNormalized;
+    const email =
+      normalizeEmail(
+        student.email ||
+        body.email
+      );
+
+    console.log('[EMAIL DEBUG]', {
+  email,
+  length: email.length,
+  chars: [...email].map(c => c.charCodeAt(0)),
+});
+
+    const name =
+      String(
+        student.name ||
+        body.name ||
+        'Aluno'
+      ).trim();
 
     if (!email) {
       throw new Error(
         'O aluno não possui um email válido.'
       );
     }
-
-    if (!email.includes('@')) {
-      throw new Error(
-        'O email deve conter "@".'
-      );
-    }
-
-    const [localPart, domainPart] = email.split('@');
-    if (!domainPart || !domainPart.trim()) {
-      throw new Error(
-        'O email deve ter um domínio válido.'
-      );
-    }
-
-    console.log('[EMAIL DEBUG]', {
-      studentEmail: student.email,
-      studentEmailNormalized,
-      bodyEmail: body.email,
-      bodyEmailNormalized,
-      email,
-      length: email.length,
-      chars: [...email].map(c => c.charCodeAt(0)),
-    });
-
-    const name =
-      String(
-        student.name ||
-          body.name ||
-          'Aluno'
-      ).trim();
 
     const {
       data: studentAccount,
@@ -388,7 +375,7 @@ serve(async (request) => {
       student.auth_user_id ||
       studentAccount
         ?.auth_user_id ||
-        null;
+      null;
 
     let authUser: any =
       null;
@@ -414,10 +401,6 @@ serve(async (request) => {
         authUser =
           existingUserData.user;
       }
-
-      authUserId =
-        authUser?.id ||
-        null;
     }
 
     if (!authUser) {
@@ -434,8 +417,10 @@ serve(async (request) => {
 
     if (authUser?.id) {
       const {
-        data: updatedProfile,
-        error: updatedProfileError,
+        data:
+          existingProfile,
+        error:
+          existingProfileError,
       } =
         await supabaseAdmin
           .from('user_profiles')
@@ -443,26 +428,21 @@ serve(async (request) => {
           .eq('id', authUser.id)
           .maybeSingle();
 
-      if (updatedProfileError) {
-        throw updatedProfileError;
+      if (
+        existingProfileError
+      ) {
+        throw existingProfileError;
       }
 
       if (
-        updatedProfile?.role &&
-        updatedProfile.role !==
+        existingProfile?.role &&
+        existingProfile.role !==
           'student'
       ) {
         throw new Error(
           'Este email já pertence a uma conta de personal ou administrador.'
         );
       }
-
-      console.log('[UPDATE USER]', {
-        id: authUser.id,
-        email,
-        password,
-        name,
-      });
 
       const {
         data: updatedUser,
@@ -493,11 +473,14 @@ serve(async (request) => {
           );
 
       if (updateUserError) {
-        console.error(updateUserError);
-        throw new Error(
-          JSON.stringify(updateUserError)
-        );
-      }
+  console.error('[UPDATE USER ERROR]', {
+    userId: authUser.id,
+    email,
+    error: updateUserError,
+  });
+
+  throw updateUserError;
+}
 
       authUser =
         updatedUser.user;
@@ -505,12 +488,6 @@ serve(async (request) => {
       authUserId =
         updatedUser.user.id;
     } else {
-      console.log('[CREATE USER]', {
-        email,
-        password,
-        name,
-      });
-
       const {
         data: createdUser,
         error: createUserError,
@@ -533,12 +510,15 @@ serve(async (request) => {
             },
           });
 
-      if (createUserError) {
-        console.error(createUserError);
-        throw new Error(
-          JSON.stringify(createUserError)
-        );
-      }
+     if (createUserError) {
+  console.error('[CREATE USER ERROR]', {
+    email,
+    passwordLength: password.length,
+    error: createUserError,
+  });
+
+  throw createUserError;
+}
 
       if (
         !createdUser.user?.id
@@ -576,7 +556,9 @@ serve(async (request) => {
           }
         );
 
-    if (profileUpsertError) {
+    if (
+      profileUpsertError
+    ) {
       throw profileUpsertError;
     }
 
@@ -598,7 +580,9 @@ serve(async (request) => {
         })
         .eq('id', student.id);
 
-    if (studentUpdateError) {
+    if (
+      studentUpdateError
+    ) {
       throw studentUpdateError;
     }
 
@@ -635,7 +619,9 @@ serve(async (request) => {
           }
         );
 
-    if (accountUpsertError) {
+    if (
+      accountUpsertError
+    ) {
       throw accountUpsertError;
     }
 
@@ -657,45 +643,16 @@ serve(async (request) => {
       error
     );
 
-    let errorMessage =
-      'Erro ao criar ou redefinir o acesso do aluno.';
-    let errorStatus = 400;
-    let errorCode = 'internal_error';
-    let errorName = 'Error';
-
-    if (error instanceof Error) {
-      try {
-        const parsed = JSON.parse(error.message);
-        if (
-          typeof parsed === 'object' &&
-          parsed !== null
-        ) {
-          errorMessage =
-            parsed.message ?? error.message;
-          errorStatus =
-            parsed.status ?? errorStatus;
-          errorCode =
-            parsed.code ?? errorCode;
-          errorName =
-            parsed.name ?? errorName;
-        }
-      } catch (e) {
-        // If not JSON, use the error message
-        errorMessage = error.message;
-      }
-    }
-
     return jsonResponse(
       {
         success: false,
-        error: {
-          message: errorMessage,
-          status: errorStatus,
-          code: errorCode,
-          name: errorName,
-        },
+
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Erro ao criar ou redefinir o acesso do aluno.',
       },
-      errorStatus
+      400
     );
   }
 });

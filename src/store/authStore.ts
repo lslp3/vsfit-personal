@@ -80,6 +80,8 @@ function buildStudentProfile({
   };
 }
 
+let initializingPromise: Promise<void> | null = null;
+
 export const useAuthStore =
   create<AuthStore>((set) => ({
     user: null,
@@ -92,132 +94,154 @@ export const useAuthStore =
     error: null,
 
     initialize: async () => {
+      if (initializingPromise) return initializingPromise;
+
       set({
         isLoading: true,
         error: null,
       });
 
-      try {
-        const session =
-          await restoreSession();
+      const timeoutPromise = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('Auth initialization timeout after 10s')), 10000)
+      );
 
-        const user =
-          session?.user || null;
+      initializingPromise = (async () => {
+        let session = null;
+        try {
+          console.log('[AuthStore] Initializing: Starting restoreSession...');
+          session = await restoreSession();
+          console.log('[AuthStore] Initializing: restoreSession completed');
 
-        if (!user?.id) {
-          set(clearSessionState());
-          return;
-        }
+          const user =
+            session?.user || null;
 
-        const {
-          profile,
-          trainerProfile,
-        } = await getCurrentProfile();
+          if (!user?.id) {
+            console.log('[AuthStore] Initializing: No user ID found, clearing state');
+            set(clearSessionState());
+            return;
+          }
 
-        if (
-          profile?.role === 'admin'
-        ) {
-          set({
-            user,
+          console.log('[AuthStore] Initializing: Fetching current profile for user:', user.id);
+          const {
             profile,
-            trainerProfile: null,
-            student: null,
-            studentAccount: null,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
+            trainerProfile,
+          } = await getCurrentProfile();
+          console.log('[AuthStore] Initializing: getCurrentProfile completed. Role:', profile?.role);
 
-          return;
-        }
+          if (
+            profile?.role === 'admin'
+          ) {
+            set({
+              user,
+              profile,
+              trainerProfile: null,
+              student: null,
+              studentAccount: null,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
 
-        if (
-          profile?.role === 'personal'
-        ) {
+            return;
+          }
+
+          if (
+            profile?.role === 'personal'
+          ) {
+            set({
+              user,
+              profile,
+              trainerProfile:
+                trainerProfile || null,
+              student: null,
+              studentAccount: null,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+
+            return;
+          }
+
+          console.log('[AuthStore] Initializing: Fetching student account for user:', user.id);
+          const {
+            account,
+            student,
+          } =
+            await getStudentAccountByAuthUser(
+              user.id
+            );
+          console.log('[AuthStore] Initializing: getStudentAccountByAuthUser completed');
+
+          if (
+            profile?.role === 'student' ||
+            student?.id ||
+            account?.id
+          ) {
+            if (!student?.id) {
+              throw new Error(
+                'Perfil de aluno não encontrado.'
+              );
+            }
+
+            set({
+              user,
+              profile:
+                profile ||
+                buildStudentProfile({
+                  user,
+                  student,
+                }),
+              trainerProfile: null,
+              student,
+              studentAccount:
+                account || null,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+
+            return;
+          }
+
+          console.log('[AuthStore] Initializing: No valid profile found, logging out');
+          await authLogout();
+
           set({
-            user,
-            profile,
-            trainerProfile:
-              trainerProfile || null,
-            student: null,
-            studentAccount: null,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
+            ...clearSessionState(),
+            error:
+              'Esta conta não possui um perfil válido no VSFit.',
           });
-
-          return;
-        }
-
-        const {
-          account,
-          student,
-        } =
-          await getStudentAccountByAuthUser(
-            user.id
+        } catch (error) {
+          console.error(
+            '[AuthStore] initialize error:',
+            error
           );
 
-        if (
-          profile?.role === 'student' ||
-          student?.id ||
-          account?.id
-        ) {
-          if (!student?.id) {
-            throw new Error(
-              'Perfil de aluno não encontrado.'
-            );
+          if (!session?.user?.id) {
+            try {
+              await authLogout();
+            } catch (logoutError) {
+              console.warn(
+                '[AuthStore] logout after initialization error:',
+                logoutError
+              );
+            }
           }
 
           set({
-            user,
-            profile:
-              profile ||
-              buildStudentProfile({
-                user,
-                student,
-              }),
-            trainerProfile: null,
-            student,
-            studentAccount:
-              account || null,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
+            ...clearSessionState(),
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Erro ao restaurar sessão.',
           });
-
-          return;
+        } finally {
+          initializingPromise = null;
         }
+      })();
 
-        await authLogout();
-
-        set({
-          ...clearSessionState(),
-          error:
-            'Esta conta não possui um perfil válido no VSFit.',
-        });
-      } catch (error) {
-        console.error(
-          '[AuthStore] initialize error:',
-          error
-        );
-
-        try {
-          await authLogout();
-        } catch (logoutError) {
-          console.warn(
-            '[AuthStore] logout after initialization error:',
-            logoutError
-          );
-        }
-
-        set({
-          ...clearSessionState(),
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Erro ao restaurar sessão.',
-        });
-      }
+      return Promise.race([initializingPromise, timeoutPromise]);
     },
 
     setUser: (
@@ -260,15 +284,14 @@ export const useAuthStore =
 
         return {
           profile:
-            state.profile?.role ===
-            'student'
+            state.profile
               ? state.profile
               : student
                 ? buildStudentProfile({
                     user: state.user,
                     student,
                   })
-                : state.profile,
+                : null,
           student,
           studentAccount,
           trainerProfile: null,

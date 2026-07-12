@@ -130,7 +130,7 @@ function getNotificationType(item: any): NotificationItem['type'] {
     return 'message';
   }
 
-  if (value.includes('workout') || value.includes('treino')) {
+  if (value.includes('workout') || value.includes('treino') || value.includes('plan_expired')) {
     return 'workout';
   }
 
