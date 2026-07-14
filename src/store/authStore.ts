@@ -40,6 +40,7 @@ interface AuthStore {
   ) => void;
 
   logout: () => Promise<void>;
+  logoutFromEvent: () => void;
 }
 
 function clearSessionState() {
@@ -81,6 +82,7 @@ function buildStudentProfile({
 }
 
 let initializingPromise: Promise<void> | null = null;
+let loggingOut = false;
 
 export const useAuthStore =
   create<AuthStore>((set) => ({
@@ -300,6 +302,9 @@ export const useAuthStore =
     },
 
     logout: async () => {
+      if (loggingOut) return;
+      loggingOut = true;
+
       try {
         await authLogout();
       } catch (error) {
@@ -309,6 +314,12 @@ export const useAuthStore =
         );
       }
 
+      set(clearSessionState());
+      loggingOut = false;
+    },
+
+    logoutFromEvent: () => {
+      if (loggingOut) return;
       set(clearSessionState());
     },
   }));

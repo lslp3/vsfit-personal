@@ -237,22 +237,22 @@ export function LoginPage() {
             </Link>
           </div>
 
-          <Button
-            type="submit"
-            loading={loading}
-            className="h-14 w-full rounded-[16px] text-sm font-black"
-          >
-            {loading ? (
-              <Loader2
-                size={19}
-                className="animate-spin"
-              />
-            ) : (
-              <LogIn size={19} />
-            )}
-
-            <span>ENTRAR</span>
-          </Button>
+           <Button
+             type="submit"
+             loading={loading}
+             className="h-14 w-full rounded-[16px] text-sm font-black"
+           >
+             {loading ? (
+               <Loader2
+                 size={19}
+                 className="animate-spin"
+               />
+             ) : (
+               <LogIn size={19} />
+             )}
+ 
+             <span className={loading ? 'hidden' : ''}>ENTRAR</span>
+           </Button>
         </form>
 
         <div className="mt-6 space-y-3 text-center">

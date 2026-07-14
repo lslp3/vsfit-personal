@@ -1310,7 +1310,7 @@ export function WorkoutExecutionPage() {
             animate={{
               opacity: 1,
             }}
-            className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-5"
+            className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 pb-44 pt-5"
           >
             <header>
               <div className="flex items-center gap-3">
@@ -1505,7 +1505,8 @@ export function WorkoutExecutionPage() {
                onClick={
                  handleCompleteSet
                }
-               className="fixed inset-x-0 bottom-0 z-40 mx-4 mb-4 flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase safe-area-bottom"
+               style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 16px)' }}
+               className="fixed inset-x-0 z-40 mx-4 flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase"
              >
               <CheckCircle2 className="h-6 w-6" />
 

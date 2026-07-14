@@ -872,7 +872,7 @@ export function WorkoutDetailPage() {
       </div>
 
        {selectedSection && (
-         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-[max(16px,calc(16px+env(safe-area-inset-bottom)))] pt-3 backdrop-blur-xl">
+         <div className="fixed inset-x-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pt-3 backdrop-blur-xl" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' }}>
            <div className="mx-auto max-w-lg">
             {planExpired ? (
               <div className="rounded-[22px] border border-red-400/25 bg-red-400/10 px-4 py-4 text-center">

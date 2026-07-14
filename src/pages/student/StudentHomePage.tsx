@@ -1135,6 +1135,7 @@ export function StudentHomePage() {
                                  )
                                }
                                className="mt-6 flex h-13 w-fit items-center gap-2 rounded-[15px] bg-[#ff2a32] px-6 py-4 text-[12px] font-black uppercase shadow-[0_15px_35px_rgba(255,42,48,0.28)] active:scale-95 safe-area-bottom"
+                               style={{ marginBottom: 'calc(72px + 16px + env(safe-area-inset-bottom))' }}
                               >
                             <Play className="h-4 w-4" />
 
