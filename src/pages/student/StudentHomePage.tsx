@@ -984,8 +984,8 @@ export function StudentHomePage() {
   const avatarUrl =
     getStudentAvatarUrl(data.student);
 
-  return (
-    <div className="min-h-screen bg-[#050505] px-4 pb-32 pt-6 text-white">
+    return (
+      <div className="min-h-screen bg-[#050505] px-4 pb-40 pt-6 text-white">
       <div className="mx-auto max-w-lg space-y-5">
         <section className="rounded-[32px] border border-white/10 bg-[#0d0d0e] p-5">
           <div className="flex items-center gap-4">
@@ -1127,15 +1127,15 @@ export function StudentHomePage() {
                             </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleStartWorkout(
-                                workout
-                              )
-                            }
-                            className="mt-6 flex h-13 w-fit items-center gap-2 rounded-[15px] bg-[#ff2a32] px-6 py-4 text-[12px] font-black uppercase shadow-[0_15px_35px_rgba(255,42,48,0.28)] active:scale-95"
-                          >
+                             <button
+                               type="button"
+                               onClick={() =>
+                                 handleStartWorkout(
+                                   workout
+                                 )
+                               }
+                               className="mt-6 flex h-13 w-fit items-center gap-2 rounded-[15px] bg-[#ff2a32] px-6 py-4 text-[12px] font-black uppercase shadow-[0_15px_35px_rgba(255,42,48,0.28)] active:scale-95 safe-area-bottom"
+                              >
                             <Play className="h-4 w-4" />
 
                             Iniciar treino

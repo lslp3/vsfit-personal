@@ -620,7 +620,7 @@ export function WorkoutDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="mx-auto max-w-lg px-4 pb-48 pt-5">
+      <div className="mx-auto max-w-lg px-4 pb-64 pt-5">
         <div className="mb-5 flex items-center justify-between">
           <button
             type="button"
@@ -871,9 +871,9 @@ export function WorkoutDetailPage() {
         </section>
       </div>
 
-      {selectedSection && (
-        <div className="fixed inset-x-0 bottom-[50px] z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-3 pt-3 backdrop-blur-xl">
-          <div className="mx-auto max-w-lg">
+       {selectedSection && (
+         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pb-[max(16px,calc(16px+env(safe-area-inset-bottom)))] pt-3 backdrop-blur-xl">
+           <div className="mx-auto max-w-lg">
             {planExpired ? (
               <div className="rounded-[22px] border border-red-400/25 bg-red-400/10 px-4 py-4 text-center">
                 <p className="text-xs font-black uppercase text-red-300">

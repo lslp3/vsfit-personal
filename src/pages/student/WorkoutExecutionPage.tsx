@@ -1092,13 +1092,13 @@ export function WorkoutExecutionPage() {
             {error}
           </p>
 
-          <button
-            type="button"
-            onClick={() =>
-              navigate(-1)
-            }
-            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black"
-          >
+               <button
+                 type="button"
+                 onClick={() =>
+                   navigate(-1)
+                 }
+                 className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black safe-area-bottom"
+               >
             VOLTAR AO PLANO
           </button>
         </div>
@@ -1227,14 +1227,14 @@ export function WorkoutExecutionPage() {
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={() =>
-                  void handleSave()
-                }
-                disabled={saving}
-                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase disabled:opacity-60"
-              >
+               <button
+                 type="button"
+                 onClick={() =>
+                   void handleSave()
+                 }
+                 disabled={saving}
+                 className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase disabled:opacity-60 safe-area-bottom"
+               >
                 {saving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
@@ -1292,11 +1292,11 @@ export function WorkoutExecutionPage() {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={finishRest}
-                className="mt-6 h-14 w-full rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase"
-              >
+               <button
+                 type="button"
+                 onClick={finishRest}
+                 className="mt-6 h-14 w-full rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase safe-area-bottom"
+               >
                 Pular descanso
               </button>
             </div>
@@ -1500,13 +1500,13 @@ export function WorkoutExecutionPage() {
               </motion.div>
             </section>
 
-            <button
-              type="button"
-              onClick={
-                handleCompleteSet
-              }
-              className="flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase"
-            >
+             <button
+               type="button"
+               onClick={
+                 handleCompleteSet
+               }
+               className="fixed inset-x-0 bottom-0 z-40 mx-4 mb-4 flex h-16 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-base font-black uppercase safe-area-bottom"
+             >
               <CheckCircle2 className="h-6 w-6" />
 
               {currentSet <
