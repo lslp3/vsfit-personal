@@ -37,7 +37,7 @@ export function PersonalShell() {
   const title = getPageTitle(location.pathname);
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#050505] pt-[env(safe-area-inset-top,0px)]">
       <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
           <div className="flex min-w-0 items-center gap-3">

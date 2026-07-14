@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Student, StudentAccount } from '../types/database';
 import type { CreateStudentData } from '../types/student';
-import { generatePassword } from '../lib/utils';
 
 type CreateStudentInput = CreateStudentData & {
   birthDate?: string | null;
@@ -257,47 +256,24 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
   }
 
   if (input.createAppAccess) {
-    temporaryPassword = generatePassword();
-
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: input.email,
-      password: temporaryPassword,
-      options: {
-        data: {
-          role: 'student',
-          student_id: student.id,
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('create-student-access', {
+        body: {
+          studentId: student.id,
+          email: input.email,
           name: input.name,
         },
-      },
-    });
-
-    if (!authError && authData.user) {
-      await supabase.from('user_profiles').insert({
-        id: authData.user.id,
-        email: input.email,
-        name: input.name,
-        role: 'student',
       });
 
-      await supabase.from('student_accounts').insert({
-        student_id: student.id,
-        auth_user_id: authData.user.id,
-        email: input.email,
-        temporary_password: temporaryPassword,
-        must_change_password: true,
-        is_active: true,
-      });
+      if (funcError) throw funcError;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro ao criar acesso do aluno via Edge Function');
+      }
 
-      await supabase
-        .from('students')
-        .update({
-          auth_user_id: authData.user.id,
-          app_access_status: 'invited',
-          login_enabled: true,
-        })
-        .eq('id', student.id);
-    } else if (authError) {
-      console.error('[StudentService] createStudent auth error:', authError);
+      temporaryPassword = data.credentials.password;
+    } catch (e) {
+      console.error('[StudentService] create-student-access error:', e);
+      throw e;
     }
   }
 

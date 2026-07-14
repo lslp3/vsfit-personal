@@ -22,7 +22,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -31,11 +31,11 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
             onClick={onClose}
           />
           <motion.div
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-vs-dark-2 border border-vs-border rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-lg bg-vs-dark-2 border border-vs-border rounded-2xl p-5 max-h-[90dvh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-4">
               {title && <h2 className="text-lg font-bold">{title}</h2>}

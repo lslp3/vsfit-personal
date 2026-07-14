@@ -177,9 +177,9 @@ export function Sidebar({
               damping: 28,
               stiffness: 260,
             }}
-            className="fixed left-0 top-0 z-[999] h-full w-[300px] border-r border-white/[0.08] bg-[#080808] shadow-[10px_0_70px_rgba(0,0,0,0.65)]"
+            className="fixed left-0 top-0 z-[999] h-full min-h-[100dvh] w-[300px] border-r border-white/[0.08] bg-[#080808] shadow-[10px_0_70px_rgba(0,0,0,0.65)]"
           >
-            <div className="flex h-full flex-col">
+            <div className="flex h-full min-h-[100dvh] flex-col">
               <div className="flex items-center justify-between border-b border-white/[0.08] px-5 pb-4 pt-5">
                 <div className="flex min-w-0 items-center gap-3">
                   <BrandMark
@@ -250,8 +250,8 @@ export function Sidebar({
                 ))}
               </nav>
 
-              <div className="border-t border-white/[0.08] px-3 py-3">
-                <button
+               <div className="border-t border-white/[0.08] px-3 py-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))]">
+                 <button
                   type="button"
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/10"
