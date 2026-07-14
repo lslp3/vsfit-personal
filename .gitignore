@@ -14,3 +14,5 @@ yarn-error.log*
 pnpm-debug.log*
 supabase/.temp/
 *.keystore
+.vercel
+.env*
