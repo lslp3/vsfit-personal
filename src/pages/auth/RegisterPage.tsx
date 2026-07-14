@@ -86,7 +86,7 @@ export function RegisterPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-sm"
       >
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-vs-primary to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-vs-primary/20">
             <span className="text-white font-black text-2xl tracking-tight">VS</span>
           </div>
@@ -94,7 +94,7 @@ export function RegisterPage() {
           <p className="text-vs-muted text-sm mt-1">Cadastre-se como personal trainer</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4">
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}

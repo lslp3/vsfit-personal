@@ -145,7 +145,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-6">
       <motion.div
         initial={{
           opacity: 0,
@@ -161,8 +161,8 @@ export function LoginPage() {
         }}
         className="w-full max-w-sm"
       >
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="flex h-24 w-24 items-center justify-center p-1">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="flex h-20 w-20 items-center justify-center p-1">
             <img
               src={vsfitLogo}
               alt="VSFit Personal"
@@ -175,7 +175,7 @@ export function LoginPage() {
             VSFit Personal
           </p>
 
-          <h1 className="mt-3 text-[30px] font-black tracking-[-0.05em] text-white">
+          <h1 className="mt-3 text-[24px] font-black tracking-[-0.05em] text-white">
             Bem-vindo
           </h1>
 
@@ -186,7 +186,7 @@ export function LoginPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-[#0d0d0e] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
+          className="space-y-4 rounded-[28px] border border-white/[0.09] bg-[#0d0d0e] p-4 shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
         >
           {error && (
             <motion.div
@@ -240,7 +240,7 @@ export function LoginPage() {
            <Button
              type="submit"
              loading={loading}
-             className="h-14 w-full rounded-[16px] text-sm font-black"
+             className="h-12 w-full rounded-[16px] text-sm font-black"
            >
              {loading ? (
                <Loader2

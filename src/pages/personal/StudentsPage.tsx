@@ -291,13 +291,13 @@ export function StudentsPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
                 VSFit Personal
               </p>
-              <h1 className="mt-0.5 text-2xl font-black tracking-tight">Alunos</h1>
+              <h1 className="mt-0.5 text-xl font-black tracking-tight">Alunos</h1>
             </div>
 
             <button
@@ -423,7 +423,7 @@ export function StudentsPage() {
       <button
         type="button"
         onClick={openCreateModal}
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#ff2a32] text-white shadow-[0_18px_45px_rgba(255,42,48,0.38)] transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#ff2a32] text-white shadow-[0_18px_45px_rgba(255,42,48,0.38)] transition-all hover:scale-105 active:scale-95"
       >
         <Plus className="h-6 w-6" />
       </button>

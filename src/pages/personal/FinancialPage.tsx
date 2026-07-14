@@ -419,7 +419,7 @@ export function FinancialPage() {
       <div className="mx-auto max-w-lg space-y-5 px-4 pb-32 pt-5">
         {showPlanModal ? (
           <div className="flex min-h-[70vh] items-center justify-center">
-            <div className="relative w-full max-w-md overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] p-8 text-center shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
+            <div className="relative w-full max-w-md overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] p-6 text-center shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
               <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent" />
 
               <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[28px] bg-yellow-500/15 text-yellow-400">
@@ -438,7 +438,7 @@ export function FinancialPage() {
                 <button
                   type="button"
                   onClick={() => setShowPlanModal(false)}
-                  className="h-13 flex-1 rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-4 text-[13px] font-black text-white"
+                  className="h-12 flex-1 rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-4 text-[13px] font-black text-white"
                 >
                   FECHAR
                 </button>
@@ -449,7 +449,7 @@ export function FinancialPage() {
                     setShowPlanModal(false);
                     navigate('/personal/subscription');
                   }}
-                  className="h-13 flex-1 rounded-[18px] bg-[#ff2a32] px-4 py-4 text-[13px] font-black text-white"
+                  className="h-12 flex-1 rounded-[18px] bg-[#ff2a32] px-4 py-4 text-[13px] font-black text-white"
                 >
                   VER PLANOS
                 </button>
@@ -509,26 +509,26 @@ export function FinancialPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                     <p className="mb-1 text-xs text-zinc-500">Receita total</p>
-                    <p className="text-2xl font-black text-white">{formatCurrency(totalRevenue)}</p>
+                    <p className="text-xl font-black text-white">{formatCurrency(totalRevenue)}</p>
                   </div>
 
                   <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                     <p className="mb-1 text-xs text-zinc-500">Pago este mês</p>
-                    <p className="text-2xl font-black text-green-400">
+                    <p className="text-xl font-black text-green-400">
                       {formatCurrency(paidThisMonth)}
                     </p>
                   </div>
 
                   <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                     <p className="mb-1 text-xs text-zinc-500">Pendente</p>
-                    <p className="text-2xl font-black text-yellow-400">
+                    <p className="text-xl font-black text-yellow-400">
                       {formatCurrency(totalPending)}
                     </p>
                   </div>
 
                   <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                     <p className="mb-1 text-xs text-zinc-500">Atrasado</p>
-                    <p className="text-2xl font-black text-red-400">
+                    <p className="text-xl font-black text-red-400">
                       {formatCurrency(totalOverdue)}
                     </p>
                   </div>
@@ -698,7 +698,7 @@ export function FinancialPage() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#ff2a32] text-white shadow-[0_18px_45px_rgba(255,42,48,0.35)] transition-transform active:scale-90"
+          className="fixed bottom-24 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#ff2a32] text-white shadow-[0_18px_45px_rgba(255,42,48,0.35)] transition-transform active:scale-90"
         >
           <Plus className="h-6 w-6" />
         </button>
@@ -726,7 +726,7 @@ export function FinancialPage() {
                 Configuração Pix
               </p>
 
-              <h2 className="mt-1 text-[22px] font-black uppercase italic tracking-tight text-white">
+              <h2 className="mt-1 text-xl font-black uppercase italic tracking-tight text-white">
                 Minha chave Pix
               </h2>
 
@@ -842,7 +842,7 @@ export function FinancialPage() {
                 Nova cobrança
               </p>
 
-              <h2 className="mt-1 text-[22px] font-black uppercase italic tracking-tight text-white">
+              <h2 className="mt-1 text-xl font-black uppercase italic tracking-tight text-white">
                 Criar Pix
               </h2>
             </div>
@@ -973,7 +973,7 @@ export function FinancialPage() {
 
       {createdCharge && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/95 px-4 backdrop-blur-2xl">
-          <div className="relative w-full max-w-[390px] overflow-hidden rounded-[36px] border border-white/10 bg-[#080808] p-7 shadow-[0_35px_100px_rgba(0,0,0,1)]">
+          <div className="relative w-full max-w-[390px] overflow-hidden rounded-[36px] border border-white/10 bg-[#080808] p-5 shadow-[0_35px_100px_rgba(0,0,0,1)]">
             <button
               type="button"
               onClick={() => setCreatedCharge(null)}
@@ -986,7 +986,7 @@ export function FinancialPage() {
               <Wallet className="h-10 w-10" />
             </div>
 
-            <h2 className="mt-6 text-center text-[24px] font-black uppercase italic tracking-tight text-white">
+            <h2 className="mt-6 text-center text-xl font-black uppercase italic tracking-tight text-white">
               Cobrança criada!
             </h2>
 
@@ -1024,7 +1024,7 @@ export function FinancialPage() {
               <button
                 type="button"
                 onClick={() => handleCopyPix(createdCharge.payment, createdCharge.pixCode)}
-                className="h-14 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white active:scale-95"
+                className="h-12 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white active:scale-95"
               >
                 <span className="flex items-center justify-center gap-2">
                   <Copy className="h-4 w-4" />
@@ -1035,7 +1035,7 @@ export function FinancialPage() {
               <button
                 type="button"
                 onClick={() => handleSendWhatsApp(createdCharge.payment, createdCharge.pixCode)}
-                className="h-14 rounded-[20px] bg-emerald-600 text-[13px] font-black text-white active:scale-95"
+                className="h-12 rounded-[20px] bg-emerald-600 text-[13px] font-black text-white active:scale-95"
               >
                 <span className="flex items-center justify-center gap-2">
                   <Send className="h-4 w-4" />
@@ -1069,7 +1069,7 @@ export function FinancialPage() {
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(null)}
-                className="h-13 flex-1 rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-4 text-[13px] font-black text-white"
+                className="h-12 flex-1 rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-4 text-[13px] font-black text-white"
               >
                 CANCELAR
               </button>
@@ -1077,7 +1077,7 @@ export function FinancialPage() {
               <button
                 type="button"
                 onClick={() => handleDelete(showDeleteConfirm)}
-                className="h-13 flex-1 rounded-[18px] bg-red-600 px-4 py-4 text-[13px] font-black text-white"
+                className="h-12 flex-1 rounded-[18px] bg-red-600 px-4 py-4 text-[13px] font-black text-white"
               >
                 EXCLUIR
               </button>

@@ -569,17 +569,17 @@ export function WorkoutDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
-            <Loader2 className="h-9 w-9 animate-spin text-[#ff2a32]" />
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[24px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
+            <Loader2 className="h-8 w-8 animate-spin text-[#ff2a32]" />
           </div>
 
           <div>
-            <p className="text-sm font-black text-white">
+            <p className="text-[13px] font-black text-white">
               Carregando treino...
             </p>
 
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-[11px] text-zinc-500">
               Preparando os exercícios.
             </p>
           </div>
@@ -590,15 +590,15 @@ export function WorkoutDetailPage() {
 
   if (error || !plan) {
     return (
-      <div className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-white">
-        <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
-          <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
+      <div className="min-h-screen bg-[#050505] px-4 pb-24 pt-8 text-white">
+        <div className="mx-auto max-w-lg rounded-[24px] border border-red-500/20 bg-red-500/10 p-5 text-center">
+          <AlertCircle className="mx-auto h-8 w-8 text-red-300" />
 
-          <h1 className="mt-5 text-xl font-black text-white">
+          <h1 className="mt-3 text-lg font-black text-white">
             Treino não encontrado
           </h1>
 
-          <p className="mt-2 text-sm text-red-200/80">
+          <p className="mt-1.5 text-[13px] text-red-200/80">
             {error}
           </p>
 
@@ -609,7 +609,7 @@ export function WorkoutDetailPage() {
                 '/student/workouts'
               )
             }
-            className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
+            className="mt-4 h-11 w-full rounded-2xl bg-[#ff2a32] text-[13px] font-black text-white"
           >
             VOLTAR AOS TREINOS
           </button>
@@ -620,8 +620,8 @@ export function WorkoutDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="mx-auto max-w-lg px-4 pb-64 pt-5">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="mx-auto max-w-lg px-4 pb-40 pt-4">
+        <div className="mb-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() =>
@@ -651,30 +651,30 @@ export function WorkoutDetailPage() {
             opacity: 1,
             y: 0,
           }}
-          className="rounded-[34px] border border-white/10 bg-gradient-to-br from-[#ff2a32]/16 via-white/[0.045] to-white/[0.025] p-5"
+          className="rounded-[28px] border border-white/10 bg-gradient-to-br from-[#ff2a32]/16 via-white/[0.045] to-white/[0.025] p-3.5"
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ff2a32]">
                 Treino Premium
               </p>
 
-              <h1 className="mt-2 text-[28px] font-black uppercase italic leading-none text-white">
+              <h1 className="mt-1.5 text-[20px] font-black uppercase italic leading-none text-white">
                 {plan.name}
               </h1>
 
-              <p className="mt-3 text-sm text-zinc-400">
+              <p className="mt-2 text-[13px] text-zinc-400">
                 {plan.objective ||
                   'Treino personalizado para sua evolução.'}
               </p>
             </div>
 
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#ff2a32]">
-              <Dumbbell className="h-6 w-6" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-[#ff2a32]">
+              <Dumbbell className="h-5 w-5" />
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-2">
             <InfoCard
               icon={Layers}
               value={
@@ -704,16 +704,16 @@ export function WorkoutDetailPage() {
           </div>
         </motion.section>
 
-        <section className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.035] p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
+        <section className="mt-3 rounded-[24px] border border-white/10 bg-white/[0.035] p-3.5">
+          <div className="mb-2.5 flex items-center gap-2">
+            <CalendarDays className="h-3.5 w-3.5 text-[#ff2a32]" />
 
-            <p className="text-[11px] font-black uppercase text-zinc-500">
+            <p className="text-[10px] font-black uppercase text-zinc-500">
               Período do plano
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <DateCard
               label="Início"
               value={formatDate(
@@ -729,16 +729,16 @@ export function WorkoutDetailPage() {
             />
           </div>
 
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-2 text-[11px] text-zinc-500">
             {expirationInfo.description}
           </p>
         </section>
 
-        <section className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.035] p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
+        <section className="mt-3 rounded-[24px] border border-white/10 bg-white/[0.035] p-3.5">
+          <div className="mb-2.5 flex items-center gap-2">
+            <CalendarDays className="h-3.5 w-3.5 text-[#ff2a32]" />
 
-            <p className="text-[11px] font-black uppercase text-zinc-500">
+            <p className="text-[10px] font-black uppercase text-zinc-500">
               Selecione o treino
             </p>
           </div>
@@ -766,7 +766,7 @@ export function WorkoutDetailPage() {
                       )
                     }
                     className={cn(
-                      'rounded-full border px-4 py-2 text-[11px] font-black transition-all',
+                      'rounded-full border px-3 py-1.5 text-[10px] font-black transition-all',
                       selected
                         ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
                         : today
@@ -791,7 +791,7 @@ export function WorkoutDetailPage() {
           </p>
         </section>
 
-        <section className="mt-5 grid grid-cols-2 gap-3">
+        <section className="mt-3 grid grid-cols-2 gap-2.5">
           <StatisticCard
             icon={Flame}
             value={String(
@@ -811,7 +811,7 @@ export function WorkoutDetailPage() {
 
         {(totalDropSets > 0 ||
           totalBiSets > 0) && (
-          <section className="mt-3 grid grid-cols-2 gap-3">
+          <section className="mt-2.5 grid grid-cols-2 gap-2.5">
             <StatisticCard
               icon={Zap}
               value={String(
@@ -830,13 +830,13 @@ export function WorkoutDetailPage() {
           </section>
         )}
 
-        <section className="mt-6 space-y-4">
+        <section className="mt-3 space-y-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ff2a32]">
               Treinos do plano
             </p>
 
-            <h2 className="mt-1 text-xl font-black">
+            <h2 className="mt-1 text-lg font-black">
               {selectedSection
                 ? DAY_NAMES[
                     selectedSection.key
@@ -847,14 +847,14 @@ export function WorkoutDetailPage() {
           </div>
 
           {!selectedSection ? (
-            <div className="rounded-[30px] border border-white/10 bg-white/[0.035] p-7 text-center">
-              <CalendarDays className="mx-auto h-10 w-10 text-zinc-700" />
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5 text-center">
+              <CalendarDays className="mx-auto h-8 w-8 text-zinc-700" />
 
-              <h3 className="mt-4 text-lg font-black">
+              <h3 className="mt-3 text-base font-black">
                 Escolha um treino
               </h3>
 
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="mt-1.5 text-[13px] text-zinc-500">
                 Selecione SEG, TER, QUA,
                 QUI, SEX, SÁB ou DOM
                 para visualizar os
@@ -872,15 +872,15 @@ export function WorkoutDetailPage() {
       </div>
 
        {selectedSection && (
-         <div className="fixed inset-x-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pt-3 backdrop-blur-xl" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' }}>
+         <div className="fixed inset-x-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pt-2.5 backdrop-blur-xl" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 0px))' }}>
            <div className="mx-auto max-w-lg">
             {planExpired ? (
-              <div className="rounded-[22px] border border-red-400/25 bg-red-400/10 px-4 py-4 text-center">
-                <p className="text-xs font-black uppercase text-red-300">
+              <div className="rounded-[20px] border border-red-400/25 bg-red-400/10 px-3.5 py-3 text-center">
+                <p className="text-[11px] font-black uppercase text-red-300">
                   Plano vencido
                 </p>
 
-                <p className="mt-1 text-[11px] leading-relaxed text-red-100/75">
+                <p className="mt-1 text-[10px] leading-relaxed text-red-100/75">
                   Este plano venceu em{' '}
                   {formatWorkoutPlanDate(
                     plan.end_date
@@ -905,9 +905,9 @@ export function WorkoutDetailPage() {
                     `/student/workout-execution/${plan.id}?day=${selectedSection.key}`
                   )
                 }
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff2a32] text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-[13px] font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Play className="h-5 w-5" />
+                <Play className="h-4 w-4" />
 
                 Executar treino selecionado
               </button>
@@ -955,8 +955,8 @@ function DaySectionCard({
     'Treino';
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/[0.07] p-4">
+    <div className="space-y-2.5">
+      <div className="rounded-[22px] border border-[#ff2a32]/20 bg-[#ff2a32]/[0.07] p-3.5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-black uppercase text-[#ff2a32]">
@@ -965,12 +965,12 @@ function DaySectionCard({
               ] || section.key}
             </p>
 
-            <h3 className="mt-1 text-lg font-black">
+            <h3 className="mt-1 text-[15px] font-black">
               {title}
             </h3>
           </div>
 
-          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-black text-zinc-400">
+          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[9px] font-black text-zinc-400">
             {section.exercises.length}{' '}
             exercício
             {section.exercises
@@ -981,7 +981,7 @@ function DaySectionCard({
         </div>
 
         {section.day?.notes && (
-          <p className="mt-3 text-xs text-zinc-400">
+          <p className="mt-2 text-[11px] text-zinc-400">
             {
               section.day
                 .notes
@@ -1038,10 +1038,10 @@ function DaySectionCard({
 
       {section.exercises.length ===
         0 && (
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-6 text-center">
-          <Dumbbell className="mx-auto h-9 w-9 text-zinc-700" />
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.035] p-5 text-center">
+          <Dumbbell className="mx-auto h-7 w-7 text-zinc-700" />
 
-          <p className="mt-3 text-sm text-zinc-500">
+          <p className="mt-2 text-[13px] text-zinc-500">
             Nenhum exercício
             cadastrado neste dia.
           </p>
@@ -1059,47 +1059,47 @@ function BiSetCard({
   exercises: WorkoutPlanExercise[];
 }) {
   return (
-    <div className="rounded-[30px] border border-purple-400/25 bg-purple-400/[0.07] p-4">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="rounded-[24px] border border-purple-400/25 bg-purple-400/[0.07] p-3.5">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-400/15 px-3 py-1 text-[10px] font-black text-purple-200">
-            <Layers2 className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-400/15 px-2.5 py-0.5 text-[9px] font-black text-purple-200">
+            <Layers2 className="h-3 w-3" />
             BI-SET
           </span>
 
-          <h3 className="mt-2 text-base font-black">
+          <h3 className="mt-1.5 text-[15px] font-black">
             {group.name ||
               'Executar em sequência'}
           </h3>
         </div>
 
         {group.rounds && (
-          <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-[10px] font-bold text-purple-200">
+          <span className="rounded-full border border-purple-300/20 bg-black/20 px-2.5 py-0.5 text-[9px] font-bold text-purple-200">
             {group.rounds}{' '}
             rodadas
           </span>
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {exercises.map(
           (exercise, index) => (
             <div
               key={exercise.id}
-              className="rounded-[22px] border border-white/10 bg-black/20 p-3"
+              className="rounded-[18px] border border-white/10 bg-black/20 p-2.5"
             >
-              <p className="text-[9px] font-black uppercase text-purple-300">
+              <p className="text-[8px] font-black uppercase text-purple-300">
                 Exercício{' '}
                 {index + 1}
               </p>
 
-              <p className="mt-1 text-sm font-black">
+              <p className="mt-1 text-[13px] font-black">
                 {getExerciseName(
                   exercise
                 )}
               </p>
 
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {exercise.sets && (
                   <SmallTag>
                     {exercise.sets}{' '}
@@ -1127,8 +1127,8 @@ function BiSetCard({
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 p-3">
-        <p className="text-xs text-purple-100/80">
+      <div className="mt-3 rounded-2xl border border-purple-300/15 bg-black/20 p-2.5">
+        <p className="text-[11px] text-purple-100/80">
           Execute os exercícios em
           sequência.
           {group.rest_after_seconds !==
@@ -1137,7 +1137,7 @@ function BiSetCard({
         </p>
 
         {group.notes && (
-          <p className="mt-2 text-xs text-zinc-400">
+          <p className="mt-1.5 text-[11px] text-zinc-400">
             {group.notes}
           </p>
         )}
@@ -1179,10 +1179,10 @@ function ExerciseCard({
         duration: 0.25,
         delay: index * 0.04,
       }}
-      className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4"
+      className="rounded-[24px] border border-white/10 bg-white/[0.04] p-3"
     >
-      <div className="flex items-start gap-4">
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[22px] border border-white/10 bg-black/30">
+      <div className="flex items-start gap-3">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border border-white/10 bg-black/30">
           {exercise.video_url ? (
             <video
               src={
@@ -1206,7 +1206,7 @@ function ExerciseCard({
             />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <Dumbbell className="h-8 w-8 text-[#ff2a32]" />
+              <Dumbbell className="h-7 w-7 text-[#ff2a32]" />
             </div>
           )}
         </div>
@@ -1214,20 +1214,20 @@ function ExerciseCard({
         <div className="min-w-0 flex-1">
           {technique ===
             'drop_set' && (
-            <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-orange-400/15 px-2.5 py-1 text-[9px] font-black text-orange-300">
-              <Zap className="h-3 w-3" />
+            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-orange-400/15 px-2 py-0.5 text-[8px] font-black text-orange-300">
+              <Zap className="h-2.5 w-2.5" />
 
               DROP-SET
             </span>
           )}
 
-          <h3 className="text-[16px] font-black">
+          <h3 className="text-[14px] font-black">
             {getExerciseName(
               exercise
             )}
           </h3>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {exercise.sets && (
               <SmallTag>
                 {exercise.sets}{' '}
@@ -1254,8 +1254,8 @@ function ExerciseCard({
               null &&
               exercise.rest_seconds >
                 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
-                  <Timer className="h-3.5 w-3.5 text-[#ff2a32]" />
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-bold text-zinc-300">
+                  <Timer className="h-3 w-3 text-[#ff2a32]" />
 
                   {
                     exercise.rest_seconds
@@ -1267,12 +1267,12 @@ function ExerciseCard({
 
           {technique ===
             'drop_set' && (
-            <div className="mt-3 rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-3">
-              <p className="text-[10px] font-black uppercase text-orange-300">
+            <div className="mt-2 rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-2.5">
+              <p className="text-[9px] font-black uppercase text-orange-300">
                 Configuração
               </p>
 
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-orange-100/80">
+              <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-orange-100/80">
                 {dropConfig.drops !==
                   undefined && (
                   <span>
@@ -1311,7 +1311,7 @@ function ExerciseCard({
               </div>
 
               {dropConfig.notes && (
-                <p className="mt-2 text-xs text-zinc-400">
+                <p className="mt-1.5 text-[11px] text-zinc-400">
                   {
                     dropConfig.notes
                   }
@@ -1321,7 +1321,7 @@ function ExerciseCard({
           )}
 
           {observation && (
-            <p className="mt-3 rounded-2xl border border-white/5 bg-black/20 p-3 text-xs text-zinc-500">
+            <p className="mt-2 rounded-2xl border border-white/5 bg-black/20 p-2.5 text-[11px] text-zinc-500">
               {observation}
             </p>
           )}
@@ -1341,10 +1341,10 @@ function InfoCard({
   label: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
-      <Icon className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
+    <div className="rounded-[16px] border border-white/10 bg-black/20 p-2.5 text-center">
+      <Icon className="mx-auto mb-1.5 h-3.5 w-3.5 text-[#ff2a32]" />
 
-      <p className="truncate text-sm font-black">
+      <p className="truncate text-[13px] font-black">
         {value}
       </p>
 
@@ -1363,12 +1363,12 @@ function DateCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-      <p className="text-[9px] font-black uppercase text-zinc-600">
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-2.5">
+      <p className="text-[8px] font-black uppercase text-zinc-600">
         {label}
       </p>
 
-      <p className="mt-1 text-sm font-black">
+      <p className="mt-1 text-[13px] font-black">
         {value}
       </p>
     </div>
@@ -1385,14 +1385,14 @@ function StatisticCard({
   label: string;
 }) {
   return (
-    <div className="rounded-[26px] border border-white/10 bg-white/[0.035] p-4 text-center">
-      <Icon className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
+    <div className="rounded-[22px] border border-white/10 bg-white/[0.035] p-3 text-center">
+      <Icon className="mx-auto mb-1.5 h-4 w-4 text-[#ff2a32]" />
 
-      <p className="text-2xl font-black">
+      <p className="text-lg font-black">
         {value}
       </p>
 
-      <p className="text-[10px] font-black uppercase text-zinc-600">
+      <p className="text-[9px] font-black uppercase text-zinc-600">
         {label}
       </p>
     </div>
@@ -1405,7 +1405,7 @@ function SmallTag({
   children: React.ReactNode;
 }) {
   return (
-    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-zinc-300">
+    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-bold text-zinc-300">
       {children}
     </span>
   );

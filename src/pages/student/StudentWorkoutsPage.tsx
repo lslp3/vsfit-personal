@@ -471,9 +471,9 @@ export function StudentWorkoutsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] px-4 pb-32 pt-6 text-white">
-      <div className="mx-auto max-w-lg space-y-5">
-        <section className="rounded-[32px] border border-white/10 bg-white/[0.045] p-5">
+    <div className="min-h-screen bg-[#050505] px-4 pb-4 pt-4 text-white">
+      <div className="mx-auto max-w-lg space-y-4">
+        <section className="rounded-[32px] border border-white/10 bg-white/[0.045] p-4">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-lg font-black text-[#ff2a32]">
               {getStudentInitials(getStudentName(data.student))}
@@ -484,7 +484,7 @@ export function StudentWorkoutsPage() {
                 Área do aluno
               </p>
 
-              <h1 className="mt-1 text-[25px] font-black uppercase italic text-white">
+              <h1 className="mt-1 text-[20px] font-black uppercase italic text-white">
                 Meus Treinos
               </h1>
 
@@ -494,7 +494,7 @@ export function StudentWorkoutsPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-2">
             <SummaryBox
               icon={Dumbbell}
               value={orderedWorkouts.length}
@@ -522,7 +522,7 @@ export function StudentWorkoutsPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar treino..."
-            className="w-full rounded-[20px] border border-white/10 bg-white/[0.045] py-4 pl-11 pr-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#ff2a32]/40"
+            className="w-full rounded-[20px] border border-white/10 bg-white/[0.045] py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#ff2a32]/40"
           />
         </div>
 
@@ -545,7 +545,7 @@ export function StudentWorkoutsPage() {
         </div>
 
         {filteredWorkouts.length === 0 ? (
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.035] p-8 text-center">
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.035] p-6 text-center">
             <Dumbbell className="mx-auto h-10 w-10 text-zinc-700" />
 
             <h2 className="mt-6 text-xl font-black text-white">
@@ -583,7 +583,7 @@ export function StudentWorkoutsPage() {
                   <div className="flex items-start gap-4">
                     <div
                       className={cn(
-                        'mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]',
+                        'mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-[22px]',
                         completed
                           ? 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-400'
                           : today
@@ -592,11 +592,11 @@ export function StudentWorkoutsPage() {
                       )}
                     >
                       {completed ? (
-                        <CheckCircle2 className="h-7 w-7" />
+                        <CheckCircle2 className="h-6 w-6" />
                       ) : today ? (
-                        <Flame className="h-7 w-7" />
+                        <Flame className="h-6 w-6" />
                       ) : (
-                        <Dumbbell className="h-7 w-7" />
+                        <Dumbbell className="h-6 w-6" />
                       )}
                     </div>
 
@@ -622,7 +622,7 @@ export function StudentWorkoutsPage() {
                             </span>
                           </div>
 
-                          <h3 className="mt-1 truncate text-[20px] font-black text-white">
+                          <h3 className="mt-1 truncate text-[18px] font-black text-white">
                             {getWorkoutName(workout)}
                           </h3>
                         </div>
@@ -723,14 +723,14 @@ export function StudentWorkoutsPage() {
           </div>
         )}
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">
                 Resumo
               </p>
 
-              <h3 className="mt-1 text-lg font-black text-white">Sua rotina</h3>
+              <h3 className="mt-1 text-base font-black text-white">Sua rotina</h3>
             </div>
 
             <Sparkles className="h-5 w-5 text-[#ff2a32]" />
@@ -738,14 +738,14 @@ export function StudentWorkoutsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center">
-              <p className="text-2xl font-black text-[#ff2a32]">{pendingCount}</p>
+              <p className="text-xl font-black text-[#ff2a32]">{pendingCount}</p>
               <p className="mt-1 text-[10px] font-black uppercase text-zinc-600">
                 Pendentes
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center">
-              <p className="text-2xl font-black text-emerald-400">
+              <p className="text-xl font-black text-emerald-400">
                 {completedCount}
               </p>
               <p className="mt-1 text-[10px] font-black uppercase text-zinc-600">
@@ -771,7 +771,7 @@ function SummaryBox({
   return (
     <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
       <Icon className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
-      <p className="text-lg font-black text-white">{value}</p>
+      <p className="text-base font-black text-white">{value}</p>
       <p className="text-[9px] font-black uppercase text-zinc-600">{label}</p>
     </div>
   );

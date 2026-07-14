@@ -225,6 +225,7 @@ export interface WorkoutLog {
   exercises_data: ExerciseRecord[];
   notes: string | null;
   created_at: string;
+  workout_plan?: { name: string } | null;
 }
 
 export interface ExerciseRecord {
@@ -232,6 +233,7 @@ export interface ExerciseRecord {
   sets_completed: number;
   reps_completed: string;
   weight_used: string;
+  day_key?: string;
 }
 
 export interface Payment {

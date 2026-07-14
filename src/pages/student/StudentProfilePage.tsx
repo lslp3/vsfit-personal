@@ -515,7 +515,7 @@ export function StudentProfilePage() {
   if (error || !state.student) {
     return (
       <div className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-white">
-        <div className="mx-auto max-w-lg rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
+        <div className="mx-auto max-w-lg rounded-[24px] border border-red-500/20 bg-red-500/10 p-6 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-300">
             <AlertCircle className="h-8 w-8" />
           </div>
@@ -544,18 +544,18 @@ export function StudentProfilePage() {
   const trainer = state.trainer;
 
   return (
-    <div className="min-h-screen bg-[#050505] px-4 pb-32 pt-6 text-white">
+    <div className="min-h-screen bg-[#050505] px-4 pb-24 pt-4 text-white">
       <div className="mx-auto max-w-lg space-y-5">
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+          className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
         >
           <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#ff2a32]/20 to-transparent" />
 
           <div className="relative flex flex-col items-center text-center">
             <div className="relative">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[32px] border border-white/10 bg-[#ff2a32]/15 text-2xl font-black text-[#ff2a32]">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-[#ff2a32]/15 text-2xl font-black text-[#ff2a32]">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -591,7 +591,7 @@ export function StudentProfilePage() {
               Perfil do aluno
             </p>
 
-            <h1 className="mt-1 max-w-full truncate text-[27px] font-black uppercase italic tracking-[-0.06em] text-white">
+            <h1 className="mt-1 max-w-full truncate text-[22px] font-black uppercase italic tracking-[-0.06em] text-white">
               {getStudentName(student)}
             </h1>
 
@@ -604,7 +604,7 @@ export function StudentProfilePage() {
         <section className="grid grid-cols-3 gap-3">
           <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <Scale className="mx-auto mb-2 h-5 w-5 text-[#ff2a32]" />
-            <p className="text-xl font-black text-white">
+            <p className="text-lg font-black text-white">
               {formatNumber(latestMetric?.weight, 'kg')}
             </p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
@@ -614,7 +614,7 @@ export function StudentProfilePage() {
 
           <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <Ruler className="mx-auto mb-2 h-5 w-5 text-yellow-400" />
-            <p className="text-xl font-black text-white">
+            <p className="text-lg font-black text-white">
               {formatHeight(latestMetric?.height)}
             </p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
@@ -624,7 +624,7 @@ export function StudentProfilePage() {
 
           <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <Activity className="mx-auto mb-2 h-5 w-5 text-emerald-400" />
-            <p className="text-xl font-black text-white">
+            <p className="text-lg font-black text-white">
               {formatNumber(latestMetric?.body_fat, '%')}
             </p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
@@ -633,7 +633,7 @@ export function StudentProfilePage() {
           </div>
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle
               kicker="Dados pessoais"
@@ -743,7 +743,7 @@ export function StudentProfilePage() {
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={savingProfile}
-                className="mt-2 flex h-[54px] w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-[13px] font-black uppercase tracking-wide text-white shadow-[0_18px_45px_rgba(255,42,48,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
+                className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-[13px] font-black uppercase tracking-wide text-white shadow-[0_18px_45px_rgba(255,42,48,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {savingProfile ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -756,7 +756,7 @@ export function StudentProfilePage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
           <SectionTitle
             kicker="Objetivo"
             title="Metas do treino"
@@ -779,7 +779,7 @@ export function StudentProfilePage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
           <SectionTitle
             kicker="Biometria"
             title="Última avaliação"
@@ -804,7 +804,7 @@ export function StudentProfilePage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
           <SectionTitle
             kicker="Personal"
             title="Responsável"
@@ -826,7 +826,7 @@ export function StudentProfilePage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
           <SectionTitle
             kicker="Conta"
             title="Acesso"
@@ -840,7 +840,7 @@ export function StudentProfilePage() {
             <button
               type="button"
               onClick={openPasswordModal}
-              className="mt-4 flex h-[54px] w-full items-center justify-center gap-2 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black uppercase tracking-wide text-white transition-all active:scale-[0.98]"
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black uppercase tracking-wide text-white transition-all active:scale-[0.98]"
             >
               <KeyRound className="h-5 w-5" />
               Alterar senha
@@ -849,7 +849,7 @@ export function StudentProfilePage() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex h-[54px] w-full items-center justify-center gap-2 rounded-[20px] border border-red-500/25 bg-red-500/10 text-[13px] font-black uppercase tracking-wide text-red-300 transition-all active:scale-[0.98]"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-[20px] border border-red-500/25 bg-red-500/10 text-[13px] font-black uppercase tracking-wide text-red-300 transition-all active:scale-[0.98]"
             >
               <LogOut className="h-5 w-5" />
               Sair da conta
@@ -860,7 +860,7 @@ export function StudentProfilePage() {
 
       {passwordModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[30px] border border-white/10 bg-[#080808] p-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.85)]">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-[#080808] p-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.85)]">
             <button
               type="button"
               onClick={() => setPasswordModalOpen(false)}
@@ -950,7 +950,7 @@ function SectionTitle({
         {kicker}
       </p>
       <div className="mt-1 flex items-center gap-2">
-        <h2 className="text-xl font-black text-white">{title}</h2>
+        <h2 className="text-lg font-black text-white">{title}</h2>
         {icon}
       </div>
     </div>
@@ -1032,7 +1032,7 @@ function FormField({
 
 function MetricCard({ label, value }: { label: string; value: any }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
       <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
         {label}
       </p>

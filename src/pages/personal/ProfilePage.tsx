@@ -281,7 +281,7 @@ export function ProfilePage() {
               </button>
             </div>
 
-            <h2 className="text-2xl font-black tracking-tight text-white">
+            <h2 className="text-xl font-black tracking-tight text-white">
               {name || trainerProfile.name}
             </h2>
 
@@ -486,7 +486,7 @@ export function ProfilePage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex h-14 items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white active:scale-95"
+            className="flex h-12 items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white active:scale-95"
           >
             <ArrowLeft className="h-4 w-4" />
             VOLTAR
@@ -496,7 +496,7 @@ export function ProfilePage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#ff2a32] text-[13px] font-black text-white disabled:opacity-50 active:scale-95"
+            className="flex h-12 items-center justify-center gap-2 rounded-[18px] bg-[#ff2a32] text-[13px] font-black text-white disabled:opacity-50 active:scale-95"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />

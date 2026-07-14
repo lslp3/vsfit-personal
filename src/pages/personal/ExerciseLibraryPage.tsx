@@ -281,7 +281,7 @@ export function ExerciseLibraryPage() {
       <button
         type="button"
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-vs-primary text-white shadow-lg shadow-vs-primary/30 flex items-center justify-center active:scale-90 transition-transform"
+        className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-vs-primary text-white shadow-lg shadow-vs-primary/30 flex items-center justify-center active:scale-90 transition-transform"
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -352,11 +352,12 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 24, stiffness: 220 }}
-        className="absolute inset-x-0 bottom-0 max-h-[94vh] overflow-hidden rounded-t-[34px] border border-white/10 bg-[#070707] shadow-[0_-28px_90px_rgba(0,0,0,0.85)]"
+        className="absolute inset-x-0 bottom-0 max-h-[100dvh] overflow-y-auto rounded-t-[34px] border border-white/10 bg-[#070707] shadow-[0_-28px_90px_rgba(0,0,0,0.85)]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/20" />
 
-        <div className="relative mt-3 aspect-[16/12] overflow-hidden bg-black">
+        <div className="relative mt-3 aspect-video overflow-hidden bg-black sm:aspect-[16/12]">
           {videoUrl && !videoError ? (
             <video
               key={videoUrl}
@@ -398,9 +399,9 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
           )}
         </div>
 
-        <div className="max-h-[calc(94vh-260px)] overflow-y-auto px-5 pb-7 pt-5">
+        <div className="px-5 pb-7 pt-5">
           <div>
-            <h2 className="text-[26px] font-black leading-[1.02] tracking-[-0.04em] text-white">
+            <h2 className="text-[22px] font-black leading-[1.02] tracking-[-0.04em] text-white">
               {name}
             </h2>
 
@@ -484,11 +485,11 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
             </p>
           </section>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 pb-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}>
             <button
               type="button"
               onClick={onClose}
-              className="h-13 rounded-[18px] bg-[#ff2a32] px-4 text-[14px] font-black text-white shadow-[0_16px_40px_rgba(255,42,48,0.32)] active:scale-[0.98]"
+              className="h-12 rounded-[18px] bg-[#ff2a32] px-4 text-[14px] font-black text-white shadow-[0_16px_40px_rgba(255,42,48,0.32)] active:scale-[0.98]"
             >
               Usar no treino
             </button>
@@ -496,7 +497,7 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
             <button
               type="button"
               onClick={onClose}
-              className="h-13 rounded-[18px] border border-white/10 bg-white/[0.05] px-4 text-[14px] font-black text-white active:scale-[0.98]"
+              className="h-12 rounded-[18px] border border-white/10 bg-white/[0.05] px-4 text-[14px] font-black text-white active:scale-[0.98]"
             >
               Fechar
             </button>

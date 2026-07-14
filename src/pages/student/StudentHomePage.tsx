@@ -985,9 +985,9 @@ export function StudentHomePage() {
     getStudentAvatarUrl(data.student);
 
     return (
-      <div className="min-h-screen bg-[#050505] px-4 pb-40 pt-6 text-white">
-      <div className="mx-auto max-w-lg space-y-5">
-        <section className="rounded-[32px] border border-white/10 bg-[#0d0d0e] p-5">
+      <div className="min-h-screen bg-[#050505] px-4 pb-4 pt-6 text-white">
+      <div className="mx-auto max-w-lg space-y-4">
+        <section className="rounded-[32px] border border-white/10 bg-[#0d0d0e] p-4">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 font-black text-[#ff2a32]">
               {avatarUrl ? (
@@ -1012,7 +1012,7 @@ export function StudentHomePage() {
                 VSFit Aluno
               </p>
 
-              <h1 className="mt-1 truncate text-[24px] font-black">
+              <h1 className="mt-1 truncate text-[20px] font-black">
                 Olá,{' '}
                 {getFirstName(
                   data.student
@@ -1028,10 +1028,10 @@ export function StudentHomePage() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
             <StatCard
               icon={
-                <Flame className="h-4 w-4 text-[#ff2a32]" />
+                <Flame className="h-3.5 w-3.5 text-[#ff2a32]" />
               }
               value={streak}
               label="Sequência"
@@ -1039,7 +1039,7 @@ export function StudentHomePage() {
 
             <StatCard
               icon={
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
               }
               value={completedThisWeek}
               label="Semana"
@@ -1047,7 +1047,7 @@ export function StudentHomePage() {
 
             <StatCard
               icon={
-                <Trophy className="h-4 w-4 text-yellow-400" />
+                <Trophy className="h-3.5 w-3.5 text-yellow-400" />
               }
               value={
                 data.workoutLogs.length
@@ -1085,7 +1085,7 @@ export function StudentHomePage() {
                           workout.id ||
                           index
                         }
-                        className="relative min-h-[270px] w-full shrink-0 snap-center overflow-hidden bg-black"
+                        className="relative h-[190px] w-full shrink-0 snap-center overflow-hidden bg-black"
                       >
                         <img
                           src={
@@ -1100,28 +1100,28 @@ export function StudentHomePage() {
 
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-                        <div className="relative z-10 flex min-h-[270px] max-w-[72%] flex-col justify-center px-6 py-7">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
+                        <div className="relative z-10 flex h-full max-w-[72%] flex-col justify-center px-4 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">
                             Treino de hoje
                           </p>
 
-                          <h2 className="mt-3 line-clamp-2 text-[23px] font-black leading-tight">
+                          <h2 className="mt-1.5 line-clamp-2 text-[17px] font-black leading-tight">
                             {getWorkoutName(
                               workout
                             )}
                           </h2>
 
-                          <div className="mt-4 flex flex-wrap items-center gap-4 text-[12px] font-semibold text-zinc-300">
-                            <span className="inline-flex items-center gap-2">
-                              <Dumbbell className="h-4 w-4" />
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-[11px] font-semibold text-zinc-300">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Dumbbell className="h-3.5 w-3.5" />
 
                               {getExerciseText(
                                 exerciseCount
                               )}
                             </span>
 
-                            <span className="inline-flex items-center gap-2">
-                              <Clock3 className="h-4 w-4" />
+                            <span className="inline-flex items-center gap-1.5">
+                              <Clock3 className="h-3.5 w-3.5" />
 
                               {duration} min
                             </span>
@@ -1134,10 +1134,9 @@ export function StudentHomePage() {
                                    workout
                                  )
                                }
-                               className="mt-6 flex h-13 w-fit items-center gap-2 rounded-[15px] bg-[#ff2a32] px-6 py-4 text-[12px] font-black uppercase shadow-[0_15px_35px_rgba(255,42,48,0.28)] active:scale-95 safe-area-bottom"
-                               style={{ marginBottom: 'calc(72px + 16px + env(safe-area-inset-bottom))' }}
+                               className="mt-3 flex h-9 w-fit items-center gap-2 rounded-[12px] bg-[#ff2a32] px-4 py-2 text-[11px] font-black uppercase shadow-[0_12px_28px_rgba(255,42,48,0.28)] active:scale-95"
                               >
-                            <Play className="h-4 w-4" />
+                            <Play className="h-3.5 w-3.5" />
 
                             Iniciar treino
                           </button>
@@ -1238,7 +1237,7 @@ export function StudentHomePage() {
           />
         </div>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#0d0d0e] p-5">
+        <section className="rounded-[28px] border border-white/10 bg-[#0d0d0e] p-4">
           <button
             type="button"
             onClick={() =>
@@ -1249,14 +1248,14 @@ export function StudentHomePage() {
             className="flex w-full items-center justify-between gap-3 text-left"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <Apple className="h-7 w-7 text-emerald-400" />
+              <Apple className="h-6 w-6 text-emerald-400" />
 
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
                   Plano alimentar
                 </p>
 
-                <p className="mt-1 truncate font-black">
+                <p className="mt-1 truncate font-black text-[15px]">
                   {latestNutrition
                     ? getNutritionTitle(
                         latestNutrition
@@ -1264,7 +1263,7 @@ export function StudentHomePage() {
                     : 'Nenhum plano publicado'}
                 </p>
 
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-0.5 text-[11px] text-zinc-500">
                   {latestNutrition
                     ? `Atualizado em ${formatShortDate(
                         latestNutrition.updated_at ||
@@ -1275,29 +1274,29 @@ export function StudentHomePage() {
               </div>
             </div>
 
-            <ChevronRight className="h-5 w-5 text-zinc-600" />
+            <ChevronRight className="h-4 w-4 text-zinc-600" />
           </button>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#0d0d0e] p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="rounded-[28px] border border-white/10 bg-[#0d0d0e] p-4">
+          <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                 Resumo
               </p>
 
-              <h3 className="mt-1 text-lg font-black">
+              <h3 className="mt-1 text-base font-black">
                 Sua rotina
               </h3>
             </div>
 
-            <Sparkles className="h-5 w-5 text-[#ff2a32]" />
+            <Sparkles className="h-4 w-4 text-[#ff2a32]" />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <SummaryRow
               icon={
-                <CalendarDays className="h-5 w-5 text-[#ff2a32]" />
+                <CalendarDays className="h-4 w-4 text-[#ff2a32]" />
               }
               label="Treinos publicados"
               value={data.workouts.length}
@@ -1305,7 +1304,7 @@ export function StudentHomePage() {
 
             <SummaryRow
               icon={
-                <Activity className="h-5 w-5 text-emerald-400" />
+                <Activity className="h-4 w-4 text-emerald-400" />
               }
               label="Treinos concluídos"
               value={
@@ -1329,16 +1328,16 @@ function StatCard({
   label: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-white/10 bg-black/30 p-3 text-center">
+    <div className="rounded-[16px] border border-white/10 bg-black/30 p-2.5 text-center">
       <div className="flex justify-center">
         {icon}
       </div>
 
-      <p className="mt-2 text-lg font-black">
+      <p className="mt-1 text-sm font-black">
         {value}
       </p>
 
-      <p className="text-[9px] font-black uppercase text-zinc-600">
+      <p className="text-[8px] font-black uppercase text-zinc-600">
         {label}
       </p>
     </div>
@@ -1360,15 +1359,15 @@ function HomeAction({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[26px] border border-white/10 bg-[#0d0d0e] p-5 text-left active:scale-[0.98]"
+      className="rounded-[24px] border border-white/10 bg-[#0d0d0e] p-3.5 text-left active:scale-[0.98]"
     >
       {icon}
 
-      <p className="mt-5 text-sm font-black">
+      <p className="mt-2 text-[13px] font-black">
         {title}
       </p>
 
-      <p className="mt-1 text-xs text-zinc-500">
+      <p className="mt-0.5 text-[11px] text-zinc-500">
         {description}
       </p>
     </button>

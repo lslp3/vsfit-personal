@@ -23,14 +23,14 @@
   }
 
   .btn-primary {
-    @apply bg-vs-primary text-white font-semibold rounded-xl px-6 py-3.5 
+    @apply bg-vs-primary text-white font-semibold rounded-xl px-6 py-3 
            active:scale-[0.98] transition-all duration-150 
            disabled:opacity-50 disabled:cursor-not-allowed
            text-base w-full;
   }
 
   .btn-secondary {
-    @apply bg-white/5 text-white font-semibold rounded-xl px-6 py-3.5 
+    @apply bg-white/5 text-white font-semibold rounded-xl px-6 py-3 
            border border-vs-border active:scale-[0.98] transition-all duration-150 
            text-base w-full;
   }
@@ -41,7 +41,7 @@
   }
 
   .input-field {
-    @apply w-full bg-vs-dark-2 border border-vs-border rounded-xl px-4 py-3.5 
+    @apply w-full bg-vs-dark-2 border border-vs-border rounded-xl px-4 py-3 
            text-white placeholder-vs-muted/60 text-base
            focus:border-vs-primary focus:ring-1 focus:ring-vs-primary/30
            transition-all duration-150;
@@ -63,7 +63,7 @@
   }
 
   .page-container {
-    @apply px-4 pb-28 pt-4 max-w-lg mx-auto;
+    @apply px-4 pb-24 pt-4 max-w-lg mx-auto;
   }
 
   .safe-area-bottom {

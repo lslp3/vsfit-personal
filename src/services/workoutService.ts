@@ -894,7 +894,7 @@ export async function getWorkoutLogsByStudent(
   try {
     const { data, error } = await supabase
       .from('workout_logs')
-      .select('*')
+      .select('*, workout_plan:workout_plans(name)')
       .eq('student_id', studentId)
       .order('created_at', {
         ascending: false,

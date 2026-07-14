@@ -444,14 +444,14 @@ export default function NotificationsView(_props: NotificationsViewProps) {
       <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#050505] text-white lg:bg-transparent">
         <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(255,43,43,0.13),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(255,43,43,0.08),transparent_34%)] lg:hidden" />
 
-        <section className="relative z-10 mx-auto w-full max-w-[393px] overflow-x-hidden px-4 pb-44 pt-5 lg:max-w-none lg:px-0 lg:pb-8 lg:pt-0">
+        <section className="relative z-10 mx-auto w-full max-w-lg overflow-x-hidden px-4 pb-32 pt-5 lg:max-w-none lg:px-0 lg:pb-8 lg:pt-0">
         <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[12px] font-black uppercase tracking-[0.24em] text-[#FF2B2B]">
               Inbox do Sistema
             </p>
 
-            <h1 className="mt-1 flex items-center gap-3 text-[28px] font-black leading-none tracking-tight text-white lg:text-3xl">
+            <h1 className="mt-1 flex items-center gap-3 text-[22px] font-black leading-none tracking-tight text-white lg:text-3xl">
               <Bell className="h-8 w-8 text-[#FF2B2B]" />
               Central de Notificações
             </h1>
@@ -489,7 +489,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
           <article className="rounded-[22px] border border-[#242424] bg-[#151515]/95 p-4">
             <Bell className="mb-3 h-5 w-5 text-[#FF2B2B]" />
             <p className="text-[10px] font-bold uppercase text-[#A0A0A0]">Total</p>
-            <strong className="mt-1 block text-[24px] font-black text-white">
+            <strong className="mt-1 block text-[20px] font-black text-white">
               {loading ? '...' : notifications.length}
             </strong>
           </article>
@@ -497,7 +497,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
           <article className="rounded-[22px] border border-[#242424] bg-[#151515]/95 p-4">
             <Clock className="mb-3 h-5 w-5 text-yellow-400" />
             <p className="text-[10px] font-bold uppercase text-[#A0A0A0]">Não lidas</p>
-            <strong className="mt-1 block text-[24px] font-black text-white">
+            <strong className="mt-1 block text-[20px] font-black text-white">
               {loading ? '...' : unreadCount}
             </strong>
           </article>
@@ -505,7 +505,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
           <article className="rounded-[22px] border border-[#242424] bg-[#151515]/95 p-4">
             <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-400" />
             <p className="text-[10px] font-bold uppercase text-[#A0A0A0]">Lidas</p>
-            <strong className="mt-1 block text-[24px] font-black text-white">
+            <strong className="mt-1 block text-[20px] font-black text-white">
               {loading ? '...' : notifications.length - unreadCount}
             </strong>
           </article>
@@ -544,7 +544,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-[#242424] bg-[#151515]/95 p-3 lg:p-5">
+        <section className="rounded-[20px] border border-[#242424] bg-[#151515]/95 p-3 lg:p-5">
           <div className="mb-4 flex items-center justify-between rounded-2xl bg-[#1A1A1A] px-4 py-3">
             <span className="text-[11px] font-black uppercase text-white">
               Alertas registrados ({filteredNotifications.length})
@@ -557,7 +557,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
 
           <div className="space-y-3">
             {loading && (
-              <div className="rounded-2xl border border-[#252525] bg-[#090909] p-8 text-center">
+              <div className="rounded-2xl border border-[#252525] bg-[#090909] p-6 text-center">
                 <Loader2 className="mx-auto mb-3 h-9 w-9 animate-spin text-[#FF2B2B]" />
                 <p className="text-[13px] font-black text-white">
                   Carregando notificações...
@@ -566,7 +566,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
             )}
 
             {!loading && filteredNotifications.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-[#333333] p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-[#333333] p-6 text-center">
                 <Bell className="mx-auto mb-3 h-9 w-9 text-[#505050]" />
 
                 <p className="text-[13px] font-black text-white">

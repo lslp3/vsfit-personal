@@ -307,7 +307,7 @@ export function DashboardPage() {
           variants={container}
           initial="hidden"
           animate="show"
-          className="space-y-6"
+          className="space-y-5"
         >
           <motion.div variants={item}>
             <div className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045] p-5">
@@ -331,7 +331,7 @@ export function DashboardPage() {
                     {getGreeting()}
                   </p>
 
-                  <h1 className="mt-1 truncate text-2xl font-black text-white">
+                  <h1 className="mt-1 truncate text-xl font-black text-white">
                     {trainerProfile?.name?.split(' ')[0] || 'Personal'}
                   </h1>
 

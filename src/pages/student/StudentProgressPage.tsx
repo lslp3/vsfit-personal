@@ -85,6 +85,16 @@ const TEXT = {
   feito: 'FEITO',
 };
 
+const DAY_NAMES: Record<string, string> = {
+  dom: 'Domingo',
+  seg: 'Segunda-feira',
+  ter: 'Terça-feira',
+  qua: 'Quarta-feira',
+  qui: 'Quinta-feira',
+  sex: 'Sexta-feira',
+  sab: 'Sábado',
+};
+
 function getStudentName(student: any) {
   return student?.name || student?.full_name || 'Aluno';
 }
@@ -297,6 +307,15 @@ function getWorkoutTitle(log: any) {
     log?.workout_plan?.title ||
     TEXT.treinoConcluido
   );
+}
+
+function getWorkoutDayName(log: any): string {
+  const exercises = normalizeExercises(log?.exercises_data);
+  const dayKey = exercises[0]?.day_key;
+  if (dayKey && DAY_NAMES[dayKey]) {
+    return DAY_NAMES[dayKey];
+  }
+  return getWorkoutTitle(log);
 }
 
 function getPhotoUrl(photo: any) {
@@ -675,14 +694,14 @@ export function StudentProgressPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] px-4 pb-32 pt-6 text-white">
-      <div className="mx-auto max-w-lg space-y-5">
+    <div className="min-h-screen bg-[#050505] px-4 pb-4 pt-4 text-white">
+      <div className="mx-auto max-w-lg space-y-4">
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[0.045] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
         >
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#ff2a32]/20 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#ff2a32]/20 to-transparent" />
 
           <div className="relative flex items-center gap-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-lg font-black text-[#ff2a32]">
@@ -696,7 +715,7 @@ export function StudentProgressPage() {
                 {TEXT.areaAluno}
               </p>
 
-              <h1 className="mt-1 text-[25px] font-black uppercase italic tracking-[-0.05em] text-white">
+              <h1 className="mt-1 text-[20px] font-black uppercase italic tracking-[-0.05em] text-white">
                 {TEXT.progresso}
               </h1>
 
@@ -720,7 +739,7 @@ export function StudentProgressPage() {
             </button>
           </div>
 
-          <div className="relative mt-5 grid grid-cols-3 gap-2">
+          <div className="relative mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-[20px] border border-white/10 bg-black/20 p-3 text-center">
               <Dumbbell className="mx-auto mb-2 h-4 w-4 text-[#ff2a32]" />
 
@@ -763,7 +782,7 @@ export function StudentProgressPage() {
           <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <CheckCircle2 className="mx-auto mb-3 h-6 w-6 text-emerald-400" />
 
-            <p className="text-2xl font-black text-white">
+            <p className="text-xl font-black text-white">
               {weekWorkouts}
             </p>
 
@@ -775,7 +794,7 @@ export function StudentProgressPage() {
           <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 text-center">
             <TrendingUp className="mx-auto mb-3 h-6 w-6 text-[#ff2a32]" />
 
-            <p className="text-2xl font-black text-white">
+            <p className="text-xl font-black text-white">
               {formatTime(averageTime)}
             </p>
 
@@ -785,14 +804,14 @@ export function StudentProgressPage() {
           </div>
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
                 {TEXT.biometria}
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-white">
+              <h2 className="mt-1 text-lg font-black text-white">
                 {TEXT.medidasCorporais}
               </h2>
             </div>
@@ -806,7 +825,7 @@ export function StudentProgressPage() {
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                   <Scale className="mb-3 h-5 w-5 text-[#ff2a32]" />
 
-                  <p className="text-2xl font-black text-white">
+                  <p className="text-xl font-black text-white">
                     {formatNumber(latestWeight, 'kg')}
                   </p>
 
@@ -834,7 +853,7 @@ export function StudentProgressPage() {
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                   <Activity className="mb-3 h-5 w-5 text-emerald-400" />
 
-                  <p className="text-2xl font-black text-white">
+                  <p className="text-xl font-black text-white">
                     {formatNumber(latestBodyFat, '%')}
                   </p>
 
@@ -862,7 +881,7 @@ export function StudentProgressPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
-                  <p className="text-lg font-black text-white">
+                  <p className="text-base font-black text-white">
                     {formatHeight(latestHeight)}
                   </p>
 
@@ -872,7 +891,7 @@ export function StudentProgressPage() {
                 </div>
 
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
-                  <p className="text-lg font-black text-white">
+                  <p className="text-base font-black text-white">
                     {formatNumber(latestMuscleMass, 'kg')}
                   </p>
 
@@ -883,7 +902,7 @@ export function StudentProgressPage() {
               </div>
 
               <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
-                <p className="text-lg font-black text-white">
+                <p className="text-base font-black text-white">
                   {getDateValue(latestMetric)
                     ? formatDate(
                         getDateValue(latestMetric)
@@ -897,7 +916,7 @@ export function StudentProgressPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-6 text-center">
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
               <Scale className="mx-auto h-10 w-10 text-zinc-700" />
 
               <h3 className="mt-4 text-lg font-black text-white">
@@ -911,14 +930,14 @@ export function StudentProgressPage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
-          <div className="mb-5 flex items-center justify-between">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
                 {TEXT.evolucao}
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-white">
+              <h2 className="mt-1 text-lg font-black text-white">
                 {TEXT.pesoCorporal}
               </h2>
             </div>
@@ -977,10 +996,10 @@ export function StudentProgressPage() {
               })}
             </div>
           ) : (
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-6 text-center">
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
               <BarChart3 className="mx-auto h-10 w-10 text-zinc-700" />
 
-              <h3 className="mt-4 text-lg font-black text-white">
+              <h3 className="mt-4 text-base font-black text-white">
                 {TEXT.graficoPreparacao}
               </h3>
 
@@ -991,14 +1010,14 @@ export function StudentProgressPage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
                 {TEXT.fotos}
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-white">
+              <h2 className="mt-1 text-lg font-black text-white">
                 {TEXT.evolucaoVisual}
               </h2>
             </div>
@@ -1040,10 +1059,10 @@ export function StudentProgressPage() {
                 ))}
             </div>
           ) : (
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-6 text-center">
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
               <ImageIcon className="mx-auto h-10 w-10 text-zinc-700" />
 
-              <h3 className="mt-4 text-lg font-black text-white">
+              <h3 className="mt-4 text-base font-black text-white">
                 {TEXT.semFotos}
               </h3>
 
@@ -1054,14 +1073,14 @@ export function StudentProgressPage() {
           )}
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
                 {TEXT.historico}
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-white">
+              <h2 className="mt-1 text-lg font-black text-white">
                 {TEXT.treinosConcluidos}
               </h2>
             </div>
@@ -1094,7 +1113,7 @@ export function StudentProgressPage() {
 
                         <div className="min-w-0">
                           <p className="truncate text-sm font-black text-white">
-                            {getWorkoutTitle(log)}
+                            {getWorkoutDayName(log)}
                           </p>
 
                           <p className="mt-0.5 text-xs text-zinc-500">
@@ -1105,13 +1124,13 @@ export function StudentProgressPage() {
                               : TEXT.semData}
 
                             {exerciseCount > 0
-                              ? ` | ${getExerciseText(
+                              ? ` • ${getExerciseText(
                                   exerciseCount
                                 )}`
                               : ''}
 
                             {log.duration_seconds
-                              ? ` | ${formatTime(
+                              ? ` • ${formatTime(
                                   log.duration_seconds
                                 )}`
                               : ''}
@@ -1128,10 +1147,10 @@ export function StudentProgressPage() {
                 })}
             </div>
           ) : (
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-6 text-center">
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
               <BarChart3 className="mx-auto h-10 w-10 text-zinc-700" />
 
-              <h3 className="mt-4 text-lg font-black text-white">
+              <h3 className="mt-4 text-base font-black text-white">
                 {TEXT.semTreinos}
               </h3>
 
