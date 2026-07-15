@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
   Plus,
-  Loader2,
   Dumbbell,
   X,
   RefreshCw,
@@ -37,6 +36,63 @@ function normalizeEx(ex: Exercise) {
     tips: ex.tips || r.tips || '',
   };
 }
+
+const ExerciseCard = memo(function ExerciseCard({
+  exercise,
+  onSelect,
+}: {
+  exercise: Exercise;
+  onSelect: (ex: Exercise) => void;
+}) {
+  const n = useMemo(() => normalizeEx(exercise), [exercise]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(exercise)}
+      className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] text-left shadow-xl active:scale-[0.98] transition-all"
+    >
+      <div className="relative aspect-[16/10] bg-zinc-950">
+        {n.imageUrl ? (
+          <img
+            src={n.imageUrl}
+            alt={exercise.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : n.videoUrl ? (
+          <video
+            src={n.videoUrl}
+            muted
+            playsInline
+            preload="metadata"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Dumbbell className="h-8 w-8 text-zinc-600" />
+          </div>
+        )}
+
+        {n.videoUrl && (
+          <span className="absolute right-3 top-3 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold text-white">
+            Vídeo
+          </span>
+        )}
+      </div>
+
+      <div className="p-3">
+        <h3 className="line-clamp-2 text-[13px] font-black text-white leading-tight">
+          {exercise.name}
+        </h3>
+        <p className="mt-1 text-[11px] text-zinc-400">
+          {n.category || n.muscleGroup}
+          {n.difficulty && ` • ${n.difficulty}`}
+        </p>
+      </div>
+    </button>
+  );
+});
 
 export function ExerciseLibraryPage() {
   const { trainerProfile } = useAuthStore();
@@ -95,19 +151,25 @@ export function ExerciseLibraryPage() {
     }
   }
 
-  const filtered = exercises.filter((ex) => {
-    const n = normalizeEx(ex);
-    const matchSearch =
-      !search ||
-      ex.name.toLowerCase().includes(search.toLowerCase()) ||
-      n.muscleGroup.toLowerCase().includes(search.toLowerCase()) ||
-      n.category.toLowerCase().includes(search.toLowerCase());
-    const label = n.muscleGroup
-      ? exerciseService.MUSCLE_GROUP_LABELS[n.muscleGroup] || n.muscleGroup
-      : '';
-    const matchMuscle = !activeMuscle || label === activeMuscle;
-    return matchSearch && matchMuscle;
-  });
+  const filtered = useMemo(() => {
+    return exercises.filter((ex) => {
+      const n = normalizeEx(ex);
+      const matchSearch =
+        !search ||
+        ex.name.toLowerCase().includes(search.toLowerCase()) ||
+        n.muscleGroup.toLowerCase().includes(search.toLowerCase()) ||
+        n.category.toLowerCase().includes(search.toLowerCase());
+      const label = n.muscleGroup
+        ? exerciseService.MUSCLE_GROUP_LABELS[n.muscleGroup] || n.muscleGroup
+        : '';
+      const matchMuscle = !activeMuscle || label === activeMuscle;
+      return matchSearch && matchMuscle;
+    });
+  }, [exercises, search, activeMuscle]);
+
+  const handleSelectExercise = useCallback((ex: Exercise) => {
+    setSelectedEx(ex);
+  }, []);
 
   const handleCreate = async () => {
     if (!trainerProfile || !formName.trim()) return;
@@ -202,9 +264,16 @@ export function ExerciseLibraryPage() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-vs-muted" />
-            <p className="text-sm text-vs-muted">Carregando exercícios...</p>
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04]">
+                <div className="aspect-[16/10] animate-pulse bg-zinc-900" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-white/5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -224,56 +293,13 @@ export function ExerciseLibraryPage() {
           />
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {filtered.map((ex) => {
-              const n = normalizeEx(ex);
-              return (
-                <button
-                  key={ex.id}
-                  type="button"
-                  onClick={() => setSelectedEx(ex)}
-                  className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] text-left shadow-xl active:scale-[0.98] transition-all"
-                >
-                  <div className="relative aspect-[16/10] bg-zinc-950">
-                    {n.imageUrl ? (
-                      <img
-                        src={n.imageUrl}
-                        alt={ex.name}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : n.videoUrl ? (
-                      <video
-                        src={n.videoUrl}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Dumbbell className="h-8 w-8 text-zinc-600" />
-                      </div>
-                    )}
-
-                    {n.videoUrl && (
-                      <span className="absolute right-3 top-3 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold text-white">
-                        Vídeo
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="p-3">
-                    <h3 className="line-clamp-2 text-[13px] font-black text-white leading-tight">
-                      {ex.name}
-                    </h3>
-                    <p className="mt-1 text-[11px] text-zinc-400">
-                      {n.category || n.muscleGroup}
-                      {n.difficulty && ` • ${n.difficulty}`}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+            {filtered.map((ex) => (
+              <ExerciseCard
+                key={ex.id}
+                exercise={ex}
+                onSelect={handleSelectExercise}
+              />
+            ))}
           </div>
         )}
       </div>

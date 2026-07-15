@@ -10,7 +10,6 @@ import {
   Clock,
   Dumbbell,
   Layers2,
-  Loader2,
   Plus,
   Save,
   Search,
@@ -2435,8 +2434,16 @@ export function WorkoutBuilderPage() {
           </div>
 
           {loadingExercises ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-7 w-7 animate-spin text-[#ff2a32]" />
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                  <div className="h-12 w-12 shrink-0 animate-pulse rounded-xl bg-white/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-white/5" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="max-h-80 space-y-2 overflow-y-auto">
@@ -2447,7 +2454,7 @@ export function WorkoutBuilderPage() {
                       exercise
                     );
 
-                  return (
+                   return (
                     <button
                       key={exercise.id}
                       type="button"
@@ -2467,6 +2474,7 @@ export function WorkoutBuilderPage() {
                             alt={
                               exercise.name
                             }
+                            loading="lazy"
                             className="h-full w-full object-cover"
                           />
                         ) : (

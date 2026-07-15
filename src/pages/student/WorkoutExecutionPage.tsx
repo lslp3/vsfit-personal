@@ -1080,8 +1080,8 @@ export function WorkoutExecutionPage() {
     !plan
   ) {
     return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 text-white">
-        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 text-center">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 pt-[env(safe-area-inset-top,0px)] text-white">
+        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] text-center">
           <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
 
           <h1 className="mt-5 text-xl font-black">
@@ -1097,7 +1097,7 @@ export function WorkoutExecutionPage() {
                  onClick={() =>
                    navigate(-1)
                  }
-                 className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black safe-area-bottom"
+                 className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black"
                >
             VOLTAR AO PLANO
           </button>
@@ -1120,7 +1120,7 @@ export function WorkoutExecutionPage() {
     '';
 
   return (
-    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] text-white">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] pt-[env(safe-area-inset-top,0px)] text-white">
       <AnimatePresence mode="wait">
         {isCompleted ? (
           <motion.main
@@ -1233,7 +1233,7 @@ export function WorkoutExecutionPage() {
                    void handleSave()
                  }
                  disabled={saving}
-                 className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-sm font-black uppercase disabled:opacity-60 safe-area-bottom"
+                 className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[20px] bg-[#ff2a32] text-sm font-black uppercase disabled:opacity-60"
                >
                 {saving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -1256,7 +1256,7 @@ export function WorkoutExecutionPage() {
             }}
             className="flex min-h-screen items-center px-4"
           >
-            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 text-center">
+            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#ff2a32]">
                 Descanso
               </p>
@@ -1295,7 +1295,7 @@ export function WorkoutExecutionPage() {
                <button
                  type="button"
                  onClick={finishRest}
-                 className="mt-5 h-12 w-full rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase safe-area-bottom"
+                 className="mt-5 flex h-12 w-full items-center justify-center rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase"
                >
                 Pular descanso
               </button>
@@ -1310,7 +1310,7 @@ export function WorkoutExecutionPage() {
             animate={{
               opacity: 1,
             }}
-            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-32 pt-4"
+            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4"
           >
             <header>
               <div className="flex items-center gap-3">

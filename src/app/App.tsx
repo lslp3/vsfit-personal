@@ -11,11 +11,11 @@ export function App() {
   useEffect(() => {
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         useAuthStore.getState().logoutFromEvent();
-      } else if (event === 'SIGNED_IN') {
-        useAuthStore.getState().initialize();
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        useAuthStore.getState().setUser(session.user);
       }
     });
 

@@ -3,6 +3,15 @@ import type { Exercise } from '../types/database';
 
 const BUCKET = 'exercicios';
 
+let exercisesCache: Exercise[] | null = null;
+let exercisesCacheTimestamp = 0;
+const EXERCISES_CACHE_TTL = 5 * 60 * 1000;
+
+export function invalidateExercisesCache() {
+  exercisesCache = null;
+  exercisesCacheTimestamp = 0;
+}
+
 const MUSCLE_GROUP_LABELS: Record<string, string> = {
   antebraco: 'Antebraço',
   biceps: 'Bíceps',
@@ -305,6 +314,7 @@ export async function syncStorageExercises(trainerId?: string): Promise<{
   const withImage = scanned.filter((e) => e.image_url).length;
 
   console.log('[EXERCISES SYNC] upserted:', totalUpserted);
+  invalidateExercisesCache();
   return { scanned: scanned.length, upserted: totalUpserted, total: scanned.length, withVideo, withImage };
 }
 
@@ -322,6 +332,12 @@ export async function resyncAllStorageExercises(trainerId?: string): Promise<{
 }
 
 export async function getExercises(): Promise<Exercise[]> {
+  const now = Date.now();
+  if (exercisesCache && now - exercisesCacheTimestamp < EXERCISES_CACHE_TTL) {
+    console.log('[EXERCISES DB] returning cached:', exercisesCache.length);
+    return exercisesCache;
+  }
+
   try {
     const { data, error } = await supabase
       .from('exercises')
@@ -334,7 +350,11 @@ export async function getExercises(): Promise<Exercise[]> {
       const scanned = await scanStorageExercises();
       return scanned.map(scannedToExercise);
     }
-    if (data && data.length > 0) return data;
+    if (data && data.length > 0) {
+      exercisesCache = data;
+      exercisesCacheTimestamp = now;
+      return data;
+    }
     console.log('[ExerciseService] DB table empty, scanning storage');
     const scanned = await scanStorageExercises();
     return scanned.map(scannedToExercise);
@@ -399,6 +419,7 @@ export async function createExercise(trainerId: string, data: Partial<Exercise>)
     .select()
     .maybeSingle();
   if (error) throw error;
+  invalidateExercisesCache();
   return exercise ?? (() => { throw new Error('Falha ao criar exercício'); })();
 }
 
@@ -410,6 +431,7 @@ export async function updateExercise(id: string, data: Partial<Exercise>): Promi
     .select()
     .maybeSingle();
   if (error) throw error;
+  invalidateExercisesCache();
   return exercise ?? (() => { throw new Error('Falha ao atualizar exercício'); })();
 }
 
@@ -419,6 +441,7 @@ export async function deleteExercise(id: string) {
     .delete()
     .eq('id', id);
   if (error) throw error;
+  invalidateExercisesCache();
 }
 
 export { MUSCLE_GROUP_LABELS };
