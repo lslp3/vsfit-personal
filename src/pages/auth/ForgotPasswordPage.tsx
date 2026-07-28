@@ -48,10 +48,7 @@ export function ForgotPasswordPage() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <BrandMark
-            size="lg"
-            className="mb-4 rounded-2xl bg-gradient-to-br from-vs-primary/15 to-orange-500/10 p-2 shadow-lg shadow-vs-primary/20"
-          />
+          <BrandMark size="lg" className="mb-4" />
           <h1 className="text-2xl font-bold text-white">Recuperar Senha</h1>
           <p className="text-vs-muted text-sm mt-1">Enviaremos um link para seu email</p>
         </div>
