@@ -1,80 +1,71 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X, Dumbbell, LayoutDashboard, TrendingUp, MessageSquare, CreditCard, Utensils, User, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Dumbbell, LayoutDashboard, TrendingUp, MessageSquare, Utensils, User, Play } from 'lucide-react';
 
 interface ShowcaseItem {
   id: string;
   title: string;
   description: string;
-  gradient: string;
+  imageSrc: string;
   icon: React.ReactNode;
-  accent: string;
 }
 
 const SCREENS: ShowcaseItem[] = [
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    description: 'Visão geral do seu progresso com métricas e indicadores em tempo real.',
-    gradient: 'from-red-900/40 via-red-800/20 to-black',
-    accent: '#FF2D2D',
-    icon: <LayoutDashboard className="h-8 w-8" />,
-  },
-  {
     id: 'workouts',
     title: 'Treinos',
     description: 'Treinos personalizados organizados por dia da semana com exercícios detalhados.',
-    gradient: 'from-red-800/30 via-red-700/15 to-black',
-    accent: '#FF2D2D',
+    imageSrc: '/screenshots/01-workouts.jpg',
     icon: <Dumbbell className="h-8 w-8" />,
   },
   {
     id: 'execution',
     title: 'Execução de Treino',
     description: 'Cronômetro, séries, cargas e repetições — acompanhe cada exercício em tempo real.',
-    gradient: 'from-red-700/30 via-red-600/15 to-black',
-    accent: '#FF2D2D',
+    imageSrc: '/screenshots/02-workout-execution.jpg',
     icon: <Play className="h-8 w-8" />,
+  },
+  {
+    id: 'dashboard',
+    title: 'Dashboard',
+    description: 'Visão geral do seu progresso com métricas e indicadores em tempo real.',
+    imageSrc: '/screenshots/03-dashboard.jpg',
+    icon: <LayoutDashboard className="h-8 w-8" />,
   },
   {
     id: 'evolution',
     title: 'Evolução',
     description: 'Fotos de progresso, medidas corporais e histórico completo de resultados.',
-    gradient: 'from-red-900/35 via-red-700/15 to-black',
-    accent: '#FF2D2D',
+    imageSrc: '/screenshots/04-evolution.jpg',
     icon: <TrendingUp className="h-8 w-8" />,
-  },
-  {
-    id: 'chat',
-    title: 'Chat',
-    description: 'Comunicação direta com seu personal trainer, tudo centralizado na plataforma.',
-    gradient: 'from-red-800/30 via-red-600/10 to-black',
-    accent: '#FF2D2D',
-    icon: <MessageSquare className="h-8 w-8" />,
-  },
-  {
-    id: 'financial',
-    title: 'Financeiro',
-    description: 'Controle de pagamentos, planos e situação financeira de forma organizada.',
-    gradient: 'from-red-900/40 via-red-700/20 to-black',
-    accent: '#FF2D2D',
-    icon: <CreditCard className="h-8 w-8" />,
-  },
-  {
-    id: 'nutrition',
-    title: 'Nutrição',
-    description: 'Planos alimentares, refeições e orientações nutricionais do seu personal.',
-    gradient: 'from-red-700/25 via-red-600/10 to-black',
-    accent: '#FF2D2D',
-    icon: <Utensils className="h-8 w-8" />,
   },
   {
     id: 'profile',
     title: 'Perfil & Conquistas',
     description: 'Seu perfil completo, conquistas, sequência de treinos e métricas pessoais.',
-    gradient: 'from-red-800/35 via-red-700/15 to-black',
-    accent: '#FF2D2D',
+    imageSrc: '/screenshots/05-profile.jpg',
     icon: <User className="h-8 w-8" />,
+  },
+  {
+    id: 'chat',
+    title: 'Chat',
+    description: 'Comunicação direta com seu personal trainer, tudo centralizado na plataforma.',
+    imageSrc: '/screenshots/06-chat.jpg',
+    icon: <MessageSquare className="h-8 w-8" />,
+  },
+  {
+    id: 'nutrition',
+    title: 'Nutrição',
+    description: 'Planos alimentares, refeições e orientações nutricionais do seu personal.',
+    imageSrc: '/screenshots/07-nutrition.jpg',
+    icon: <Utensils className="h-8 w-8" />,
+  },
+  {
+    id: 'timer',
+    title: 'Cronômetro',
+    description: 'Timer inteligente para acompanhar séries, descanso e intensidade dos treinos.',
+    imageSrc: '/screenshots/08-timer.jpg',
+    icon: <Play className="h-8 w-8" />,
   },
 ];
 
@@ -90,53 +81,27 @@ function PhoneMockup({ screen, onClick }: { screen: ShowcaseItem; onClick: () =>
       className="group relative flex w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-3xl border transition-all duration-300 hover:shadow-[0_0_40px_rgba(255,45,45,0.25)]"
       style={{ borderColor: '#2A2A2A', backgroundColor: '#111111' }}
     >
-      {/* Phone screen mockup */}
-      <div className="relative h-[380px] w-full overflow-hidden">
-        {/* Gradient background */}
-        <div className={`absolute inset-0 bg-gradient-to-b ${screen.gradient}`} />
-
-        {/* Subtle grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: '20px 20px',
-          }}
+      {/* Phone screen image */}
+      <div className="relative h-[380px] w-full overflow-hidden bg-black">
+        <img
+          src={screen.imageSrc}
+          alt={screen.title}
+          loading="lazy"
+          className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105"
         />
-
-        {/* Glow behind icon */}
-        <div
-          className="absolute left-1/2 top-1/3 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[50px] transition-all duration-500 group-hover:blur-[70px]"
-          style={{ backgroundColor: 'rgba(255,45,45,0.2)' }}
-        />
-
-        {/* Icon */}
-        <div className="absolute left-1/2 top-1/3 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-white/80 transition-all duration-500 group-hover:text-red-400 group-hover:scale-110">
-          {screen.icon}
-        </div>
-
-        {/* Top notch mockup */}
-        <div className="absolute left-1/2 top-2 h-3 w-20 -translate-x-1/2 rounded-full bg-black/40" />
-
-        {/* Status bar dots */}
-        <div className="absolute right-3 top-2 flex gap-1">
-          <div className="h-1.5 w-1.5 rounded-full bg-white/30" />
-          <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
-          <div className="h-1.5 w-1.5 rounded-full bg-white/10" />
-        </div>
-
-        {/* Bottom indicator */}
-        <div className="absolute bottom-3 left-1/2 h-1 w-16 -translate-x-1/2 rounded-full bg-white/10" />
+        {/* Gradient overlay at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent" />
+        {/* Glow overlay */}
+        <div className="absolute inset-0 bg-black/0 transition-all duration-500 group-hover:bg-black/10" />
       </div>
 
       {/* Card footer */}
-      <div className="border-t border-white/5 px-5 py-4 text-left" style={{ borderColor: '#2A2A2A' }}>
-        <h3 className="text-base font-black text-white">
-          {screen.title}
-        </h3>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-          {screen.description}
-        </p>
+      <div className="border-t px-5 py-4 text-left" style={{ borderColor: '#2A2A2A' }}>
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center text-red-400">{screen.icon}</div>
+          <h3 className="text-base font-black text-white">{screen.title}</h3>
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-400">{screen.description}</p>
       </div>
     </motion.button>
   );
@@ -189,47 +154,26 @@ function Modal({
             <X className="h-5 w-5" />
           </button>
 
-          {/* Phone mockup (large) */}
+          {/* Phone image (large) */}
           <div
             className="relative overflow-hidden rounded-[32px] border"
             style={{ borderColor: '#2A2A2A', backgroundColor: '#111111' }}
           >
-            <div className="relative h-[520px] w-full overflow-hidden">
-              {/* Gradient background */}
-              <div className={`absolute inset-0 bg-gradient-to-b ${current.gradient}`} />
-
-              {/* Grid */}
-              <div
-                className="absolute inset-0 opacity-[0.04]"
-                style={{
-                  backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-                  backgroundSize: '20px 20px',
-                }}
+            <div className="relative h-[520px] w-full overflow-hidden bg-black">
+              <img
+                src={current.imageSrc}
+                alt={current.title}
+                className="h-full w-full object-cover"
               />
-
-              {/* Central glow */}
-              <div
-                className="absolute left-1/2 top-1/3 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[60px]"
-                style={{ backgroundColor: 'rgba(255,45,45,0.3)' }}
-              />
-
-              {/* Icon */}
-              <div className="absolute left-1/2 top-1/3 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-red-400">
-                <div className="scale-150">{current.icon}</div>
-              </div>
-
-              {/* Notch */}
-              <div className="absolute left-1/2 top-2 h-3 w-24 -translate-x-1/2 rounded-full bg-black/50" />
             </div>
 
             {/* Footer */}
             <div className="border-t px-6 py-5 text-center" style={{ borderColor: '#2A2A2A' }}>
-              <h3 className="text-xl font-black text-white">
-                {current.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                {current.description}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center text-red-400">{current.icon}</div>
+                <h3 className="text-xl font-black text-white">{current.title}</h3>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{current.description}</p>
             </div>
           </div>
 
