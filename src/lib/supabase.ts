@@ -4,17 +4,8 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 function getAppBaseUrl() {
-  const configuredUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || import.meta.env.VITE_SITE_URL || import.meta.env.VITE_APP_URL;
-
-  if (configuredUrl) {
-    return configuredUrl.replace(/\/$/, '');
-  }
-
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
-  }
-
-  return '';
+  // TEMP: usar domínio Preview da Vercel para testar fluxo de reset de senha
+  return 'https://vsfit-personal-git-test-auth-fixes-lslp3s-projects.vercel.app';
 }
 
 export function getAuthRedirectUrl(path = '/auth/reset-password') {
