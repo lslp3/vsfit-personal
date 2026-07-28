@@ -4,7 +4,10 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 function getAppBaseUrl() {
-  return 'https://vsfit-personal-git-test-auth-fixes-lslp3s-projects.vercel.app';
+  const envUrl = import.meta.env.VITE_AUTH_REDIRECT_URL;
+  if (envUrl) return envUrl;
+  // Usa o domínio atual do navegador (funciona em produção e preview)
+  return window.location.origin;
 }
 
 export function getAuthRedirectUrl(path = '/auth/reset-password') {

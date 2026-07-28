@@ -27,7 +27,6 @@ export function ForgotPasswordPage() {
 
     try {
       const redirectTo = getAuthRedirectUrl('/auth/reset-password');
-      console.log('RESET REDIRECT:', redirectTo);
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
