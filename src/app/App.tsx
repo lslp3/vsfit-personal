@@ -14,8 +14,11 @@ export function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         useAuthStore.getState().logoutFromEvent();
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        useAuthStore.getState().setUser(session.user);
+      } else if (
+        (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
+        session?.user
+      ) {
+        void useAuthStore.getState().initialize();
       }
     });
 

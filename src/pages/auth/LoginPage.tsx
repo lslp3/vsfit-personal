@@ -1,10 +1,12 @@
 import {
+  useEffect,
   useState,
   type FormEvent,
 } from 'react';
 import {
   Link,
   useNavigate,
+  useLocation,
 } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -23,15 +25,38 @@ import { useAuthStore } from '../../store/authStore';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { setUser } = useAuthStore();
+  const location = useLocation();
+  const { setUser, isAuthenticated, profile, student } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] =
     useState('');
 
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] =
     useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('reset') === 'success') {
+      setSuccessMessage('Senha alterada com sucesso. Faça login com sua nova senha.');
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const targetPath = profile?.role === 'personal'
+        ? '/personal/dashboard'
+        : profile?.role === 'admin'
+          ? '/admin/dashboard'
+          : student?.id
+            ? '/student/home'
+            : '/auth/login';
+
+      navigate(targetPath, { replace: true });
+    }
+  }, [isAuthenticated, profile, student, navigate]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -201,6 +226,22 @@ export function LoginPage() {
               className="rounded-[14px] border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
             >
               {error}
+            </motion.div>
+          )}
+
+          {successMessage && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                height: 0,
+              }}
+              animate={{
+                opacity: 1,
+                height: 'auto',
+              }}
+              className="rounded-[14px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"
+            >
+              {successMessage}
             </motion.div>
           )}
 

@@ -12,11 +12,53 @@ import { StudentShell } from '../components/layout/StudentShell';
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
+import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
 import { StudentLoginPage } from '../pages/auth/StudentLoginPage';
 
 import LandingPage from '../pages/LandingPage';
+import { LoadingScreen } from '../components/ui/LoadingScreen';
+import { useAuthStore } from '../store/authStore';
 
 import { SignupPublicPage } from '../pages/public/SignupPublicPage';
+
+function getHomeByRole(role?: string | null) {
+  if (role === 'admin') {
+    return '/admin/dashboard';
+  }
+
+  if (role === 'personal') {
+    return '/personal/dashboard';
+  }
+
+  if (role === 'student') {
+    return '/student/home';
+  }
+
+  return '/auth/login';
+}
+
+function AuthAwareLandingPage() {
+  const {
+    isLoading,
+    isAuthenticated,
+    profile,
+    student,
+  } = useAuthStore();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    const home = getHomeByRole(
+      profile?.role || (student?.id ? 'student' : null)
+    );
+
+    return <Navigate to={home} replace />;
+  }
+
+  return <LandingPage />;
+}
 
 import { ChatPage } from '../pages/personal/ChatPage';
 import { DashboardPage } from '../pages/personal/DashboardPage';
@@ -58,7 +100,7 @@ export const router =
   createBrowserRouter([
     {
       path: '/',
-      element: <LandingPage />,
+      element: <AuthAwareLandingPage />,
     },
 
     {
@@ -89,6 +131,10 @@ export const router =
         {
           path: 'forgot-password',
           element: <ForgotPasswordPage />,
+        },
+        {
+          path: 'reset-password',
+          element: <ResetPasswordPage />,
         },
       ],
     },

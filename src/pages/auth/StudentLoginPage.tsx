@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useState,
   type FormEvent,
 } from 'react';
@@ -36,6 +37,9 @@ export function StudentLoginPage() {
   const {
     setUser,
     setStudentData,
+    isAuthenticated,
+    profile,
+    student,
   } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -45,6 +49,20 @@ export function StudentLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] =
     useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const targetPath = profile?.role === 'personal'
+        ? '/personal/dashboard'
+        : profile?.role === 'admin'
+          ? '/admin/dashboard'
+          : student?.id
+            ? '/student/home'
+            : '/auth/student-login';
+
+      navigate(targetPath, { replace: true });
+    }
+  }, [isAuthenticated, profile, student, navigate]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
