@@ -104,6 +104,11 @@ export const router =
     },
 
     {
+      path: '/auth/reset-password',
+      element: <ResetPasswordPage />,
+    },
+
+    {
       path: '/auth',
       element: <MobileShell />,
       children: [
@@ -131,10 +136,6 @@ export const router =
         {
           path: 'forgot-password',
           element: <ForgotPasswordPage />,
-        },
-        {
-          path: 'reset-password',
-          element: <ResetPasswordPage />,
         },
       ],
     },
