@@ -12,6 +12,10 @@ export function App() {
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        return;
+      }
+
       if (event === 'SIGNED_OUT') {
         useAuthStore.getState().logoutFromEvent();
       } else if (
