@@ -24,6 +24,7 @@ interface AuthStore {
   studentAccount: StudentAccount | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isRecovering: boolean;
   error: string | null;
 
   initialize: () => Promise<void>;
@@ -39,6 +40,8 @@ interface AuthStore {
     studentAccount?: StudentAccount | null
   ) => void;
 
+  setRecovering: (value: boolean) => void;
+
   logout: () => Promise<void>;
   logoutFromEvent: () => void;
 }
@@ -52,6 +55,7 @@ function clearSessionState() {
     studentAccount: null,
     isLoading: false,
     isAuthenticated: false,
+    isRecovering: false,
     error: null,
   };
 }
@@ -93,9 +97,16 @@ export const useAuthStore =
     studentAccount: null,
     isLoading: true,
     isAuthenticated: false,
+    isRecovering: false,
     error: null,
 
     initialize: async () => {
+      const { isRecovering } = useAuthStore.getState();
+      if (isRecovering) {
+        console.log('[AuthStore] initialize skipped: recovery in progress');
+        return;
+      }
+
       if (initializingPromise) return initializingPromise;
 
       set({
@@ -299,6 +310,10 @@ export const useAuthStore =
           trainerProfile: null,
         };
       });
+    },
+
+    setRecovering: (value) => {
+      set({ isRecovering: value });
     },
 
     logout: async () => {

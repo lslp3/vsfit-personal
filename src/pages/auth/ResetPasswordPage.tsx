@@ -7,10 +7,12 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { BrandMark } from '../../components/brand/BrandMark';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setRecovering } = useAuthStore();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,6 +20,11 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setRecovering(true);
+    return () => setRecovering(false);
+  }, [setRecovering]);
 
   useEffect(() => {
     let isMounted = true;
@@ -139,7 +146,30 @@ export function ResetPasswordPage() {
 
       if (updateError) throw updateError;
 
-      navigate('/auth/login?reset=success', { replace: true });
+      // Aguardar a sessão estabilizar
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Buscar role do usuário
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        const redirectMap: Record<string, string> = {
+          personal: '/personal/dashboard',
+          admin: '/admin/dashboard',
+          student: '/student/home',
+        };
+        
+        const targetPath = redirectMap[profile?.role || ''] || '/auth/login';
+        navigate(targetPath, { replace: true });
+      } else {
+        navigate('/auth/login?reset=success', { replace: true });
+      }
     } catch (err: any) {
       console.error('[ResetPasswordPage] updateUser error:', err);
       setError(err?.message || 'Não foi possível atualizar a senha. Tente novamente.');

@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import { RouterProvider } from 'react-router-dom';
+import { RouterProvider, useLocation } from 'react-router-dom';
 import { router } from './routes';
 import { useAuthStore } from '../store/authStore';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { supabase } from '../lib/supabase';
 
 export function App() {
-  const { isLoading, initialize } = useAuthStore();
+  const { isLoading, initialize, isRecovering } = useAuthStore();
+  const location = useLocation();
 
   useEffect(() => {
     const runRecoveryHandling = async () => {
@@ -46,22 +47,29 @@ export function App() {
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const isResetPasswordRoute = location.pathname === '/auth/reset-password';
+
       if (event === 'PASSWORD_RECOVERY') {
+        useAuthStore.getState().setRecovering(true);
         return;
       }
 
       if (event === 'SIGNED_OUT') {
         useAuthStore.getState().logoutFromEvent();
-      } else if (
-        (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
-        session?.user
-      ) {
+        return;
+      }
+
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        if (isResetPasswordRoute) {
+          return;
+        }
+        useAuthStore.getState().setRecovering(false);
         void useAuthStore.getState().initialize();
       }
     });
 
     return () => subscription?.unsubscribe();
-  }, [initialize]);
+  }, [initialize, isRecovering, location.pathname]);
 
   if (isLoading) {
     return <LoadingScreen />;
