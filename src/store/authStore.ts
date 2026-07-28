@@ -103,7 +103,6 @@ export const useAuthStore =
     initialize: async () => {
       const { isRecovering } = useAuthStore.getState();
       if (isRecovering) {
-        console.log('[AuthStore] initialize skipped: recovery in progress');
         set({ isLoading: false });
         return;
       }
@@ -122,25 +121,20 @@ export const useAuthStore =
       initializingPromise = (async () => {
         let session = null;
         try {
-          console.log('[AuthStore] Initializing: Starting restoreSession...');
           session = await restoreSession();
-          console.log('[AuthStore] Initializing: restoreSession completed');
 
           const user =
             session?.user || null;
 
           if (!user?.id) {
-            console.log('[AuthStore] Initializing: No user ID found, clearing state');
             set(clearSessionState());
             return;
           }
 
-          console.log('[AuthStore] Initializing: Fetching current profile for user:', user.id);
           const {
             profile,
             trainerProfile,
           } = await getCurrentProfile();
-          console.log('[AuthStore] Initializing: getCurrentProfile completed. Role:', profile?.role);
 
           if (
             profile?.role === 'admin'
@@ -177,7 +171,6 @@ export const useAuthStore =
             return;
           }
 
-          console.log('[AuthStore] Initializing: Fetching student account for user:', user.id);
           const {
             account,
             student,
@@ -185,7 +178,6 @@ export const useAuthStore =
             await getStudentAccountByAuthUser(
               user.id
             );
-          console.log('[AuthStore] Initializing: getStudentAccountByAuthUser completed');
 
           if (
             profile?.role === 'student' ||
@@ -218,7 +210,6 @@ export const useAuthStore =
             return;
           }
 
-          console.log('[AuthStore] Initializing: No valid profile found, logging out');
           await authLogout();
 
           set({

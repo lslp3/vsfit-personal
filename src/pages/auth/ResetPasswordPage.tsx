@@ -14,60 +14,12 @@ export function ResetPasswordPage() {
   const location = useLocation();
   const { setRecovering } = useAuthStore();
 
-  // █ LOG 7 — ResetPasswordPage() — função componente
-  console.log('[LOG 7] ResetPasswordPage() — FUNÇÃO COMPONENTE (durante render)');
-  console.log('[LOG 7] href:  ', window.location.href);
-  console.log('[LOG 7] hash:  ', window.location.hash);
-  console.log('[LOG 7] search:', window.location.search);
-
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
-  const [debugUrl, setDebugUrl] = useState('');
-  const [debugPath, setDebugPath] = useState('');
-  const [debugSearch, setDebugSearch] = useState('');
-  const [debugHash, setDebugHash] = useState('');
-  const [debugSession, setDebugSession] = useState<string | null>(null);
-  const [debugUserId, setDebugUserId] = useState('');
-  const [debugUserEmail, setDebugUserEmail] = useState('');
-
-  // DEBUG: Investigar parâmetros que chegam na URL quando o usuário clica no email do Supabase
-  useEffect(() => {
-    const href = window.location.href;
-    const path = window.location.pathname;
-    const search = window.location.search;
-    const hash = window.location.hash;
-
-    console.log('=== RESET PASSWORD PAGE DEBUG ===');
-    console.log('location.href:', href);
-    console.log('location.pathname:', path);
-    console.log('location.search:', search);
-    console.log('location.hash:', hash);
-
-    setDebugUrl(href);
-    setDebugPath(path);
-    setDebugSearch(search);
-    setDebugHash(hash);
-
-    supabase.auth.getSession().then(({ data, error }) => {
-      console.log('supabase.auth.getSession():', data, error);
-      console.log('session?.user:', data?.session?.user);
-      console.log('session?.access_token:', data?.session?.access_token?.slice(0, 20) + '...');
-
-      if (data?.session?.user) {
-        setDebugSession('EXISTE');
-        setDebugUserId(data.session.user.id);
-        setDebugUserEmail(data.session.user.email || '(sem email)');
-      } else {
-        setDebugSession('NULL');
-        setDebugUserId('');
-        setDebugUserEmail('');
-      }
-    });
-  }, []);
 
   useEffect(() => {
     setRecovering(true);
@@ -79,57 +31,12 @@ export function ResetPasswordPage() {
 
     async function verifyRecoverySession() {
       try {
-        const searchParams = new URLSearchParams(location.search);
-        const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
-        const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
-        const otpType = searchParams.get('type') || hashParams.get('type');
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-
-        if (tokenHash && otpType === 'recovery') {
-          const { data, error: otpError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery',
-          });
-
-          if (!isMounted) return;
-
-          if (otpError) {
-            console.error('[ResetPasswordPage] verifyOtp error:', otpError);
-            setError('Não foi possível validar o link de recuperação. Solicite um novo email.');
-            setChecking(false);
-            return;
-          }
-
-          if (data.session?.user) {
-            setReady(true);
-            setChecking(false);
-            return;
-          }
-        }
-
-        if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (!isMounted) return;
-
-          if (!sessionError) {
-            setReady(true);
-            setChecking(false);
-            return;
-          }
-        }
-
         const { data, error: sessionError } = await supabase.auth.getSession();
         const session = data?.session;
 
         if (!isMounted) return;
 
         if (sessionError) {
-          console.error('[ResetPasswordPage] session error:', sessionError);
           setError('Não foi possível validar o link de recuperação. Solicite um novo email.');
           setChecking(false);
           return;
@@ -145,7 +52,6 @@ export function ResetPasswordPage() {
         setChecking(false);
       } catch (err: any) {
         if (!isMounted) return;
-        console.error('[ResetPasswordPage] recovery check error:', err);
         setError(err?.message || 'Não foi possível validar a recuperação de senha.');
         setChecking(false);
       }
@@ -192,34 +98,41 @@ export function ResetPasswordPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Mensagem amigável para senha igual à anterior
+        if (
+          updateError.message?.toLowerCase().includes('same password') ||
+          updateError.message?.toLowerCase().includes('reuse')
+        ) {
+          throw new Error('A nova senha deve ser diferente da senha atual.');
+        }
+        throw updateError;
+      }
 
       // Aguardar a sessão estabilizar
       await new Promise((resolve) => setTimeout(resolve, 500));
-      
+
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
-        // Buscar role do usuário
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('role')
           .eq('id', session.user.id)
           .single();
-        
+
         const redirectMap: Record<string, string> = {
           personal: '/personal/dashboard',
           admin: '/admin/dashboard',
           student: '/student/home',
         };
-        
+
         const targetPath = redirectMap[profile?.role || ''] || '/auth/login';
         navigate(targetPath, { replace: true });
       } else {
         navigate('/auth/login?reset=success', { replace: true });
       }
     } catch (err: any) {
-      console.error('[ResetPasswordPage] updateUser error:', err);
       setError(err?.message || 'Não foi possível atualizar a senha. Tente novamente.');
     } finally {
       setLoading(false);
@@ -228,49 +141,11 @@ export function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center px-4">
-      {/* === DEBUG PANEL === */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
-          background: '#111',
-          color: '#0f0',
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          padding: '8px 12px',
-          borderBottom: '2px solid #ff2a32',
-          maxHeight: '40vh',
-          overflowY: 'auto',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-        }}
-      >
-        <div style={{ color: '#ff2a32', fontWeight: 'bold', marginBottom: 4, fontSize: 13 }}>
-          === RESET DEBUG ===
-        </div>
-        <div>href:  {debugUrl || '(carregando...)'}</div>
-        <div>path:  {debugPath || '(carregando...)'}</div>
-        <div>search: {debugSearch || '(carregando...)'}</div>
-        <div>hash:  {debugHash || '(carregando...)'}</div>
-        <div style={{ marginTop: 4, color: debugSession === 'EXISTE' ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
-          SESSION: {debugSession ?? '(carregando...)'}
-        </div>
-        <div>user id:    {debugUserId || '-'}</div>
-        <div>user email: {debugUserEmail || '-'}</div>
-        <div style={{ marginTop: 4, color: '#888', fontSize: 10, borderTop: '1px solid #333', paddingTop: 4 }}>
-          {debugHash ? '(hash presente)' : '(hash vazio)'} | {debugSearch ? '(search presente)' : '(search vazio)'}
-        </div>
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-sm"
-        style={{ marginTop: debugSession ? '42vh' : '36vh' }}
       >
         <div className="flex flex-col items-center mb-8">
           <BrandMark
