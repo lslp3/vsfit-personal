@@ -1,13 +1,12 @@
 import { useEffect } from 'react';
-import { RouterProvider, useLocation } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 import { useAuthStore } from '../store/authStore';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { supabase } from '../lib/supabase';
 
 export function App() {
-  const { isLoading, initialize, isRecovering } = useAuthStore();
-  const location = useLocation();
+  const { isLoading, initialize } = useAuthStore();
 
   useEffect(() => {
     const runRecoveryHandling = async () => {
@@ -47,7 +46,7 @@ export function App() {
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const isResetPasswordRoute = location.pathname === '/auth/reset-password';
+      const isResetPasswordRoute = window.location.pathname === '/auth/reset-password';
 
       if (event === 'PASSWORD_RECOVERY') {
         useAuthStore.getState().setRecovering(true);
@@ -69,7 +68,7 @@ export function App() {
     });
 
     return () => subscription?.unsubscribe();
-  }, [initialize, isRecovering, location.pathname]);
+  }, [initialize]);
 
   if (isLoading) {
     return <LoadingScreen />;
