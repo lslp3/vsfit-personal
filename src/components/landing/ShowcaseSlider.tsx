@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X, Dumbbell, LayoutDashboard, TrendingUp, MessageSquare, Utensils, User, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Dumbbell, LayoutDashboard, TrendingUp, MessageSquare, Utensils, Play } from 'lucide-react';
 
 interface ShowcaseItem {
   id: string;
@@ -12,60 +12,60 @@ interface ShowcaseItem {
 
 const SCREENS: ShowcaseItem[] = [
   {
-    id: 'workouts',
-    title: 'Treinos',
-    description: 'Treinos personalizados organizados por dia da semana com exercícios detalhados.',
-    imageSrc: '/screenshots/01-workouts.jpg',
-    icon: <Dumbbell className="h-8 w-8" />,
-  },
-  {
-    id: 'execution',
-    title: 'Execução de Treino',
-    description: 'Cronômetro, séries, cargas e repetições — acompanhe cada exercício em tempo real.',
-    imageSrc: '/screenshots/02-workout-execution.jpg',
+    id: 'timer',
+    title: 'Cronômetro',
+    description: 'Timer inteligente para acompanhar séries, descanso e intensidade dos treinos.',
+    imageSrc: '/screenshots/01-timer.jpg',
     icon: <Play className="h-8 w-8" />,
-  },
-  {
-    id: 'dashboard',
-    title: 'Dashboard',
-    description: 'Visão geral do seu progresso com métricas e indicadores em tempo real.',
-    imageSrc: '/screenshots/03-dashboard.jpg',
-    icon: <LayoutDashboard className="h-8 w-8" />,
   },
   {
     id: 'evolution',
     title: 'Evolução',
     description: 'Fotos de progresso, medidas corporais e histórico completo de resultados.',
-    imageSrc: '/screenshots/04-evolution.jpg',
+    imageSrc: '/screenshots/02-evolution.jpg',
     icon: <TrendingUp className="h-8 w-8" />,
   },
   {
-    id: 'profile',
-    title: 'Perfil & Conquistas',
-    description: 'Seu perfil completo, conquistas, sequência de treinos e métricas pessoais.',
-    imageSrc: '/screenshots/05-profile.jpg',
-    icon: <User className="h-8 w-8" />,
+    id: 'nutrition',
+    title: 'Plano Alimentar',
+    description: 'Planos alimentares, refeições e orientações nutricionais do seu personal.',
+    imageSrc: '/screenshots/03-nutrition.jpg',
+    icon: <Utensils className="h-8 w-8" />,
+  },
+  {
+    id: 'exercicios',
+    title: 'Exercícios',
+    description: 'Biblioteca completa de exercícios com vídeos, descrições e execução correta.',
+    imageSrc: '/screenshots/04-exercicios.jpg',
+    icon: <Dumbbell className="h-8 w-8" />,
   },
   {
     id: 'chat',
     title: 'Chat',
     description: 'Comunicação direta com seu personal trainer, tudo centralizado na plataforma.',
-    imageSrc: '/screenshots/06-chat.jpg',
+    imageSrc: '/screenshots/05-chat.jpg',
     icon: <MessageSquare className="h-8 w-8" />,
   },
   {
-    id: 'nutrition',
-    title: 'Nutrição',
-    description: 'Planos alimentares, refeições e orientações nutricionais do seu personal.',
-    imageSrc: '/screenshots/07-nutrition.jpg',
-    icon: <Utensils className="h-8 w-8" />,
+    id: 'dashboard',
+    title: 'Dashboard',
+    description: 'Visão geral do seu progresso com métricas e indicadores em tempo real.',
+    imageSrc: '/screenshots/06-dashboard.jpg',
+    icon: <LayoutDashboard className="h-8 w-8" />,
   },
   {
-    id: 'timer',
-    title: 'Cronômetro',
-    description: 'Timer inteligente para acompanhar séries, descanso e intensidade dos treinos.',
-    imageSrc: '/screenshots/08-timer.jpg',
+    id: 'execucao',
+    title: 'Execução de Treino',
+    description: 'Cronômetro, séries, cargas e repetições — acompanhe cada exercício em tempo real.',
+    imageSrc: '/screenshots/07-execucao.jpg',
     icon: <Play className="h-8 w-8" />,
+  },
+  {
+    id: 'treinos',
+    title: 'Treinos',
+    description: 'Treinos personalizados organizados por dia da semana com exercícios detalhados.',
+    imageSrc: '/screenshots/08-treinos.jpg',
+    icon: <Dumbbell className="h-8 w-8" />,
   },
 ];
 
