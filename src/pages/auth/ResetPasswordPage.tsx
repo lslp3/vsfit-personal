@@ -20,19 +20,46 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
+  const [debugUrl, setDebugUrl] = useState('');
+  const [debugPath, setDebugPath] = useState('');
+  const [debugSearch, setDebugSearch] = useState('');
+  const [debugHash, setDebugHash] = useState('');
+  const [debugSession, setDebugSession] = useState<string | null>(null);
+  const [debugUserId, setDebugUserId] = useState('');
+  const [debugUserEmail, setDebugUserEmail] = useState('');
 
   // DEBUG: Investigar parâmetros que chegam na URL quando o usuário clica no email do Supabase
   useEffect(() => {
+    const href = window.location.href;
+    const path = window.location.pathname;
+    const search = window.location.search;
+    const hash = window.location.hash;
+
     console.log('=== RESET PASSWORD PAGE DEBUG ===');
-    console.log('location.href:', window.location.href);
-    console.log('location.pathname:', window.location.pathname);
-    console.log('location.search:', window.location.search);
-    console.log('location.hash:', window.location.hash);
+    console.log('location.href:', href);
+    console.log('location.pathname:', path);
+    console.log('location.search:', search);
+    console.log('location.hash:', hash);
+
+    setDebugUrl(href);
+    setDebugPath(path);
+    setDebugSearch(search);
+    setDebugHash(hash);
 
     supabase.auth.getSession().then(({ data, error }) => {
       console.log('supabase.auth.getSession():', data, error);
       console.log('session?.user:', data?.session?.user);
       console.log('session?.access_token:', data?.session?.access_token?.slice(0, 20) + '...');
+
+      if (data?.session?.user) {
+        setDebugSession('EXISTE');
+        setDebugUserId(data.session.user.id);
+        setDebugUserEmail(data.session.user.email || '(sem email)');
+      } else {
+        setDebugSession('NULL');
+        setDebugUserId('');
+        setDebugUserEmail('');
+      }
     });
   }, []);
 
@@ -194,12 +221,50 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center px-4">
+      {/* === DEBUG PANEL === */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          background: '#111',
+          color: '#0f0',
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          padding: '8px 12px',
+          borderBottom: '2px solid #ff2a32',
+          maxHeight: '40vh',
+          overflowY: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+        }}
+      >
+        <div style={{ color: '#ff2a32', fontWeight: 'bold', marginBottom: 4, fontSize: 13 }}>
+          === RESET DEBUG ===
+        </div>
+        <div>href:  {debugUrl || '(carregando...)'}</div>
+        <div>path:  {debugPath || '(carregando...)'}</div>
+        <div>search: {debugSearch || '(carregando...)'}</div>
+        <div>hash:  {debugHash || '(carregando...)'}</div>
+        <div style={{ marginTop: 4, color: debugSession === 'EXISTE' ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
+          SESSION: {debugSession ?? '(carregando...)'}
+        </div>
+        <div>user id:    {debugUserId || '-'}</div>
+        <div>user email: {debugUserEmail || '-'}</div>
+        <div style={{ marginTop: 4, color: '#888', fontSize: 10, borderTop: '1px solid #333', paddingTop: 4 }}>
+          {debugHash ? '(hash presente)' : '(hash vazio)'} | {debugSearch ? '(search presente)' : '(search vazio)'}
+        </div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-sm"
+        style={{ marginTop: debugSession ? '42vh' : '36vh' }}
       >
         <div className="flex flex-col items-center mb-8">
           <BrandMark
