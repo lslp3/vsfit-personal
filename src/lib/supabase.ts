@@ -24,7 +24,13 @@ export function getAuthRedirectUrl(path = '/auth/reset-password') {
     return path;
   }
 
-  return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return `${baseUrl}${normalizedPath}`;
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
