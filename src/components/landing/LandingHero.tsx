@@ -48,7 +48,7 @@ export function LandingHero() {
               className="group inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 px-8 text-sm font-black text-white shadow-lg shadow-red-500/30 transition-all duration-300 hover:scale-105 hover:shadow-red-500/50 active:scale-[0.98] sm:w-auto"
             >
               <Smartphone className="h-5 w-5" />
-              Baixar APK agora
+              Baixar APK
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </a>
 
@@ -57,7 +57,7 @@ export function LandingHero() {
               className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/40 px-8 text-sm font-black text-white backdrop-blur-sm transition-all duration-300 hover:border-red-500/40 hover:bg-white/5 active:scale-[0.98] sm:w-auto"
             >
               <Monitor className="h-5 w-5" />
-              Abrir versão web
+              Acessar versão Web
             </a>
           </div>
 

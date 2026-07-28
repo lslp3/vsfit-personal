@@ -18,6 +18,7 @@ import {
 import { BrandMark } from '../components/brand/BrandMark';
 import { LandingHeader } from '../components/landing/LandingHeader';
 import { LandingHero } from '../components/landing/LandingHero';
+import { ShowcaseSlider } from '../components/landing/ShowcaseSlider';
 import { PersonalFeatures } from '../components/landing/PersonalFeatures';
 import { StudentFeatures } from '../components/landing/StudentFeatures';
 import { DynamicInstallGuide } from '../components/landing/DynamicInstallGuide';
@@ -235,6 +236,8 @@ export default function LandingPage() {
 
       <main>
         <LandingHero />
+
+        <ShowcaseSlider />
 
         <section className="border-y border-white/5 bg-[#080808] px-4 py-6">
           <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 sm:grid-cols-3">
