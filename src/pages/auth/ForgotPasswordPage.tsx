@@ -5,7 +5,7 @@ import { Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { BrandMark } from '../../components/brand/BrandMark';
-import { supabase } from '../../lib/supabase';
+import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: getAuthRedirectUrl('/auth/reset-password'),
       });
 
       if (resetError) throw resetError;
