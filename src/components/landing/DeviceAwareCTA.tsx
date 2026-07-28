@@ -63,7 +63,7 @@ export function DeviceAwareCTA({
   if (isStandalone) {
     buttonText = 'Abrir VSFit';
   } else if (isAndroid) {
-    buttonText = 'APK em breve';
+    buttonText = 'Baixar APK agora';
   } else if (isIOS) {
     buttonText = 'Instalar no iPhone';
   }

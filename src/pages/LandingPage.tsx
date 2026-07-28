@@ -384,6 +384,37 @@ export default function LandingPage() {
 
         <LandingSecurity />
 
+        {/* ─── Value proof strip ─── */}
+        <section className="border-y border-white/5 bg-[#080808] px-4 py-16">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-center text-xl font-black tracking-[-0.03em] text-white md:text-2xl">
+              Tudo o que um personal trainer precisa para atender, acompanhar e escalar seus alunos.
+            </h2>
+
+            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {[
+                'Treinos personalizados',
+                'Evolução física',
+                'Comunicação integrada',
+                'Gestão financeira',
+                'Acesso pelo celular ou web',
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] px-5 py-4 transition-all hover:bg-white/[0.04]"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                  </span>
+                  <span className="text-sm font-semibold text-zinc-300">
+                    {item}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="relative overflow-hidden px-4 py-24">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-vs-primary/[0.05] to-transparent" />
 
