@@ -21,6 +21,21 @@ export function ResetPasswordPage() {
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
 
+  // DEBUG: Investigar parâmetros que chegam na URL quando o usuário clica no email do Supabase
+  useEffect(() => {
+    console.log('=== RESET PASSWORD PAGE DEBUG ===');
+    console.log('location.href:', window.location.href);
+    console.log('location.pathname:', window.location.pathname);
+    console.log('location.search:', window.location.search);
+    console.log('location.hash:', window.location.hash);
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log('supabase.auth.getSession():', data, error);
+      console.log('session?.user:', data?.session?.user);
+      console.log('session?.access_token:', data?.session?.access_token?.slice(0, 20) + '...');
+    });
+  }, []);
+
   useEffect(() => {
     setRecovering(true);
     return () => setRecovering(false);
