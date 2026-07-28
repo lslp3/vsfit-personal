@@ -14,6 +14,12 @@ export function ResetPasswordPage() {
   const location = useLocation();
   const { setRecovering } = useAuthStore();
 
+  // █ LOG 7 — ResetPasswordPage() — função componente
+  console.log('[LOG 7] ResetPasswordPage() — FUNÇÃO COMPONENTE (durante render)');
+  console.log('[LOG 7] href:  ', window.location.href);
+  console.log('[LOG 7] hash:  ', window.location.hash);
+  console.log('[LOG 7] search:', window.location.search);
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');

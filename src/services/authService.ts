@@ -46,12 +46,19 @@ export async function logout() {
 }
 
 export async function restoreSession() {
+  console.log('[restoreSession] chamando supabase.auth.getSession()...');
   const {
     data: {
       session,
     },
     error,
   } = await supabase.auth.getSession();
+
+  console.log('[restoreSession] getSession() retornou:');
+  console.log('[restoreSession] session:', !!session);
+  console.log('[restoreSession] error:', error);
+  console.log('[restoreSession] user:', session?.user?.email || 'null');
+  console.log('[restoreSession] access_token (primeiros 20):', session?.access_token?.slice(0, 20) || 'null');
 
   if (error) {
     throw error;
