@@ -8,108 +8,137 @@ import { supabase } from '../lib/supabase';
 export function App() {
   const { isLoading, initialize } = useAuthStore();
 
-  // █ LOG 5 — App() component function body (primeiro render do React)
-  // LOG 5A: ANTES de qualquer hook/efeito (síncrono, durante o render)
-  console.log('[LOG 5] App() — FUNÇÃO COMPONENTE (durante render)');
-  console.log('[LOG 5] href:  ', window.location.href);
-  console.log('[LOG 5] hash:  ', window.location.hash);
-  console.log('[LOG 5] search:', window.location.search);
-
   useEffect(() => {
-    // █ LOG 6 — useEffect montou (assíncrono, APÓS o primeiro render)
-    console.log('[LOG 6] App() — useEffect iniciou');
-    console.log('[LOG 6] href:  ', window.location.href);
-    console.log('[LOG 6] hash:  ', window.location.hash);
-    console.log('[LOG 6] search:', window.location.search);
+    // ============================================================
+    // FLUXO MANUAL DE RECUPERAÇÃO DE SENHA
+    // detectSessionInUrl=false → o Supabase NÃO consumiu o hash.
+    // Nós vamos ler manualmente e chamar setSession().
+    // ============================================================
+
+    const hash = window.location.hash;
+    const query = window.location.search;
+
+    console.log('');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('  DEBUG RECOVERY — CAPTURA MANUAL DO HASH');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('URL COMPLETA:', window.location.href);
+    console.log('HASH BRUTO:', hash);
+    console.log('QUERY BRUTO:', query);
+
+    // Parsear os parâmetros do hash
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const type = hashParams.get('type');
+    const error = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
+
+    console.log('');
+    console.log('--- PARÂMETROS DO HASH ---');
+    console.log('access_token:', accessToken ? accessToken.slice(0, 30) + '...' : 'NÃO ENCONTRADO');
+    console.log('refresh_token:', refreshToken ? refreshToken.slice(0, 30) + '...' : 'NÃO ENCONTRADO');
+    console.log('type:', type || 'NÃO ENCONTRADO');
+    console.log('error:', error || 'nenhum');
+    console.log('error_description:', errorDescription || 'nenhum');
+    console.log('');
+
+    // Se houver erro no hash, logar e não prosseguir
+    if (error) {
+      console.error('⚠️  ERRO NO LINK DE RECOVERY:', error, errorDescription);
+      console.log('═══════════════════════════════════════════════════');
+    }
+
     const runRecoveryHandling = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
-      const otpType = searchParams.get('type') || hashParams.get('type');
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-
-      // Log do que foi encontrado no hash
-      console.log('[RRH] tokenHash:', tokenHash);
-      console.log('[RRH] otpType:', otpType);
-      console.log('[RRH] accessToken:', accessToken ? accessToken.slice(0, 20) + '...' : 'null');
-      console.log('[RRH] refreshToken:', refreshToken ? refreshToken.slice(0, 20) + '...' : 'null');
-      console.log('[RRH] hashParams entries:', [...hashParams.entries()].map(e => e[0] + '=' + e[1].slice(0, 20)).join(', '));
-
-      if (tokenHash && otpType === 'recovery') {
-        console.log('[RRH] → chamando verifyOtp() (token_hash path)...');
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery',
-        });
-        console.log('[RRH] verifyOtp result:', error ? 'ERROR' : 'OK', 'session:', !!data?.session);
-
-        if (!error && data.session) {
-          useAuthStore.getState().setRecovering(true);
-          window.history.replaceState(null, '', window.location.pathname);
-          console.log('[RRH] hash limpo via replaceState (verifyOtp path)');
-        }
-
-        return;
-      }
-
+      // Se tem access_token e refresh_token no hash, usar setSession
       if (accessToken && refreshToken) {
-        console.log('[RRH] → chamando setSession() (access_token path)...');
-        const { error } = await supabase.auth.setSession({
+        console.log('→ Chamando supabase.auth.setSession() com os tokens do hash...');
+        console.log('→ access_token (início):', accessToken.slice(0, 30) + '...');
+        console.log('→ refresh_token (início):', refreshToken.slice(0, 30) + '...');
+
+        const { data, error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-        console.log('[RRH] setSession result:', error ? 'ERROR: ' + error.message : 'OK');
 
-        if (!error) {
-          useAuthStore.getState().setRecovering(true);
-          window.history.replaceState(null, '', window.location.pathname);
-          console.log('[RRH] hash limpo via replaceState (setSession path)');
+        console.log('');
+        console.log('═══ RESULTADO DO setSession ═══');
+        console.log('SUCESSO:', !!data?.session);
+        console.log('session?.user:', data?.session?.user?.email || 'NULO');
+
+        if (sessionError) {
+          console.error('ERRO no setSession:', sessionError);
+          console.error('ERRO message:', sessionError.message);
+          console.error('ERRO status:', (sessionError as any)?.status);
         }
+
+        if (data?.session) {
+          console.log('access_token salvo (início):', data.session.access_token.slice(0, 30) + '...');
+          console.log('refresh_token salvo (início):', data.session.refresh_token?.slice(0, 30) + '...');
+          // Sinalizar que estamos em recovery
+          useAuthStore.getState().setRecovering(true);
+          // Limpar o hash da URL
+          window.history.replaceState(null, '', window.location.pathname);
+          console.log('→ Hash limpo via replaceState');
+        }
+
+        console.log('═══════════════════════════════════════════════════');
+        console.log('');
         return;
       }
 
-      console.log('[RRH] NENHUM token encontrado no hash ou search. Pulando recuperação manual.');
+      console.log('→ NENHUM access_token+refresh_token no hash. Tentando getSession()...');
+
+      // Fallback: verificar se já existe sessão no localStorage
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        console.log('→ Sessão encontrada via getSession()');
+        console.log('→ user:', data.session.user.email);
+        useAuthStore.getState().setRecovering(true);
+      } else {
+        console.log('→ Nenhuma sessão encontrada. O link pode ser inválido.');
+      }
+
+      console.log('═══════════════════════════════════════════════════');
+      console.log('');
     };
 
     const init = async () => {
-      console.log('[LOG 6a] useEffect — INÍCIO de init()');
-      console.log('[LOG 6a] hash:', window.location.hash);
-      console.log('[LOG 6a] search:', window.location.search);
-      console.log('[LOG 6a]  → chamando runRecoveryHandling()...');
+      console.log('→ Iniciando fluxo de recovery manual...');
       await runRecoveryHandling();
-      console.log('[LOG 6b]  → runRecoveryHandling() COMPLETOU');
-      console.log('[LOG 6b] hash:', window.location.hash);
-      console.log('[LOG 6b] search:', window.location.search);
-      console.log('[LOG 6c]  → chamando initialize() (authStore)...');
+
+      console.log('→ Chamando initialize() do authStore...');
       await initialize();
-      console.log('[LOG 6d]  → initialize() (authStore) COMPLETOU');
-      console.log('[LOG 6d] hash:', window.location.hash);
-      console.log('[LOG 6d] search:', window.location.search);
+      console.log('→ initialize() COMPLETOU');
+      console.log('');
     };
 
     init();
 
+    // Monitorar eventos de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AUTH EVENT]', event, 'path:', window.location.pathname, 'session:', !!session?.user);
-      const isResetPasswordRoute = window.location.pathname === '/auth/reset-password';
+      console.log(`[AUTH EVENT] ${event} — user: ${session?.user?.email || 'none'}`);
+      console.log(`[AUTH EVENT] path: ${window.location.pathname}`);
 
       if (event === 'PASSWORD_RECOVERY') {
+        console.log('🎯 EVENTO PASSWORD_RECOVERY RECEBIDO!');
         useAuthStore.getState().setRecovering(true);
         return;
       }
 
-      if (event === 'SIGNED_OUT') {
-        useAuthStore.getState().logoutFromEvent();
-        return;
-      }
-
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        if (isResetPasswordRoute) {
+      if (event === 'SIGNED_IN') {
+        console.log('🎯 EVENTO SIGNED_IN RECEBIDO!');
+        if (window.location.pathname === '/auth/reset-password') {
+          console.log('→ Estamos na página de reset, ignorando SIGNED_IN (deixar PASSWORD_RECOVERY lidar)');
           return;
         }
         useAuthStore.getState().setRecovering(false);
         void useAuthStore.getState().initialize();
+      }
+
+      if (event === 'SIGNED_OUT') {
+        console.log('🚪 EVENTO SIGNED_OUT');
+        useAuthStore.getState().logoutFromEvent();
       }
     });
 
