@@ -1,6 +1,7 @@
 import {
   createBrowserRouter,
   Navigate,
+  useLocation,
 } from 'react-router-dom';
 
 import { RoleGuard } from '../components/auth/RoleGuard';
@@ -37,13 +38,32 @@ function getHomeByRole(role?: string | null) {
   return '/auth/login';
 }
 
+function isRecoveryRedirect(location: { search: string; hash: string }) {
+  const searchParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+
+  return (
+    searchParams.get('type') === 'recovery' ||
+    hashParams.get('type') === 'recovery' ||
+    Boolean(searchParams.get('token_hash')) ||
+    Boolean(hashParams.get('token_hash')) ||
+    Boolean(hashParams.get('access_token')) ||
+    Boolean(hashParams.get('refresh_token'))
+  );
+}
+
 function AuthAwareLandingPage() {
+  const location = useLocation();
   const {
     isLoading,
     isAuthenticated,
     profile,
     student,
   } = useAuthStore();
+
+  if (isRecoveryRedirect(location)) {
+    return <Navigate to={`/auth/reset-password${location.search}${location.hash}`} replace />;
+  }
 
   if (isLoading) {
     return <LoadingScreen />;

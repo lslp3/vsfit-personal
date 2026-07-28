@@ -1,14 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Loader2, Lock } from 'lucide-react';
 
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { BrandMark } from '../../components/brand/BrandMark';
 import { supabase } from '../../lib/supabase';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,6 +24,31 @@ export function ResetPasswordPage() {
 
     async function verifyRecoverySession() {
       try {
+        const searchParams = new URLSearchParams(location.search);
+        const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+        const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+        const otpType = searchParams.get('type') || hashParams.get('type');
+
+        if (tokenHash && otpType === 'recovery') {
+          const { error: otpError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+
+          if (!isMounted) return;
+
+          if (otpError) {
+            console.error('[ResetPasswordPage] verifyOtp error:', otpError);
+            setError('Não foi possível validar o link de recuperação. Solicite um novo email.');
+            setChecking(false);
+            return;
+          }
+
+          setReady(true);
+          setChecking(false);
+          return;
+        }
+
         const { data, error: sessionError } = await supabase.auth.getSession();
         const session = data?.session;
 
@@ -65,7 +92,7 @@ export function ResetPasswordPage() {
       isMounted = false;
       authData.subscription.unsubscribe();
     };
-  }, []);
+  }, [location.hash, location.search]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,9 +138,10 @@ export function ResetPasswordPage() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-vs-primary to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-vs-primary/20">
-            <span className="text-white font-black text-2xl tracking-tight">VS</span>
-          </div>
+          <BrandMark
+            size="lg"
+            className="mb-4 rounded-2xl bg-gradient-to-br from-vs-primary/15 to-orange-500/10 p-2 shadow-lg shadow-vs-primary/20"
+          />
           <h1 className="text-2xl font-bold text-white">Definir nova senha</h1>
           <p className="text-vs-muted text-sm mt-1">Crie uma nova senha para sua conta</p>
         </div>

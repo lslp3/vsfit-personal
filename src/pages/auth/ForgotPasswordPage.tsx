@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { BrandMark } from '../../components/brand/BrandMark';
 import { supabase } from '../../lib/supabase';
 
 export function ForgotPasswordPage() {
@@ -47,9 +48,10 @@ export function ForgotPasswordPage() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-vs-primary to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-vs-primary/20">
-            <span className="text-white font-black text-2xl tracking-tight">VS</span>
-          </div>
+          <BrandMark
+            size="lg"
+            className="mb-4 rounded-2xl bg-gradient-to-br from-vs-primary/15 to-orange-500/10 p-2 shadow-lg shadow-vs-primary/20"
+          />
           <h1 className="text-2xl font-bold text-white">Recuperar Senha</h1>
           <p className="text-vs-muted text-sm mt-1">Enviaremos um link para seu email</p>
         </div>
