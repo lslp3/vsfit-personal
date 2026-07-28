@@ -28,9 +28,11 @@ export function ResetPasswordPage() {
         const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
         const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
         const otpType = searchParams.get('type') || hashParams.get('type');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
 
         if (tokenHash && otpType === 'recovery') {
-          const { error: otpError } = await supabase.auth.verifyOtp({
+          const { data, error: otpError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: 'recovery',
           });
@@ -44,9 +46,26 @@ export function ResetPasswordPage() {
             return;
           }
 
-          setReady(true);
-          setChecking(false);
-          return;
+          if (data.session?.user) {
+            setReady(true);
+            setChecking(false);
+            return;
+          }
+        }
+
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!isMounted) return;
+
+          if (!sessionError) {
+            setReady(true);
+            setChecking(false);
+            return;
+          }
         }
 
         const { data, error: sessionError } = await supabase.auth.getSession();

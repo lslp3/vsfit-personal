@@ -9,6 +9,40 @@ export function App() {
   const { isLoading, initialize } = useAuthStore();
 
   useEffect(() => {
+    const runRecoveryHandling = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+      const otpType = searchParams.get('type') || hashParams.get('type');
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (tokenHash && otpType === 'recovery') {
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+
+        if (!error && data.session) {
+          window.history.replaceState(null, '', '/auth/reset-password');
+        }
+
+        return;
+      }
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (!error) {
+          window.history.replaceState(null, '', '/auth/reset-password');
+        }
+      }
+    };
+
+    void runRecoveryHandling();
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
