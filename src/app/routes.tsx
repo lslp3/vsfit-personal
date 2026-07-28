@@ -57,9 +57,14 @@ function AuthAwareLandingPage() {
   const {
     isLoading,
     isAuthenticated,
+    isRecovering,
     profile,
     student,
   } = useAuthStore();
+
+  if (isRecovering) {
+    return <Navigate to="/auth/reset-password" replace />;
+  }
 
   if (isRecoveryRedirect(location)) {
     return <Navigate to={`/auth/reset-password${location.search}${location.hash}`} replace />;

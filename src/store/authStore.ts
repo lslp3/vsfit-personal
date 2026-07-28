@@ -104,6 +104,7 @@ export const useAuthStore =
       const { isRecovering } = useAuthStore.getState();
       if (isRecovering) {
         console.log('[AuthStore] initialize skipped: recovery in progress');
+        set({ isLoading: false });
         return;
       }
 

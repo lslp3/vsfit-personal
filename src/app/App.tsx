@@ -24,7 +24,8 @@ export function App() {
         });
 
         if (!error && data.session) {
-          window.history.replaceState(null, '', '/auth/reset-password');
+          useAuthStore.getState().setRecovering(true);
+          window.history.replaceState(null, '', window.location.pathname);
         }
 
         return;
@@ -37,13 +38,18 @@ export function App() {
         });
 
         if (!error) {
-          window.history.replaceState(null, '', '/auth/reset-password');
+          useAuthStore.getState().setRecovering(true);
+          window.history.replaceState(null, '', window.location.pathname);
         }
       }
     };
 
-    void runRecoveryHandling();
-    initialize();
+    const init = async () => {
+      await runRecoveryHandling();
+      await initialize();
+    };
+
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const isResetPasswordRoute = window.location.pathname === '/auth/reset-password';
