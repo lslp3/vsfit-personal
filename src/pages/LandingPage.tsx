@@ -327,7 +327,7 @@ export default function LandingPage() {
                 </p>
 
                 <a
-                  href="/VSFit-Personal-v1.0.0.apk"
+                  href="/VSFit-Personal.apk"
                   download
                   className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase text-vs-primary transition-all hover:bg-white/[0.1]"
                 >

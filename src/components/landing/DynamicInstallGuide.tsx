@@ -75,7 +75,7 @@ export function DynamicInstallGuide() {
               </div>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-vs-primary text-white shadow-lg transition-all hover:bg-red-600">
-              <a href="/VSFit-Personal-v1.0.0.apk" download>
+              <a href="/VSFit-Personal.apk" download>
                 <Download className="h-5 w-5" />
               </a>
             </div>
