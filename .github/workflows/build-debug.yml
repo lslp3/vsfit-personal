@@ -1,5 +1,8 @@
 name: Build APK Debug
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -21,6 +24,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PUSH_TOKEN }}
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -77,6 +83,7 @@ jobs:
             echo "APK unchanged, skipping commit"
           else
             git commit -m "chore: update APK [skip ci]"
+            git remote set-url origin https://x-access-token:${{ secrets.PUSH_TOKEN }}@github.com/lslp3/vsfit-personal.git
             git push origin HEAD:main
           fi
 
