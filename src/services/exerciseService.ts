@@ -164,7 +164,6 @@ async function fetchAllExerciseStorageFiles(): Promise<Array<{ name: string }>> 
 
     const page = (data as { name: string }[]) || [];
 
-    console.log('[EXERCISES RPC PAGE]', { from, to, count: page.length });
 
     allFiles = [...allFiles, ...page];
 
@@ -175,7 +174,6 @@ async function fetchAllExerciseStorageFiles(): Promise<Array<{ name: string }>> 
     from += pageSize;
   }
 
-  console.log('[EXERCISES RPC] total files paginated:', allFiles.length);
 
   return allFiles;
 }
@@ -185,7 +183,6 @@ export async function scanStorageExercises(): Promise<ScannedExercise[]> {
     const files = await fetchAllExerciseStorageFiles();
 
     const totalFiles = files.length;
-    console.log('[EXERCISES SCAN] total files:', totalFiles);
 
     if (totalFiles === 0) {
       console.warn('[EXERCISES RPC] no files returned');
@@ -213,7 +210,6 @@ export async function scanStorageExercises(): Promise<ScannedExercise[]> {
       }
     }
 
-    console.log('[EXERCISES SCAN] grouped keys:', grouped.size);
 
     const exercises: ScannedExercise[] = [];
     for (const [key, media] of grouped) {
@@ -234,16 +230,7 @@ export async function scanStorageExercises(): Promise<ScannedExercise[]> {
       });
     }
 
-    const withVideo = exercises.filter((e) => e.video_url).length;
-    const withImage = exercises.filter((e) => e.image_url).length;
-    const onlyVideo = exercises.filter((e) => e.video_url && !e.image_url).length;
-    const onlyImage = exercises.filter((e) => e.image_url && !e.video_url).length;
 
-    console.log('[EXERCISES SCAN] exercises:', exercises.length);
-    console.log('[EXERCISES SCAN] with video:', withVideo);
-    console.log('[EXERCISES SCAN] with image:', withImage);
-    console.log('[EXERCISES SCAN] only video:', onlyVideo);
-    console.log('[EXERCISES SCAN] only image:', onlyImage);
 
     return exercises;
   } catch (error) {
@@ -277,7 +264,6 @@ export async function syncStorageExercises(trainerId?: string): Promise<{
     return { scanned: scanned.length, upserted: 0, total: scanned.length, withVideo: 0, withImage: 0 };
   }
 
-  console.log('[EXERCISES SYNC] deleting old public exercises...');
   await supabase.from('exercises').delete().eq('is_public', true);
 
   const chunks = chunkArray(scanned, 100);
@@ -313,7 +299,6 @@ export async function syncStorageExercises(trainerId?: string): Promise<{
   const withVideo = scanned.filter((e) => e.video_url).length;
   const withImage = scanned.filter((e) => e.image_url).length;
 
-  console.log('[EXERCISES SYNC] upserted:', totalUpserted);
   invalidateExercisesCache();
   return { scanned: scanned.length, upserted: totalUpserted, total: scanned.length, withVideo, withImage };
 }
@@ -325,16 +310,13 @@ export async function resyncAllStorageExercises(trainerId?: string): Promise<{
   withVideo: number;
   withImage: number;
 }> {
-  console.log('[EXERCISES RESYNC] deleting all public exercises...');
   await supabase.from('exercises').delete().eq('is_public', true);
-  console.log('[EXERCISES RESYNC] deleted, re-syncing...');
   return syncStorageExercises(trainerId);
 }
 
 export async function getExercises(): Promise<Exercise[]> {
   const now = Date.now();
   if (exercisesCache && now - exercisesCacheTimestamp < EXERCISES_CACHE_TTL) {
-    console.log('[EXERCISES DB] returning cached:', exercisesCache.length);
     return exercisesCache;
   }
 
@@ -344,7 +326,6 @@ export async function getExercises(): Promise<Exercise[]> {
       .select('*')
       .order('muscle_group', { ascending: true })
       .order('name', { ascending: true });
-    console.log('[EXERCISES DB] total:', data?.length || 0);
     if (error) {
       console.error('[ExerciseService] getExercises error:', error);
       const scanned = await scanStorageExercises();
@@ -355,7 +336,6 @@ export async function getExercises(): Promise<Exercise[]> {
       exercisesCacheTimestamp = now;
       return data;
     }
-    console.log('[ExerciseService] DB table empty, scanning storage');
     const scanned = await scanStorageExercises();
     return scanned.map(scannedToExercise);
   } catch (error) {
@@ -373,14 +353,12 @@ export async function getExercisesByTrainer(trainerId: string): Promise<Exercise
       .or(`trainer_id.eq.${trainerId},is_public.eq.true`)
       .order('muscle_group', { ascending: true })
       .order('name', { ascending: true });
-    console.log('[EXERCISES DB by trainer] total:', data?.length || 0);
     if (error) {
       console.error('[ExerciseService] getExercisesByTrainer error:', error);
       const scanned = await scanStorageExercises();
       return scanned.map(scannedToExercise);
     }
     if (data && data.length > 0) return data;
-    console.log('[ExerciseService] getExercisesByTrainer empty, scanning storage');
     const scanned = await scanStorageExercises();
     return scanned.map(scannedToExercise);
   } catch (error) {

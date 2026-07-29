@@ -90,21 +90,10 @@ export async function getCurrentSubscription(trainerId: string): Promise<Subscri
       .select('*')
       .eq('trainer_id', trainerId);
 
-    console.log('[DEBUG SUBSCRIPTION RAW]', {
-  trainerId,
-  data,
-  error
-});
-
     if (error) {
       console.error('[SubscriptionService] getCurrentSubscription error:', error);
       return null;
     }
-
-    console.log('[SubscriptionService] Assinaturas encontradas no banco:', {
-      trainerId,
-      data,
-    });
 
     if (!data || data.length === 0) {
       return null;
@@ -151,13 +140,6 @@ export async function getCurrentPlanSlug(trainerId: string): Promise<PlanSlug> {
    const planSlug = normalizeDbPlanSlug(
   subscription.plan_slug || (subscription as any).plan
 );
-
-    console.log('[SubscriptionService] Plano atual encontrado:', {
-      trainerId,
-      planSlug,
-      status: subscription.status,
-      subscription,
-    });
 
     return planSlug;
   } catch (error) {

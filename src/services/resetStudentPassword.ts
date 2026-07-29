@@ -32,15 +32,6 @@ export async function resetStudentPassword(
   const temporaryPassword =
     generateTemporaryPassword();
 
-  console.log(
-    '[RESET STUDENT PASSWORD] payload:',
-    {
-      studentId,
-      email,
-      name,
-    }
-  );
-
   const {
     data,
     error,
