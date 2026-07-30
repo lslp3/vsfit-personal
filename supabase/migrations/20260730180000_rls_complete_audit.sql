@@ -1947,47 +1947,46 @@ BEGIN
     CREATE POLICY student_milestones_admin_all ON public.student_milestones
         FOR ALL USING (is_admin()) WITH CHECK (is_admin());
     
-    
-    -- ==============================================================================
-    -- 34. TABELAS DEPRECATED (mantidas mas sem impacto no fluxo atual)
-    -- ==============================================================================
-    -- signup_links (old — substituída por coach_signup_links)
-    -- signup_link_visits (old — substituída pelo fluxo coach_signup_links)
-    --
-    -- Mantemos as policies existentes para não quebrar dados históricos.
-    -- Se desejar remover estas tabelas no futuro, execute:
-    --   DROP TABLE IF EXISTS public.signup_links CASCADE;
-    --   DROP TABLE IF EXISTS public.signup_link_visits CASCADE;
-    
-    
-    -- ==============================================================================
-    -- VERIFICAÇÕES PÓS-MIGRATION
-    -- ==============================================================================
-    -- Execute no SQL Editor do Supabase Dashboard:
-    --
-    -- 1. Todas as tabelas com RLS ativo:
-    --    SELECT tablename, rowsecurity FROM pg_tables
-    --    WHERE schemaname = 'public' AND tablename NOT IN ('spatial_ref_sys')
-    --    ORDER BY tablename;
-    --
-    -- 2. Todas as políticas criadas:
-    --    SELECT tablename, policyname, cmd, permissive
-    --    FROM pg_policies
-    --    WHERE schemaname = 'public'
-    --    ORDER BY tablename, policyname;
-    --
-    -- 3. Teste como anon (abrir console do navegador no /signup/:slug):
-    --    const { data } = await supabase.from('coach_signup_links').select('*').eq('slug','seu-slug').eq('is_active',true).maybeSingle();
-    --    const { data: trainer } = await supabase.from('trainer_profiles').select('name').eq('id', data.coach_auth_user_id).maybeSingle();
-    --
-    -- 4. Teste como personal autenticado:
-    --    const { data } = await supabase.from('students').select('*').limit(5);
-    --    (Deve retornar apenas os alunos deste trainer)
-    --
-    -- 5. Teste como aluno autenticado:
-    --    const { data } = await supabase.from('students').select('*').single();
-    --    (Deve retornar apenas o próprio registro)
-    
   END IF;
 END;
 $$;
+
+-- ==============================================================================
+-- 34. TABELAS DEPRECATED (mantidas mas sem impacto no fluxo atual)
+-- ==============================================================================
+-- signup_links (old — substituída por coach_signup_links)
+-- signup_link_visits (old — substituída pelo fluxo coach_signup_links)
+--
+-- Mantemos as policies existentes para não quebrar dados históricos.
+-- Se desejar remover estas tabelas no futuro, execute:
+--   DROP TABLE IF EXISTS public.signup_links CASCADE;
+--   DROP TABLE IF EXISTS public.signup_link_visits CASCADE;
+
+
+-- ==============================================================================
+-- VERIFICAÇÕES PÓS-MIGRATION
+-- ==============================================================================
+-- Execute no SQL Editor do Supabase Dashboard:
+--
+-- 1. Todas as tabelas com RLS ativo:
+--    SELECT tablename, rowsecurity FROM pg_tables
+--    WHERE schemaname = 'public' AND tablename NOT IN ('spatial_ref_sys')
+--    ORDER BY tablename;
+--
+-- 2. Todas as políticas criadas:
+--    SELECT tablename, policyname, cmd, permissive
+--    FROM pg_policies
+--    WHERE schemaname = 'public'
+--    ORDER BY tablename, policyname;
+--
+-- 3. Teste como anon (abrir console do navegador no /signup/:slug):
+--    const { data } = await supabase.from('coach_signup_links').select('*').eq('slug','seu-slug').eq('is_active',true).maybeSingle();
+--    const { data: trainer } = await supabase.from('trainer_profiles').select('name').eq('id', data.coach_auth_user_id).maybeSingle();
+--
+-- 4. Teste como personal autenticado:
+--    const { data } = await supabase.from('students').select('*').limit(5);
+--    (Deve retornar apenas os alunos deste trainer)
+--
+-- 5. Teste como aluno autenticado:
+--    const { data } = await supabase.from('students').select('*').single();
+--    (Deve retornar apenas o próprio registro)
