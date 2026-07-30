@@ -177,7 +177,7 @@ export function SignupLinksPage() {
 
     try {
       await signupService.createSignupLink(
-        user!.id,
+        user!.email!,
         user!.id,
         {
           title: newLinkData.title,
