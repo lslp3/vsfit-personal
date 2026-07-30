@@ -73,31 +73,37 @@ CREATE POLICY students_self_select ON public.students
     USING (auth_user_id = auth.uid());
 
 -- Trainer vê seus próprios alunos
+DROP POLICY IF EXISTS students_trainer_select ON public.students;
 CREATE POLICY students_trainer_select ON public.students
     FOR SELECT
     USING (trainer_id = auth.uid());
 
 -- Trainer gerencia alunos (INSERT/UPDATE/DELETE)
+DROP POLICY IF EXISTS students_trainer_insert ON public.students;
 CREATE POLICY students_trainer_insert ON public.students
     FOR INSERT
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS students_trainer_update ON public.students;
 CREATE POLICY students_trainer_update ON public.students
     FOR UPDATE
     USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS students_trainer_delete ON public.students;
 CREATE POLICY students_trainer_delete ON public.students
     FOR DELETE
     USING (trainer_id = auth.uid());
 
 -- Aluno pode atualizar campos próprios (avatar, phone, etc.)
+DROP POLICY IF EXISTS students_self_update ON public.students;
 CREATE POLICY students_self_update ON public.students
     FOR UPDATE
     USING (auth_user_id = auth.uid())
     WITH CHECK (auth_user_id = auth.uid());
 
 -- Admin: irrestrito
+DROP POLICY IF EXISTS students_admin_all ON public.students;
 CREATE POLICY students_admin_all ON public.students
     FOR ALL
     USING (is_admin())
@@ -129,6 +135,7 @@ CREATE POLICY user_profiles_self_update ON public.user_profiles
     WITH CHECK (id = auth.uid());
 
 -- ALUNO: pode ver user_profile do seu trainer (role = 'personal')
+DROP POLICY IF EXISTS user_profiles_student_view_trainer ON public.user_profiles;
 CREATE POLICY user_profiles_student_view_trainer ON public.user_profiles
     FOR SELECT
     USING (
@@ -174,6 +181,7 @@ CREATE POLICY trainer_profiles_self_update ON public.trainer_profiles
     WITH CHECK (id = auth.uid());
 
 -- ALUNO: pode ver perfil do seu trainer
+DROP POLICY IF EXISTS trainer_profiles_student_view_trainer ON public.trainer_profiles;
 CREATE POLICY trainer_profiles_student_view_trainer ON public.trainer_profiles
     FOR SELECT
     USING (
@@ -185,6 +193,7 @@ CREATE POLICY trainer_profiles_student_view_trainer ON public.trainer_profiles
     );
 
 -- PÚBLICO (ANON): pode ver perfil de trainers com link de cadastro ativo
+DROP POLICY IF EXISTS trainer_profiles_public_signup_read ON public.trainer_profiles;
 CREATE POLICY trainer_profiles_public_signup_read ON public.trainer_profiles
     FOR SELECT
     USING (
@@ -244,15 +253,18 @@ CREATE POLICY signup_leads_public_insert ON public.signup_leads
     WITH CHECK (true);
 
 -- TRAINER: gerenciar leads dos seus links
+DROP POLICY IF EXISTS signup_leads_trainer_select ON public.signup_leads;
 CREATE POLICY signup_leads_trainer_select ON public.signup_leads
     FOR SELECT
     USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS signup_leads_trainer_update ON public.signup_leads;
 CREATE POLICY signup_leads_trainer_update ON public.signup_leads
     FOR UPDATE
     USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS signup_leads_trainer_delete ON public.signup_leads;
 CREATE POLICY signup_leads_trainer_delete ON public.signup_leads
     FOR DELETE
     USING (trainer_id = auth.uid());
@@ -276,17 +288,20 @@ DROP POLICY IF EXISTS student_accounts_insert_own_student ON public.student_acco
 DROP POLICY IF EXISTS student_accounts_delete_own_student ON public.student_accounts;
 
 -- ALUNO: ver própria conta de acesso
+DROP POLICY IF EXISTS student_accounts_self_select ON public.student_accounts;
 CREATE POLICY student_accounts_self_select ON public.student_accounts
     FOR SELECT
     USING (auth_user_id = auth.uid());
 
 -- ALUNO: atualizar própria conta (ex: primeiro login, trocar senha)
+DROP POLICY IF EXISTS student_accounts_self_update ON public.student_accounts;
 CREATE POLICY student_accounts_self_update ON public.student_accounts
     FOR UPDATE
     USING (auth_user_id = auth.uid() OR email = auth.jwt() ->> 'email')
     WITH CHECK (auth_user_id = auth.uid() OR email = auth.jwt() ->> 'email');
 
 -- TRAINER: gerenciar contas de acesso dos seus alunos
+DROP POLICY IF EXISTS student_accounts_trainer_select ON public.student_accounts;
 CREATE POLICY student_accounts_trainer_select ON public.student_accounts
     FOR SELECT
     USING (
@@ -297,6 +312,7 @@ CREATE POLICY student_accounts_trainer_select ON public.student_accounts
         )
     );
 
+DROP POLICY IF EXISTS student_accounts_trainer_insert ON public.student_accounts;
 CREATE POLICY student_accounts_trainer_insert ON public.student_accounts
     FOR INSERT
     WITH CHECK (
@@ -307,6 +323,7 @@ CREATE POLICY student_accounts_trainer_insert ON public.student_accounts
         )
     );
 
+DROP POLICY IF EXISTS student_accounts_trainer_update ON public.student_accounts;
 CREATE POLICY student_accounts_trainer_update ON public.student_accounts
     FOR UPDATE
     USING (
@@ -324,6 +341,7 @@ CREATE POLICY student_accounts_trainer_update ON public.student_accounts
         )
     );
 
+DROP POLICY IF EXISTS student_accounts_trainer_delete ON public.student_accounts;
 CREATE POLICY student_accounts_trainer_delete ON public.student_accounts
     FOR DELETE
     USING (
@@ -348,6 +366,7 @@ CREATE POLICY student_accounts_admin_all ON public.student_accounts
 ALTER TABLE public.student_goals ENABLE ROW LEVEL SECURITY;
 
 -- ALUNO: ver e criar próprios goals
+DROP POLICY IF EXISTS student_goals_self_select ON public.student_goals;
 CREATE POLICY student_goals_self_select ON public.student_goals
     FOR SELECT
     USING (
@@ -358,6 +377,7 @@ CREATE POLICY student_goals_self_select ON public.student_goals
         )
     );
 
+DROP POLICY IF EXISTS student_goals_self_insert ON public.student_goals;
 CREATE POLICY student_goals_self_insert ON public.student_goals
     FOR INSERT
     WITH CHECK (
@@ -369,6 +389,7 @@ CREATE POLICY student_goals_self_insert ON public.student_goals
     );
 
 -- TRAINER: gerenciar goals dos seus alunos
+DROP POLICY IF EXISTS student_goals_trainer_all ON public.student_goals;
 CREATE POLICY student_goals_trainer_all ON public.student_goals
     FOR ALL
     USING (
@@ -387,6 +408,7 @@ CREATE POLICY student_goals_trainer_all ON public.student_goals
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS student_goals_admin_all ON public.student_goals;
 CREATE POLICY student_goals_admin_all ON public.student_goals
     FOR ALL
     USING (is_admin())
@@ -399,6 +421,7 @@ CREATE POLICY student_goals_admin_all ON public.student_goals
 ALTER TABLE public.student_metrics ENABLE ROW LEVEL SECURITY;
 
 -- ALUNO: ver próprias métricas
+DROP POLICY IF EXISTS student_metrics_self_select ON public.student_metrics;
 CREATE POLICY student_metrics_self_select ON public.student_metrics
     FOR SELECT
     USING (
@@ -410,6 +433,7 @@ CREATE POLICY student_metrics_self_select ON public.student_metrics
     );
 
 -- TRAINER: gerenciar métricas dos seus alunos
+DROP POLICY IF EXISTS student_metrics_trainer_all ON public.student_metrics;
 CREATE POLICY student_metrics_trainer_all ON public.student_metrics
     FOR ALL
     USING (
@@ -428,6 +452,7 @@ CREATE POLICY student_metrics_trainer_all ON public.student_metrics
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS student_metrics_admin_all ON public.student_metrics;
 CREATE POLICY student_metrics_admin_all ON public.student_metrics
     FOR ALL
     USING (is_admin())
@@ -440,6 +465,7 @@ CREATE POLICY student_metrics_admin_all ON public.student_metrics
 ALTER TABLE public.biometric_history ENABLE ROW LEVEL SECURITY;
 
 -- ALUNO: ver próprio histórico biométrico
+DROP POLICY IF EXISTS biometric_history_self_select ON public.biometric_history;
 CREATE POLICY biometric_history_self_select ON public.biometric_history
     FOR SELECT
     USING (
@@ -451,6 +477,7 @@ CREATE POLICY biometric_history_self_select ON public.biometric_history
     );
 
 -- TRAINER: gerenciar histórico dos seus alunos
+DROP POLICY IF EXISTS biometric_history_trainer_all ON public.biometric_history;
 CREATE POLICY biometric_history_trainer_all ON public.biometric_history
     FOR ALL
     USING (
@@ -469,6 +496,7 @@ CREATE POLICY biometric_history_trainer_all ON public.biometric_history
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS biometric_history_admin_all ON public.biometric_history;
 CREATE POLICY biometric_history_admin_all ON public.biometric_history
     FOR ALL
     USING (is_admin())
@@ -481,6 +509,7 @@ CREATE POLICY biometric_history_admin_all ON public.biometric_history
 ALTER TABLE public.progress_photos ENABLE ROW LEVEL SECURITY;
 
 -- ALUNO: ver próprias fotos
+DROP POLICY IF EXISTS progress_photos_self_select ON public.progress_photos;
 CREATE POLICY progress_photos_self_select ON public.progress_photos
     FOR SELECT
     USING (
@@ -492,6 +521,7 @@ CREATE POLICY progress_photos_self_select ON public.progress_photos
     );
 
 -- TRAINER: gerenciar fotos dos seus alunos
+DROP POLICY IF EXISTS progress_photos_trainer_all ON public.progress_photos;
 CREATE POLICY progress_photos_trainer_all ON public.progress_photos
     FOR ALL
     USING (
@@ -510,6 +540,7 @@ CREATE POLICY progress_photos_trainer_all ON public.progress_photos
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS progress_photos_admin_all ON public.progress_photos;
 CREATE POLICY progress_photos_admin_all ON public.progress_photos
     FOR ALL
     USING (is_admin())
@@ -522,6 +553,7 @@ CREATE POLICY progress_photos_admin_all ON public.progress_photos
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- ALUNO: ver e enviar mensagens onde é o student_id
+DROP POLICY IF EXISTS messages_student_select ON public.messages;
 CREATE POLICY messages_student_select ON public.messages
     FOR SELECT
     USING (
@@ -532,6 +564,7 @@ CREATE POLICY messages_student_select ON public.messages
         )
     );
 
+DROP POLICY IF EXISTS messages_student_insert ON public.messages;
 CREATE POLICY messages_student_insert ON public.messages
     FOR INSERT
     WITH CHECK (
@@ -544,10 +577,12 @@ CREATE POLICY messages_student_insert ON public.messages
     );
 
 -- TRAINER: ver e gerenciar mensagens com seus alunos
+DROP POLICY IF EXISTS messages_trainer_select ON public.messages;
 CREATE POLICY messages_trainer_select ON public.messages
     FOR SELECT
     USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS messages_trainer_insert ON public.messages;
 CREATE POLICY messages_trainer_insert ON public.messages
     FOR INSERT
     WITH CHECK (
@@ -555,12 +590,14 @@ CREATE POLICY messages_trainer_insert ON public.messages
         AND sender_role = 'personal'
     );
 
+DROP POLICY IF EXISTS messages_trainer_update ON public.messages;
 CREATE POLICY messages_trainer_update ON public.messages
     FOR UPDATE
     USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS messages_admin_all ON public.messages;
 CREATE POLICY messages_admin_all ON public.messages
     FOR ALL
     USING (is_admin())
@@ -578,16 +615,19 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS notifications_trainer_view_students ON public.notifications;
 
 -- ALUNO: ver e atualizar próprias notificações
+DROP POLICY IF EXISTS notifications_self_select ON public.notifications;
 CREATE POLICY notifications_self_select ON public.notifications
     FOR SELECT
     USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS notifications_self_update ON public.notifications;
 CREATE POLICY notifications_self_update ON public.notifications
     FOR UPDATE
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
 -- TRAINER: ver notificações dos seus alunos
+DROP POLICY IF EXISTS notifications_trainer_select ON public.notifications;
 CREATE POLICY notifications_trainer_select ON public.notifications
     FOR SELECT
     USING (
@@ -599,6 +639,7 @@ CREATE POLICY notifications_trainer_select ON public.notifications
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS notifications_admin_all ON public.notifications;
 CREATE POLICY notifications_admin_all ON public.notifications
     FOR ALL
     USING (is_admin())
@@ -611,20 +652,24 @@ CREATE POLICY notifications_admin_all ON public.notifications
 ALTER TABLE public.trainer_payment_settings ENABLE ROW LEVEL SECURITY;
 
 -- TRAINER: gerenciar próprias configurações
+DROP POLICY IF EXISTS trainer_payment_settings_self_select ON public.trainer_payment_settings;
 CREATE POLICY trainer_payment_settings_self_select ON public.trainer_payment_settings
     FOR SELECT
     USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS trainer_payment_settings_self_insert ON public.trainer_payment_settings;
 CREATE POLICY trainer_payment_settings_self_insert ON public.trainer_payment_settings
     FOR INSERT
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS trainer_payment_settings_self_update ON public.trainer_payment_settings;
 CREATE POLICY trainer_payment_settings_self_update ON public.trainer_payment_settings
     FOR UPDATE
     USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS trainer_payment_settings_admin_all ON public.trainer_payment_settings;
 CREATE POLICY trainer_payment_settings_admin_all ON public.trainer_payment_settings
     FOR ALL
     USING (is_admin())
@@ -637,11 +682,13 @@ CREATE POLICY trainer_payment_settings_admin_all ON public.trainer_payment_setti
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 
 -- PÚBLICO (ANON) E AUTENTICADO: pode ver planos disponíveis (página de preços)
+DROP POLICY IF EXISTS subscription_plans_public_select ON public.subscription_plans;
 CREATE POLICY subscription_plans_public_select ON public.subscription_plans
     FOR SELECT
     USING (true);
 
 -- ADMIN: gerenciar planos (apenas admin pode criar/editar/deletar planos)
+DROP POLICY IF EXISTS subscription_plans_admin_all ON public.subscription_plans;
 CREATE POLICY subscription_plans_admin_all ON public.subscription_plans
     FOR ALL
     USING (is_admin())
@@ -654,6 +701,7 @@ CREATE POLICY subscription_plans_admin_all ON public.subscription_plans
 ALTER TABLE public.platform_webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- ADMIN: irrestrito (webhooks são registrados por edge functions com service_role)
+DROP POLICY IF EXISTS platform_webhook_events_admin_all ON public.platform_webhook_events;
 CREATE POLICY platform_webhook_events_admin_all ON public.platform_webhook_events
     FOR ALL
     USING (is_admin())
@@ -668,12 +716,14 @@ CREATE POLICY platform_webhook_events_admin_all ON public.platform_webhook_event
 ALTER TABLE public.app_presence ENABLE ROW LEVEL SECURITY;
 
 -- PRÓPRIO USUÁRIO: upsert da própria presença
+DROP POLICY IF EXISTS app_presence_self_upsert ON public.app_presence;
 CREATE POLICY app_presence_self_upsert ON public.app_presence
     FOR ALL
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
 -- TRAINER: ver presença dos seus alunos
+DROP POLICY IF EXISTS app_presence_trainer_select ON public.app_presence;
 CREATE POLICY app_presence_trainer_select ON public.app_presence
     FOR SELECT
     USING (
@@ -685,6 +735,7 @@ CREATE POLICY app_presence_trainer_select ON public.app_presence
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS app_presence_admin_all ON public.app_presence;
 CREATE POLICY app_presence_admin_all ON public.app_presence
     FOR ALL
     USING (is_admin())
@@ -702,30 +753,36 @@ DROP POLICY IF EXISTS exercises_owner_delete ON public.exercises;
 DROP POLICY IF EXISTS exercises_select_public_or_owner ON public.exercises;
 
 -- QUALQUER UM: ver exercícios públicos
+DROP POLICY IF EXISTS exercises_select_public ON public.exercises;
 CREATE POLICY exercises_select_public ON public.exercises
     FOR SELECT
     USING (is_public = true);
 
 -- TRAINER: ver próprios exercícios (públicos ou próprios)
+DROP POLICY IF EXISTS exercises_select_owner ON public.exercises;
 CREATE POLICY exercises_select_owner ON public.exercises
     FOR SELECT
     USING (trainer_id = auth.uid());
 
 -- TRAINER: gerenciar próprios exercícios
+DROP POLICY IF EXISTS exercises_owner_insert ON public.exercises;
 CREATE POLICY exercises_owner_insert ON public.exercises
     FOR INSERT
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS exercises_owner_update ON public.exercises;
 CREATE POLICY exercises_owner_update ON public.exercises
     FOR UPDATE
     USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS exercises_owner_delete ON public.exercises;
 CREATE POLICY exercises_owner_delete ON public.exercises
     FOR DELETE
     USING (trainer_id = auth.uid());
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS exercises_admin_all ON public.exercises;
 CREATE POLICY exercises_admin_all ON public.exercises
     FOR ALL
     USING (is_admin())
@@ -741,6 +798,7 @@ DROP POLICY IF EXISTS workout_plans_student_select_own ON public.workout_plans;
 DROP POLICY IF EXISTS workout_plans_trainer_all ON public.workout_plans;
 
 -- ALUNO: ver próprios planos
+DROP POLICY IF EXISTS workout_plans_student_select ON public.workout_plans;
 CREATE POLICY workout_plans_student_select ON public.workout_plans
     FOR SELECT
     USING (
@@ -770,6 +828,7 @@ CREATE POLICY workout_plans_trainer_all ON public.workout_plans
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS workout_plans_admin_all ON public.workout_plans;
 CREATE POLICY workout_plans_admin_all ON public.workout_plans
     FOR ALL
     USING (is_admin())
@@ -785,6 +844,7 @@ DROP POLICY IF EXISTS workout_days_student_select_own ON public.workout_days;
 DROP POLICY IF EXISTS workout_days_trainer_all ON public.workout_days;
 
 -- ALUNO: ver dias do seu plano
+DROP POLICY IF EXISTS workout_days_student_select ON public.workout_days;
 CREATE POLICY workout_days_student_select ON public.workout_days
     FOR SELECT
     USING (
@@ -817,6 +877,7 @@ CREATE POLICY workout_days_trainer_all ON public.workout_days
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS workout_days_admin_all ON public.workout_days;
 CREATE POLICY workout_days_admin_all ON public.workout_days
     FOR ALL
     USING (is_admin())
@@ -832,6 +893,7 @@ DROP POLICY IF EXISTS workout_plan_exercises_student_select_own ON public.workou
 DROP POLICY IF EXISTS workout_plan_exercises_trainer_all ON public.workout_plan_exercises;
 
 -- ALUNO: ver exercícios do seu plano
+DROP POLICY IF EXISTS workout_plan_exercises_student_select ON public.workout_plan_exercises;
 CREATE POLICY workout_plan_exercises_student_select ON public.workout_plan_exercises
     FOR SELECT
     USING (
@@ -864,6 +926,7 @@ CREATE POLICY workout_plan_exercises_trainer_all ON public.workout_plan_exercise
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS workout_plan_exercises_admin_all ON public.workout_plan_exercises;
 CREATE POLICY workout_plan_exercises_admin_all ON public.workout_plan_exercises
     FOR ALL
     USING (is_admin())
@@ -879,6 +942,7 @@ DROP POLICY IF EXISTS workout_exercise_groups_student_select_own ON public.worko
 DROP POLICY IF EXISTS workout_exercise_groups_trainer_all ON public.workout_exercise_groups;
 
 -- ALUNO: ver grupos do seu plano
+DROP POLICY IF EXISTS workout_exercise_groups_student_select ON public.workout_exercise_groups;
 CREATE POLICY workout_exercise_groups_student_select ON public.workout_exercise_groups
     FOR SELECT
     USING (
@@ -892,6 +956,7 @@ CREATE POLICY workout_exercise_groups_student_select ON public.workout_exercise_
     );
 
 -- TRAINER: gerenciar grupos dos planos dos seus alunos
+DROP POLICY IF EXISTS workout_exercise_groups_trainer_all ON public.workout_exercise_groups;
 CREATE POLICY workout_exercise_groups_trainer_all ON public.workout_exercise_groups
     FOR ALL
     USING (
@@ -914,6 +979,7 @@ CREATE POLICY workout_exercise_groups_trainer_all ON public.workout_exercise_gro
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS workout_exercise_groups_admin_all ON public.workout_exercise_groups;
 CREATE POLICY workout_exercise_groups_admin_all ON public.workout_exercise_groups
     FOR ALL
     USING (is_admin())
@@ -929,6 +995,7 @@ DROP POLICY IF EXISTS workout_logs_student_all_own ON public.workout_logs;
 DROP POLICY IF EXISTS workout_logs_trainer_all ON public.workout_logs;
 
 -- ALUNO: gerenciar próprios logs
+DROP POLICY IF EXISTS workout_logs_student_select ON public.workout_logs;
 CREATE POLICY workout_logs_student_select ON public.workout_logs
     FOR SELECT
     USING (
@@ -939,6 +1006,7 @@ CREATE POLICY workout_logs_student_select ON public.workout_logs
         )
     );
 
+DROP POLICY IF EXISTS workout_logs_student_insert ON public.workout_logs;
 CREATE POLICY workout_logs_student_insert ON public.workout_logs
     FOR INSERT
     WITH CHECK (
@@ -949,6 +1017,7 @@ CREATE POLICY workout_logs_student_insert ON public.workout_logs
         )
     );
 
+DROP POLICY IF EXISTS workout_logs_student_update ON public.workout_logs;
 CREATE POLICY workout_logs_student_update ON public.workout_logs
     FOR UPDATE
     USING (
@@ -967,6 +1036,7 @@ CREATE POLICY workout_logs_student_update ON public.workout_logs
     );
 
 -- TRAINER: ver logs dos seus alunos
+DROP POLICY IF EXISTS workout_logs_trainer_select ON public.workout_logs;
 CREATE POLICY workout_logs_trainer_select ON public.workout_logs
     FOR SELECT
     USING (
@@ -978,6 +1048,7 @@ CREATE POLICY workout_logs_trainer_select ON public.workout_logs
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS workout_logs_admin_all ON public.workout_logs;
 CREATE POLICY workout_logs_admin_all ON public.workout_logs
     FOR ALL
     USING (is_admin())
@@ -1001,6 +1072,7 @@ CREATE POLICY payments_trainer_all ON public.payments
     WITH CHECK (trainer_id = auth.uid());
 
 -- ALUNO: ver próprios pagamentos (quando student_id está preenchido)
+DROP POLICY IF EXISTS payments_student_select ON public.payments;
 CREATE POLICY payments_student_select ON public.payments
     FOR SELECT
     USING (
@@ -1012,6 +1084,7 @@ CREATE POLICY payments_student_select ON public.payments
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS payments_admin_all ON public.payments;
 CREATE POLICY payments_admin_all ON public.payments
     FOR ALL
     USING (is_admin())
@@ -1027,6 +1100,7 @@ DROP POLICY IF EXISTS student_payments_student_select_own ON public.student_paym
 DROP POLICY IF EXISTS student_payments_trainer_all ON public.student_payments;
 
 -- ALUNO: ver próprios pagamentos (student_id é text, precisa de cast)
+DROP POLICY IF EXISTS student_payments_student_select ON public.student_payments;
 CREATE POLICY student_payments_student_select ON public.student_payments
     FOR SELECT
     USING (
@@ -1056,6 +1130,7 @@ CREATE POLICY student_payments_trainer_all ON public.student_payments
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS student_payments_admin_all ON public.student_payments;
 CREATE POLICY student_payments_admin_all ON public.student_payments
     FOR ALL
     USING (is_admin())
@@ -1081,16 +1156,19 @@ DROP POLICY IF EXISTS subscriptions_student_select_own ON public.subscriptions;
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- TRAINER: ver própria assinatura
+DROP POLICY IF EXISTS subscriptions_trainer_select ON public.subscriptions;
 CREATE POLICY subscriptions_trainer_select ON public.subscriptions
     FOR SELECT
     USING (trainer_id = auth.uid());
 
 -- TRAINER: criar própria assinatura (apenas no cadastro, com plan='free')
+DROP POLICY IF EXISTS subscriptions_trainer_insert ON public.subscriptions;
 CREATE POLICY subscriptions_trainer_insert ON public.subscriptions
     FOR INSERT
     WITH CHECK (trainer_id = auth.uid());
 
 -- ALUNO: ver assinatura do seu trainer
+DROP POLICY IF EXISTS subscriptions_student_select ON public.subscriptions;
 CREATE POLICY subscriptions_student_select ON public.subscriptions
     FOR SELECT
     USING (
@@ -1102,6 +1180,7 @@ CREATE POLICY subscriptions_student_select ON public.subscriptions
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS subscriptions_admin_all ON public.subscriptions;
 CREATE POLICY subscriptions_admin_all ON public.subscriptions
     FOR ALL
     USING (is_admin())
@@ -1117,11 +1196,13 @@ DROP POLICY IF EXISTS subscription_events_user_select_own ON public.subscription
 DROP POLICY IF EXISTS subscription_events_trainer_all ON public.subscription_events;
 
 -- PRÓPRIO USUÁRIO: ver eventos da sua assinatura
+DROP POLICY IF EXISTS subscription_events_self_select ON public.subscription_events;
 CREATE POLICY subscription_events_self_select ON public.subscription_events
     FOR SELECT
     USING (user_id = auth.uid());
 
 -- TRAINER: ver eventos de assinatura dos seus alunos
+DROP POLICY IF EXISTS subscription_events_trainer_select ON public.subscription_events;
 CREATE POLICY subscription_events_trainer_select ON public.subscription_events
     FOR SELECT
     USING (
@@ -1133,6 +1214,7 @@ CREATE POLICY subscription_events_trainer_select ON public.subscription_events
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS subscription_events_admin_all ON public.subscription_events;
 CREATE POLICY subscription_events_admin_all ON public.subscription_events
     FOR ALL
     USING (is_admin())
@@ -1149,6 +1231,7 @@ DROP POLICY IF EXISTS nutrition_plans_trainer_access ON public.nutrition_plans;
 DROP POLICY IF EXISTS nutrition_plans_trainer_all ON public.nutrition_plans;
 
 -- ALUNO: ver próprios planos nutricionais
+DROP POLICY IF EXISTS nutrition_plans_student_select ON public.nutrition_plans;
 CREATE POLICY nutrition_plans_student_select ON public.nutrition_plans
     FOR SELECT
     USING (
@@ -1178,6 +1261,7 @@ CREATE POLICY nutrition_plans_trainer_all ON public.nutrition_plans
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS nutrition_plans_admin_all ON public.nutrition_plans;
 CREATE POLICY nutrition_plans_admin_all ON public.nutrition_plans
     FOR ALL
     USING (is_admin())
@@ -1212,6 +1296,7 @@ CREATE POLICY appointments_trainer_all ON public.appointments
     );
 
 -- ALUNO: ver próprios agendamentos
+DROP POLICY IF EXISTS appointments_student_select ON public.appointments;
 CREATE POLICY appointments_student_select ON public.appointments
     FOR SELECT
     USING (
@@ -1223,6 +1308,7 @@ CREATE POLICY appointments_student_select ON public.appointments
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS appointments_admin_all ON public.appointments;
 CREATE POLICY appointments_admin_all ON public.appointments
     FOR ALL
     USING (is_admin())
@@ -1245,6 +1331,7 @@ DROP POLICY IF EXISTS support_tickets_delete_admin ON public.support_tickets;
 DROP POLICY IF EXISTS support_tickets_trainer_all ON public.support_tickets;
 
 -- PRÓPRIO USUÁRIO: ver e gerenciar próprios tickets
+DROP POLICY IF EXISTS support_tickets_self_select ON public.support_tickets;
 CREATE POLICY support_tickets_self_select ON public.support_tickets
     FOR SELECT
     USING (
@@ -1252,6 +1339,7 @@ CREATE POLICY support_tickets_self_select ON public.support_tickets
         OR requester_email = auth.jwt() ->> 'email'
     );
 
+DROP POLICY IF EXISTS support_tickets_self_insert ON public.support_tickets;
 CREATE POLICY support_tickets_self_insert ON public.support_tickets
     FOR INSERT
     WITH CHECK (
@@ -1259,6 +1347,7 @@ CREATE POLICY support_tickets_self_insert ON public.support_tickets
         AND (requester_id = auth.uid()::text OR requester_email = auth.jwt() ->> 'email')
     );
 
+DROP POLICY IF EXISTS support_tickets_self_update ON public.support_tickets;
 CREATE POLICY support_tickets_self_update ON public.support_tickets
     FOR UPDATE
     USING (
@@ -1271,6 +1360,7 @@ CREATE POLICY support_tickets_self_update ON public.support_tickets
     );
 
 -- TRAINER: ver e responder tickets dos seus alunos
+DROP POLICY IF EXISTS support_tickets_trainer_all ON public.support_tickets;
 CREATE POLICY support_tickets_trainer_all ON public.support_tickets
     FOR ALL
     USING (
@@ -1289,6 +1379,7 @@ CREATE POLICY support_tickets_trainer_all ON public.support_tickets
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS support_tickets_admin_all ON public.support_tickets;
 CREATE POLICY support_tickets_admin_all ON public.support_tickets
     FOR ALL
     USING (is_admin())
@@ -1311,6 +1402,7 @@ DROP POLICY IF EXISTS support_messages_delete_admin ON public.support_messages;
 DROP POLICY IF EXISTS support_messages_trainer_all ON public.support_messages;
 
 -- PRÓPRIO USUÁRIO: ver, enviar e atualizar mensagens dos seus tickets
+DROP POLICY IF EXISTS support_messages_self_select ON public.support_messages;
 CREATE POLICY support_messages_self_select ON public.support_messages
     FOR SELECT
     USING (
@@ -1321,6 +1413,7 @@ CREATE POLICY support_messages_self_select ON public.support_messages
         )
     );
 
+DROP POLICY IF EXISTS support_messages_self_insert ON public.support_messages;
 CREATE POLICY support_messages_self_insert ON public.support_messages
     FOR INSERT
     WITH CHECK (
@@ -1332,6 +1425,7 @@ CREATE POLICY support_messages_self_insert ON public.support_messages
         )
     );
 
+DROP POLICY IF EXISTS support_messages_self_update ON public.support_messages;
 CREATE POLICY support_messages_self_update ON public.support_messages
     FOR UPDATE
     USING (
@@ -1344,6 +1438,7 @@ CREATE POLICY support_messages_self_update ON public.support_messages
     );
 
 -- TRAINER: ver e responder mensagens dos tickets dos seus alunos
+DROP POLICY IF EXISTS support_messages_trainer_all ON public.support_messages;
 CREATE POLICY support_messages_trainer_all ON public.support_messages
     FOR ALL
     USING (
@@ -1364,6 +1459,7 @@ CREATE POLICY support_messages_trainer_all ON public.support_messages
     );
 
 -- ADMIN: irrestrito
+DROP POLICY IF EXISTS support_messages_admin_all ON public.support_messages;
 CREATE POLICY support_messages_admin_all ON public.support_messages
     FOR ALL
     USING (is_admin())
