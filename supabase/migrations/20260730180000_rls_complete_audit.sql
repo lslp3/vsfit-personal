@@ -869,7 +869,7 @@ BEGIN
         USING (
             EXISTS (
                 SELECT 1 FROM public.students s
-                WHERE s.id::text = app_presence.user_id
+                WHERE s.id = app_presence.user_id
                   AND s.trainer_id = auth.uid()
             )
         );
@@ -1196,7 +1196,7 @@ BEGIN
             EXISTS (
                 SELECT 1 FROM public.students s
                 WHERE s.id = workout_logs.student_id
-                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid()::uuid)
+                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid())
             )
         );
     
@@ -1207,7 +1207,7 @@ BEGIN
             EXISTS (
                 SELECT 1 FROM public.students s
                 WHERE s.id = workout_logs.student_id
-                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid()::uuid)
+                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid())
             )
         );
     
@@ -1218,14 +1218,14 @@ BEGIN
             EXISTS (
                 SELECT 1 FROM public.students s
                 WHERE s.id = workout_logs.student_id
-                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid()::uuid)
+                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid())
             )
         )
         WITH CHECK (
             EXISTS (
                 SELECT 1 FROM public.students s
                 WHERE s.id = workout_logs.student_id
-                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid()::uuid)
+                  AND (s.auth_user_id = auth.uid() OR s.id = auth.uid())
             )
         );
     
