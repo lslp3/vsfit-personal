@@ -356,7 +356,7 @@ export const router =
     },
 
     {
-      path: '/public/signup',
+      path: '/signup/:slug',
       element: <SignupPublicPage />,
     },
 
