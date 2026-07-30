@@ -82,7 +82,7 @@ export function SignupLinksPage() {
 
     try {
       const [linksData, leadsData] = await Promise.all([
-        signupService.getSignupLinks(trainerProfile.id),
+        signupService.getSignupLinks(user!.id),
         signupService.getLeadsByTrainer(trainerProfile.id),
       ]);
 
@@ -177,7 +177,7 @@ export function SignupLinksPage() {
 
     try {
       await signupService.createSignupLink(
-        user!.email!,
+        user!.id,
         user!.id,
         {
           title: newLinkData.title,

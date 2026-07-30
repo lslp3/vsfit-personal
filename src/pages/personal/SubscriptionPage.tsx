@@ -94,7 +94,7 @@ function getPlanTone(slug: string, isCurrent: boolean) {
 
 export function SubscriptionPage() {
   const navigate = useNavigate();
-  const { trainerProfile } = useAuthStore();
+  const { trainerProfile, user } = useAuthStore();
 
   const [plans, setPlans] = useState<SubscriptionPlanWithLimits[]>([]);
   const [currentPlanSlug, setCurrentPlanSlug] = useState<PlanSlug>('free');
@@ -136,7 +136,7 @@ export function SubscriptionPage() {
         supabase
           .from('coach_signup_links')
           .select('id', { count: 'exact', head: true })
-          .eq('coach_auth_user_id', trainerProfile.id),
+          .eq('coach_auth_user_id', user!.id),
       ]);
 
       setStudentCount(studentsTotal || 0);
