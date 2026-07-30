@@ -144,34 +144,16 @@ export async function getTrainerBySignupLink(slug: string) {
   if (!link) return null;
 
 
-  let trainer = null;
-
-
-  for (const table of [
-    'trainer_profiles',
-    'profiles',
-    'user_profiles',
-  ]) {
-    try {
-      const { data } = await supabase
-        .from(table)
-        .select('*')
-        .eq('id', link.coach_auth_user_id)
-        .maybeSingle();
-
-      if (data) {
-        trainer = data;
-        break;
-      }
-    } catch {
-      // tenta próxima tabela
-    }
-  }
+  const { data: trainer } = await supabase
+    .from('trainer_profiles')
+    .select('*')
+    .eq('id', link.coach_auth_user_id)
+    .maybeSingle();
 
 
   return {
     link,
-    trainer,
+    trainer: trainer || null,
   };
 }
 
