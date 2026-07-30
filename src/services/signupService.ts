@@ -48,9 +48,9 @@ function toNullableDate(value?: string | null) {
 export async function getSignupLinks(trainerId: string): Promise<SignupLink[]> {
   try {
     const { data, error } = await supabase
-      .from('signup_links')
+      .from('coach_signup_links')
       .select('*')
-      .eq('trainer_id', trainerId)
+      .eq('coach_auth_user_id', trainerId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -107,7 +107,7 @@ export async function createSignupLink(
 
 export async function deleteSignupLink(id: string) {
   const { error } = await supabase
-    .from('signup_links')
+    .from('coach_signup_links')
     .delete()
     .eq('id', id);
 
@@ -120,7 +120,7 @@ export async function toggleLinkStatus(
   isActive: boolean
 ) {
   const { data, error } = await supabase
-    .from('signup_links')
+    .from('coach_signup_links')
     .update({ is_active: isActive })
     .eq('id', id)
     .select('*')
@@ -134,7 +134,7 @@ export async function toggleLinkStatus(
 
 export async function getTrainerBySignupLink(slug: string) {
   const { data: link, error: linkError } = await supabase
-    .from('signup_links')
+    .from('coach_signup_links')
     .select('*')
     .eq('slug', slug)
     .eq('is_active', true)
@@ -142,14 +142,6 @@ export async function getTrainerBySignupLink(slug: string) {
 
   if (linkError) throw linkError;
   if (!link) return null;
-
-
-  await supabase
-    .from('signup_links')
-    .update({
-      visits_count: Number(link.visits_count || 0) + 1,
-    })
-    .eq('id', link.id);
 
 
   let trainer = null;
@@ -164,7 +156,7 @@ export async function getTrainerBySignupLink(slug: string) {
       const { data } = await supabase
         .from(table)
         .select('*')
-        .eq('id', link.trainer_id)
+        .eq('id', link.coach_auth_user_id)
         .maybeSingle();
 
       if (data) {

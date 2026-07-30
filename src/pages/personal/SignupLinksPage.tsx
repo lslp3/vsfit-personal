@@ -57,6 +57,8 @@ export function SignupLinksPage() {
   const [convertingLead, setConvertingLead] = useState(false);
   const [convertError, setConvertError] = useState('');
 
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const [createdCredentials, setCreatedCredentials] = useState<{
     student: any;
     credentials: { email: string; password: string };
@@ -171,6 +173,7 @@ export function SignupLinksPage() {
     }
 
     setCreating(true);
+    setCreateError(null);
 
     try {
       await signupService.createSignupLink(
@@ -188,8 +191,14 @@ export function SignupLinksPage() {
       setNewNewLinkData({ title: '', plan_name: '', message: '', slug: '' });
 
       await loadData();
-    } catch (err) {
-      console.error('Error creating link:', err);
+    } catch (err: any) {
+      const supaMessage =
+        err?.message ||
+        err?.error_description ||
+        err?.details ||
+        'Erro desconhecido ao criar link.';
+      console.error('[createSignupLink] Supabase error:', err);
+      setCreateError(supaMessage);
     } finally {
       setCreating(false);
     }
@@ -293,7 +302,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 
   const summary = {
     active: links.filter((link) => link.is_active).length,
-    visits: links.reduce((acc, link) => acc + (link.visits_count || 0), 0),
+    visits: 0,
     leads: leads.length,
     converted: leads.filter((lead) => lead.status === 'converted').length,
   };
@@ -399,7 +408,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 
                           <div className="min-w-0">
                             <h4 className="truncate text-[16px] font-black uppercase italic tracking-tight text-white">
-                              {link.title || 'Campanha sem nome'}
+                              {link.slug || 'Campanha sem nome'}
                             </h4>
                             <p className="truncate text-[12px] font-medium text-zinc-500">
                               /signup/{link.slug}
@@ -416,7 +425,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                         <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                           Visitas
                         </p>
-                        <p className="text-[14px] font-black text-white">{link.visits_count || 0}</p>
+                        <p className="text-[14px] font-black text-white">0</p>
                       </div>
 
                       <div className="border-x border-white/5 text-center">
@@ -457,7 +466,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                         type="button"
                         onClick={() => {
                           setSelectedLinkLeads(linkLeads);
-                          setActiveLinkTitle(link.title || '');
+                          setActiveLinkTitle(link.slug || '');
                           setIsLeadsModalOpen(true);
                         }}
                         className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white text-[12px] font-black text-black shadow-lg transition-all active:scale-95"
@@ -613,6 +622,14 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                   {creating ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : 'CRIAR LINK'}
                 </button>
               </div>
+
+              {createError && (
+                <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+                  <p className="text-center text-[12px] font-bold leading-relaxed text-red-400">
+                    {createError}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

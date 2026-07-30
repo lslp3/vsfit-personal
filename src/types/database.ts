@@ -293,14 +293,12 @@ export interface SubscriptionPlan {
 
 export interface SignupLink {
   id: string;
-  trainer_id: string;
-  title: string | null;
+  coach_id: string;
+  coach_auth_user_id: string;
   slug: string;
-  message: string | null;
   is_active: boolean;
-  plan_name: string | null;
-  visits_count: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface SignupLead {

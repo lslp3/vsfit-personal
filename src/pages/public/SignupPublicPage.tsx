@@ -85,8 +85,8 @@ export function SignupPublicPage() {
     try {
       await signupService.submitSignupLead({
         signup_link_id: signupData.link.id,
-        trainer_id: signupData.link.trainer_id,
-        trainer_auth_user_id: signupData.link.trainer_auth_user_id || null,
+        trainer_id: signupData.link.coach_auth_user_id,
+        trainer_auth_user_id: signupData.link.coach_auth_user_id,
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim() || null,

@@ -134,9 +134,9 @@ export function SubscriptionPage() {
           .select('id', { count: 'exact', head: true })
           .eq('trainer_id', trainerProfile.id),
         supabase
-          .from('signup_links')
+          .from('coach_signup_links')
           .select('id', { count: 'exact', head: true })
-          .eq('trainer_id', trainerProfile.id),
+          .eq('coach_auth_user_id', trainerProfile.id),
       ]);
 
       setStudentCount(studentsTotal || 0);
