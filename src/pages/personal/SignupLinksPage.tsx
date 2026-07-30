@@ -32,7 +32,7 @@ import { formatDate, formatPhone } from '../../lib/formatters';
 import { cn } from '../../lib/utils';
 
 export function SignupLinksPage() {
-  const { trainerProfile } = useAuthStore();
+  const { user, trainerProfile } = useAuthStore();
   const navigate = useNavigate();
 
   const [links, setLinks] = useState<SignupLink[]>([]);
@@ -173,12 +173,16 @@ export function SignupLinksPage() {
     setCreating(true);
 
     try {
-      await signupService.createSignupLink(trainerProfile.id, {
-        title: newLinkData.title,
-        plan_name: newLinkData.plan_name || undefined,
-        message: newLinkData.message || undefined,
-        slug: newLinkData.slug || undefined,
-      });
+      await signupService.createSignupLink(
+        user!.email!,
+        user!.id,
+        {
+          title: newLinkData.title,
+          plan_name: newLinkData.plan_name || undefined,
+          message: newLinkData.message || undefined,
+          slug: newLinkData.slug || undefined,
+        }
+      );
 
       setIsCreateModalOpen(false);
       setNewNewLinkData({ title: '', plan_name: '', message: '', slug: '' });

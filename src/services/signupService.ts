@@ -82,18 +82,17 @@ export async function getLeadsByTrainer(trainerId: string): Promise<SignupLead[]
 
 
 export async function createSignupLink(
-  trainerId: string,
+  coachId: string,
+  coachAuthUserId: string,
   payload: CreateSignupLinkData
 ) {
   const slug = normalizeSlug(payload.slug || '') || randomSlug(payload.title);
 
   const { data, error } = await supabase
-    .from('signup_links')
+    .from('coach_signup_links')
     .insert({
-      trainer_id: trainerId,
-      title: payload.title,
-      plan_name: payload.plan_name || null,
-      message: payload.message || null,
+      coach_id: coachId,
+      coach_auth_user_id: coachAuthUserId,
       slug,
       is_active: true,
     })
