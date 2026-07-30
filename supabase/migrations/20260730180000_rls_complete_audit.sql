@@ -636,12 +636,12 @@ CREATE POLICY trainer_payment_settings_admin_all ON public.trainer_payment_setti
 -- ==============================================================================
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 
--- QUALQUER AUTENTICADO: pode ver planos disponíveis
-CREATE POLICY subscription_plans_auth_select ON public.subscription_plans
+-- PÚBLICO (ANON) E AUTENTICADO: pode ver planos disponíveis (página de preços)
+CREATE POLICY subscription_plans_public_select ON public.subscription_plans
     FOR SELECT
     USING (true);
 
--- ADMIN: gerenciar planos
+-- ADMIN: gerenciar planos (apenas admin pode criar/editar/deletar planos)
 CREATE POLICY subscription_plans_admin_all ON public.subscription_plans
     FOR ALL
     USING (is_admin())
@@ -1072,20 +1072,22 @@ DROP POLICY IF EXISTS subscriptions_trainer_insert_own ON public.subscriptions;
 DROP POLICY IF EXISTS subscriptions_trainer_update_own ON public.subscriptions;
 DROP POLICY IF EXISTS subscriptions_student_select_own ON public.subscriptions;
 
+-- ══════════════════════════════════════════════════════════════════════════════
+-- REGRA DE OURO: NUNCA permitir que trainer altere plan_slug, status,
+-- student_limit pelo frontend. Somente INSERT no cadastro inicial e
+-- SELECT para leitura. Atualizações são feitas exclusivamente por:
+--   - Edge functions (service_role bypassa RLS)
+--   - Admin (is_admin())
+-- ══════════════════════════════════════════════════════════════════════════════
+
 -- TRAINER: ver própria assinatura
 CREATE POLICY subscriptions_trainer_select ON public.subscriptions
     FOR SELECT
     USING (trainer_id = auth.uid());
 
--- TRAINER: criar própria assinatura
+-- TRAINER: criar própria assinatura (apenas no cadastro, com plan='free')
 CREATE POLICY subscriptions_trainer_insert ON public.subscriptions
     FOR INSERT
-    WITH CHECK (trainer_id = auth.uid());
-
--- TRAINER: atualizar própria assinatura
-CREATE POLICY subscriptions_trainer_update ON public.subscriptions
-    FOR UPDATE
-    USING (trainer_id = auth.uid())
     WITH CHECK (trainer_id = auth.uid());
 
 -- ALUNO: ver assinatura do seu trainer
@@ -1369,14 +1371,41 @@ CREATE POLICY support_messages_admin_all ON public.support_messages
 
 
 -- ==============================================================================
--- 31. TABELAS ADICIONAIS (existem no schema público mas sem referência no app)
+-- 31. TABELA: platform_subscription_payments (pagamentos da plataforma via gateway)
+-- ==============================================================================
+ALTER TABLE IF EXISTS public.platform_subscription_payments ENABLE ROW LEVEL SECURITY;
+
+-- Apenas ADMIN pode ver e gerenciar pagamentos da plataforma.
+-- Estes registros são criados por edge functions (service_role bypassa RLS).
+DROP POLICY IF EXISTS platform_subscription_payments_admin_all ON public.platform_subscription_payments;
+CREATE POLICY platform_subscription_payments_admin_all ON public.platform_subscription_payments
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+
+
+-- ==============================================================================
+-- 32. TABELA: subscription_checkout_attempts (tentativas de checkout)
+-- ==============================================================================
+ALTER TABLE IF EXISTS public.subscription_checkout_attempts ENABLE ROW LEVEL SECURITY;
+
+-- Apenas ADMIN pode visualizar. Registros criados por edge functions.
+DROP POLICY IF EXISTS subscription_checkout_attempts_admin_all ON public.subscription_checkout_attempts;
+CREATE POLICY subscription_checkout_attempts_admin_all ON public.subscription_checkout_attempts
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+
+
+-- ==============================================================================
+-- 33. TABELAS ADICIONAIS (existem no schema público mas sem referência no app)
 -- ==============================================================================
 -- As tabelas abaixo são mencionadas na auditoria. O app não as consulta
 -- diretamente (sem referências em .ts/.tsx), mas podem existir no schema.
 -- Aplicamos RLS como segurança preventiva.
 -- ==============================================================================
 
--- 31a. student_progress
+-- 33a. student_progress
 ALTER TABLE IF EXISTS public.student_progress ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS student_progress_self_select ON public.student_progress;
 DROP POLICY IF EXISTS student_progress_trainer_all ON public.student_progress;
@@ -1394,7 +1423,7 @@ CREATE POLICY student_progress_trainer_all ON public.student_progress
 CREATE POLICY student_progress_admin_all ON public.student_progress
     FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
--- 31b. historical_metrics
+-- 33b. historical_metrics
 ALTER TABLE IF EXISTS public.historical_metrics ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS historical_metrics_self_select ON public.historical_metrics;
 DROP POLICY IF EXISTS historical_metrics_trainer_all ON public.historical_metrics;
@@ -1412,7 +1441,7 @@ CREATE POLICY historical_metrics_trainer_all ON public.historical_metrics
 CREATE POLICY historical_metrics_admin_all ON public.historical_metrics
     FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
--- 31c. body_measurements
+-- 33c. body_measurements
 ALTER TABLE IF EXISTS public.body_measurements ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS body_measurements_self_select ON public.body_measurements;
 DROP POLICY IF EXISTS body_measurements_trainer_all ON public.body_measurements;
@@ -1430,7 +1459,7 @@ CREATE POLICY body_measurements_trainer_all ON public.body_measurements
 CREATE POLICY body_measurements_admin_all ON public.body_measurements
     FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
--- 31d. student_progress_photos
+-- 33d. student_progress_photos
 ALTER TABLE IF EXISTS public.student_progress_photos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS student_progress_photos_self_select ON public.student_progress_photos;
 DROP POLICY IF EXISTS student_progress_photos_trainer_all ON public.student_progress_photos;
@@ -1448,7 +1477,7 @@ CREATE POLICY student_progress_photos_trainer_all ON public.student_progress_pho
 CREATE POLICY student_progress_photos_admin_all ON public.student_progress_photos
     FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
--- 31e. student_achievements
+-- 33e. student_achievements
 ALTER TABLE IF EXISTS public.student_achievements ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS student_achievements_self_select ON public.student_achievements;
 DROP POLICY IF EXISTS student_achievements_trainer_all ON public.student_achievements;
@@ -1466,7 +1495,7 @@ CREATE POLICY student_achievements_trainer_all ON public.student_achievements
 CREATE POLICY student_achievements_admin_all ON public.student_achievements
     FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
--- 31f. student_milestones
+-- 33f. student_milestones
 ALTER TABLE IF EXISTS public.student_milestones ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS student_milestones_self_select ON public.student_milestones;
 DROP POLICY IF EXISTS student_milestones_trainer_all ON public.student_milestones;
@@ -1486,7 +1515,7 @@ CREATE POLICY student_milestones_admin_all ON public.student_milestones
 
 
 -- ==============================================================================
--- 32. TABELAS DEPRECATED (mantidas mas sem impacto no fluxo atual)
+-- 34. TABELAS DEPRECATED (mantidas mas sem impacto no fluxo atual)
 -- ==============================================================================
 -- signup_links (old — substituída por coach_signup_links)
 -- signup_link_visits (old — substituída pelo fluxo coach_signup_links)
