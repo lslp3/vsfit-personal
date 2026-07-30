@@ -416,11 +416,43 @@ export function StudentChatPage() {
 
       setAuthUserId(authUser.id);
 
-      const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
-      let studentData = accountResult?.student || null;
+      // ── Fluxo principal: students → trainer_profiles (query única) ──────────
+      // auth.uid() → students.auth_user_id → students.trainer_id → trainer_profiles.id
+      const { data: studentWithTrainer, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          *,
+          trainer:trainer_profiles (
+            id,
+            name,
+            email,
+            avatar_url
+          )
+        `)
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle();
 
-      if (!studentData) {
-        studentData = await studentService.getStudentByAuthUser(authUser.id);
+      if (studentError && studentError.code !== 'PGRST116') {
+        console.error('[StudentChatPage] student query error:', studentError);
+      }
+
+      // Extrai dados do aluno
+      let studentData: any = null;
+      let trainerData: any = null;
+
+      if (studentWithTrainer?.id) {
+        studentData = studentWithTrainer;
+        trainerData = studentWithTrainer.trainer || null;
+      }
+
+      // ── Fallback: tenta via student_accounts se não achou pelo student ──────
+      if (!studentData?.id) {
+        const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
+        studentData = accountResult?.student || null;
+
+        if (!studentData?.id) {
+          studentData = await studentService.getStudentByAuthUser(authUser.id);
+        }
       }
 
       if (!studentData?.id) {
@@ -430,46 +462,42 @@ export function StudentChatPage() {
 
       setStudent(studentData);
 
-      let trainerId = studentData?.trainer_id || null;
+      // ── Se o FK join não resolveu (trainer veio null), busca separadamente ──
+      if (!trainerData) {
+        const trainerId = studentData?.trainer_id || null;
 
-      if (!trainerId) {
-        const { data: fallbackStudent } = await supabase
-          .from('students')
-          .select('trainer_id')
-          .eq('id', studentData.id)
-          .maybeSingle();
+        if (trainerId) {
+          trainerData = await getTrainerProfile(trainerId);
+        } else {
+          // Fallback 2: workout_plans (trainer_id veio vazio)
+          const { data: plans } = await supabase
+            .from('workout_plans')
+            .select('trainer_id')
+            .eq('student_id', studentData.id)
+            .limit(1);
 
-        trainerId = fallbackStudent?.trainer_id || null;
-      }
-
-      if (!trainerId) {
-        const { data: plans } = await supabase
-          .from('workout_plans')
-          .select('trainer_id')
-          .eq('student_id', studentData.id)
-          .limit(1);
-
-        if (plans && plans.length > 0) {
-          trainerId = plans[0].trainer_id;
+          if (plans && plans.length > 0) {
+            trainerData = await getTrainerProfile(plans[0].trainer_id);
+          }
         }
       }
 
-      if (!trainerId) {
+      if (!trainerData) {
         setTrainer(null);
         setMessages([]);
         setError('Personal não encontrado para este aluno.');
         return;
       }
 
-      const [trainerData, msgs] = await Promise.all([
-        getTrainerProfile(trainerId),
-        getMessages(trainerId, studentData.id),
+      // ── Carrega mensagens ──────────────────────────────────────────────────
+      const [msgs] = await Promise.all([
+        getMessages(trainerData.id, studentData.id),
       ]);
 
       setTrainer(trainerData);
       setMessages(Array.isArray(msgs) ? msgs : []);
 
-      await markTrainerMessagesAsRead(trainerId, studentData.id);
+      await markTrainerMessagesAsRead(trainerData.id, studentData.id);
     } catch (loadError: any) {
       console.error('[StudentChatPage] loadData error:', loadError);
       setError(loadError?.message || 'Erro ao carregar chat.');
