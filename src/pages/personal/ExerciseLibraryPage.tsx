@@ -105,6 +105,8 @@ export function ExerciseLibraryPage() {
   const [search, setSearch] = useState('');
   const [activeMuscle, setActiveMuscle] = useState<string | null>(null);
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
+  const [hasMoreExercises, setHasMoreExercises] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [formName, setFormName] = useState('');
@@ -124,15 +126,41 @@ export function ExerciseLibraryPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await exerciseService.getExercises();
-   
-      setExercises(data || []);
+      const page = await exerciseService.getExercises();
+
+      setExercises(page.exercises);
+      setHasMoreExercises(page.hasMore);
     } catch (err) {
       console.error('[ExerciseLibraryPage] load error:', err);
       setError('Erro ao carregar exercícios.');
       setExercises([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadMoreExercises() {
+    if (loadingMore) return;
+
+    setLoadingMore(true);
+
+    try {
+      const page = await exerciseService.getExercises({
+        limit: 1000,
+        offset: exercises.length,
+      });
+
+      setExercises((prev) => {
+        const knownIds = new Set(prev.map((ex) => ex.id));
+
+        return [...prev, ...page.exercises.filter((ex) => !knownIds.has(ex.id))];
+      });
+
+      setHasMoreExercises(page.hasMore);
+    } catch (err) {
+      console.error('[ExerciseLibraryPage] loadMore error:', err);
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -300,6 +328,22 @@ export function ExerciseLibraryPage() {
                 onSelect={handleSelectExercise}
               />
             ))}
+
+            {hasMoreExercises && (
+              <button
+                type="button"
+                onClick={loadMoreExercises}
+                disabled={loadingMore}
+                className="col-span-2 mt-1 flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-bold text-zinc-400 transition-all active:scale-95"
+              >
+                {loadingMore ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Carregar mais exercícios
+              </button>
+            )}
           </div>
         )}
       </div>

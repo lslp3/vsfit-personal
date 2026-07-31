@@ -284,16 +284,25 @@ export function ProgressPage() {
       const [logsData, metricsData, photosData] = await Promise.all([
         workoutService
           .getWorkoutLogsByTrainer(trainerProfile.id)
-          .catch(() => []),
+          .catch((e) => {
+            console.error('[ProgressPage] logs error:', e);
+            return [];
+          }),
 
         progressService
           .getStudentMetricsByTrainer(trainerProfile.id)
-          .catch(() => []),
+          .catch((e) => {
+            console.error('[ProgressPage] metrics error:', e);
+            return [];
+          }),
 
         premiumAccess
           ? progressService
               .getProgressPhotosByTrainer(trainerProfile.id)
-              .catch(() => [])
+              .catch((e) => {
+                console.error('[ProgressPage] photos error:', e);
+                return [];
+              })
           : Promise.resolve([]),
       ]);
 

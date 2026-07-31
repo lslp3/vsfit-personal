@@ -164,8 +164,18 @@ export function ReportsPage() {
       }
 
       const [logsData, paymentsData, leadsData] = await Promise.all([
-        workoutService.getWorkoutLogsByTrainer(trainerProfile.id).catch(() => []),
-        paymentService.getPaymentsByTrainer(trainerProfile.id).catch(() => []),
+        workoutService
+          .getWorkoutLogsByTrainer(trainerProfile.id)
+          .catch((e) => {
+            console.error('[ReportsPage] logs error:', e);
+            return [];
+          }),
+        paymentService
+          .getPaymentsByTrainer(trainerProfile.id)
+          .catch((e) => {
+            console.error('[ReportsPage] payments error:', e);
+            return [];
+          }),
         loadLeads(trainerProfile.id),
       ]);
 

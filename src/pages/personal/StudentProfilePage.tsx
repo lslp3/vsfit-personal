@@ -544,7 +544,7 @@ export function StudentProfilePage() {
         );
 
         setMessages(
-          messagesResult || []
+          messagesResult?.messages || []
         );
 
         setMetrics(
@@ -832,7 +832,7 @@ export function StudentProfilePage() {
           student.id
         );
 
-      setMessages(updated);
+      setMessages(updated.messages);
     } catch (
       messageError: unknown
     ) {

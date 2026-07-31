@@ -4,11 +4,13 @@ import type { Exercise } from '../types/database';
 const BUCKET = 'exercicios';
 
 let exercisesCache: Exercise[] | null = null;
+let exercisesCacheHasMore = false;
 let exercisesCacheTimestamp = 0;
 const EXERCISES_CACHE_TTL = 5 * 60 * 1000;
 
 export function invalidateExercisesCache() {
   exercisesCache = null;
+  exercisesCacheHasMore = false;
   exercisesCacheTimestamp = 0;
 }
 
@@ -159,7 +161,7 @@ async function fetchAllExerciseStorageFiles(): Promise<Array<{ name: string }>> 
 
     if (error) {
       console.error('[EXERCISES RPC PAGE] error:', error);
-      break;
+      throw error;
     }
 
     const page = (data as { name: string }[]) || [];
@@ -235,7 +237,7 @@ export async function scanStorageExercises(): Promise<ScannedExercise[]> {
     return exercises;
   } catch (error) {
     console.error('[EXERCISES SCAN] exception:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -314,45 +316,92 @@ export async function resyncAllStorageExercises(trainerId?: string): Promise<{
   return syncStorageExercises(trainerId);
 }
 
-export async function getExercises(): Promise<Exercise[]> {
+export interface ExercisesPage {
+  exercises: Exercise[];
+  hasMore: boolean;
+}
+
+const DEFAULT_EXERCISES_PAGE_LIMIT = 1000;
+
+export async function getExercises(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ExercisesPage> {
+  const limit = options?.limit ?? DEFAULT_EXERCISES_PAGE_LIMIT;
+  const offset = options?.offset ?? 0;
+
   const now = Date.now();
-  if (exercisesCache && now - exercisesCacheTimestamp < EXERCISES_CACHE_TTL) {
-    return exercisesCache;
+  if (
+    !options &&
+    exercisesCache &&
+    now - exercisesCacheTimestamp < EXERCISES_CACHE_TTL
+  ) {
+    return { exercises: exercisesCache, hasMore: exercisesCacheHasMore };
   }
 
   try {
-    const { data, error } = await supabase
-      .from('exercises')
-      .select('*')
-      .order('muscle_group', { ascending: true })
-      .order('name', { ascending: true });
+    const [listResult, countResult] = await Promise.all([
+      supabase
+        .from('exercises')
+        .select('*')
+        .order('muscle_group', { ascending: true })
+        .order('name', { ascending: true })
+        .range(offset, offset + limit - 1),
+      supabase.from('exercises').select('id', { count: 'exact', head: true }),
+    ]);
+
+    const { data, error } = listResult;
+    const { count, error: countError } = countResult;
+
     if (error) {
       console.error('[ExerciseService] getExercises error:', error);
       const scanned = await scanStorageExercises();
-      return scanned.map(scannedToExercise);
+      return { exercises: scanned.map(scannedToExercise), hasMore: false };
     }
-    if (data && data.length > 0) {
-      exercisesCache = data;
+
+    if (countError) {
+      console.error('[ExerciseService] getExercises count error:', countError);
+      const scanned = await scanStorageExercises();
+      return { exercises: scanned.map(scannedToExercise), hasMore: false };
+    }
+
+    const exercises = (data || []) as Exercise[];
+    const hasMore = (count ?? 0) > offset + exercises.length;
+
+    if (offset === 0 && exercises.length > 0) {
+      exercisesCache = exercises;
+      exercisesCacheHasMore = hasMore;
       exercisesCacheTimestamp = now;
-      return data;
     }
+
+    if (exercises.length > 0) {
+      return { exercises, hasMore };
+    }
+
     const scanned = await scanStorageExercises();
-    return scanned.map(scannedToExercise);
+    return { exercises: scanned.map(scannedToExercise), hasMore: false };
   } catch (error) {
     console.error('[ExerciseService] getExercises exception:', error);
     const scanned = await scanStorageExercises();
-    return scanned.map(scannedToExercise);
+    return { exercises: scanned.map(scannedToExercise), hasMore: false };
   }
 }
 
-export async function getExercisesByTrainer(trainerId: string): Promise<Exercise[]> {
+export async function getExercisesByTrainer(
+  trainerId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<Exercise[]> {
+  const limit = options?.limit ?? DEFAULT_EXERCISES_PAGE_LIMIT;
+  const offset = options?.offset ?? 0;
+
   try {
     const { data, error } = await supabase
       .from('exercises')
       .select('*')
       .or(`trainer_id.eq.${trainerId},is_public.eq.true`)
       .order('muscle_group', { ascending: true })
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(offset, offset + limit - 1);
     if (error) {
       console.error('[ExerciseService] getExercisesByTrainer error:', error);
       const scanned = await scanStorageExercises();
@@ -368,13 +417,20 @@ export async function getExercisesByTrainer(trainerId: string): Promise<Exercise
   }
 }
 
-export async function getPublicExercises(): Promise<Exercise[]> {
+export async function getPublicExercises(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<Exercise[]> {
+  const limit = options?.limit ?? DEFAULT_EXERCISES_PAGE_LIMIT;
+  const offset = options?.offset ?? 0;
+
   try {
     const { data, error } = await supabase
       .from('exercises')
       .select('*')
       .eq('is_public', true)
-      .order('name');
+      .order('name')
+      .range(offset, offset + limit - 1);
     if (error) {
       console.error('[ExerciseService] getPublicExercises error:', error);
       const scanned = await scanStorageExercises();

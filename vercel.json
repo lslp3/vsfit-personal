@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/(.*\\.apk)",
-      "destination": "/$1"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

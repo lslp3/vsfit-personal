@@ -6,6 +6,8 @@ import {
   ArrowLeft,
   Check,
   CheckCheck,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 import { Header } from '../../components/ui/Header';
@@ -107,6 +109,12 @@ export function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [hasMoreConversations, setHasMoreConversations] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
+  const [conversationOffset, setConversationOffset] = useState(0);
+
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState('');
   const [selectedStudentAvatar, setSelectedStudentAvatar] = useState<string | null>(null);
@@ -198,8 +206,10 @@ export function ChatPage() {
       messageService.getConversations(trainerId),
       loadStudentUnreadCounts(trainerId),
     ])
-      .then(([conversationData]) => {
-        setConversations(conversationData);
+      .then(([conversationPage]) => {
+        setConversations(conversationPage.conversations);
+        setHasMoreConversations(conversationPage.hasMore);
+        setConversationOffset(0);
       })
       .catch((error) => {
         console.error('[ChatPage] getConversations error:', error);
@@ -363,7 +373,11 @@ export function ChatPage() {
 
           messageService
             .getConversations(trainerId)
-            .then(setConversations)
+            .then((page) => {
+              setConversations(page.conversations);
+              setHasMoreConversations(page.hasMore);
+              setConversationOffset(0);
+            })
             .catch(() => {});
 
           loadStudentUnreadCounts(trainerId);
@@ -412,9 +426,13 @@ export function ChatPage() {
     setSelectedStudentAvatar(avatarUrl || null);
 
     try {
-      const data = await messageService.getMessages(trainerId, studentId);
+      const { messages: data, hasMore } = await messageService.getMessages(
+        trainerId,
+        studentId
+      );
 
       setMessages(data);
+      setHasMoreMessages(hasMore);
 
       await messageService.markMessagesAsRead(trainerId, studentId);
 
@@ -440,13 +458,18 @@ export function ChatPage() {
     setSelectedStudentName('');
     setSelectedStudentAvatar(null);
     setMessages([]);
+    setHasMoreMessages(false);
 
     if (trainerProfile?.id) {
       const trainerId = trainerProfile.id;
 
       messageService
         .getConversations(trainerId)
-        .then(setConversations)
+        .then((page) => {
+          setConversations(page.conversations);
+          setHasMoreConversations(page.hasMore);
+          setConversationOffset(0);
+        })
         .catch(() => {});
 
       loadStudentUnreadCounts(trainerId);
@@ -480,7 +503,11 @@ export function ChatPage() {
 
       messageService
         .getConversations(trainerId)
-        .then(setConversations)
+        .then((page) => {
+          setConversations(page.conversations);
+          setHasMoreConversations(page.hasMore);
+          setConversationOffset(0);
+        })
         .catch(() => {});
 
       loadStudentUnreadCounts(trainerId);
@@ -488,6 +515,70 @@ export function ChatPage() {
       console.error('[ChatPage] sendMessage error:', error);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!trainerProfile?.id || !selectedStudentId || messages.length === 0) return;
+
+    if (loadingOlder) return;
+
+    setLoadingOlder(true);
+
+    const oldest = messages[0];
+
+    try {
+      const { messages: older, hasMore } = await messageService.getMessages(
+        trainerProfile.id,
+        selectedStudentId,
+        { before: oldest.created_at }
+      );
+
+      setMessages((prev) => {
+        const knownIds = new Set(prev.map((item) => item.id));
+
+        return [...older.filter((item) => !knownIds.has(item.id)), ...prev];
+      });
+
+      setHasMoreMessages(hasMore);
+    } catch (error) {
+      console.error('[ChatPage] loadOlderMessages error:', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  async function loadMoreConversations() {
+    if (!trainerProfile?.id || loadingMoreConversations) return;
+
+    setLoadingMoreConversations(true);
+
+    try {
+      const page = await messageService.getConversations(trainerProfile.id, {
+        limit: 500,
+        offset: conversationOffset + 500,
+      });
+
+      setConversations((prev) => {
+        const merged = new Map(prev.map((conversation) => [conversation.studentId, conversation]));
+
+        for (const conversation of page.conversations) {
+          if (!merged.has(conversation.studentId)) {
+            merged.set(conversation.studentId, conversation);
+          }
+        }
+
+        return [...merged.values()].sort(
+          (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+        );
+      });
+
+      setHasMoreConversations(page.hasMore);
+      setConversationOffset((offset) => offset + 500);
+    } catch (error) {
+      console.error('[ChatPage] loadMoreConversations error:', error);
+    } finally {
+      setLoadingMoreConversations(false);
     }
   }
 
@@ -567,6 +658,22 @@ export function ChatPage() {
             }}
           >
             <div className="space-y-3">
+              {hasMoreMessages && (
+                <button
+                  type="button"
+                  onClick={loadOlderMessages}
+                  disabled={loadingOlder}
+                  className="mx-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[11px] font-bold text-zinc-400 transition-all active:scale-95"
+                >
+                  {loadingOlder ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  )}
+                  Carregar mensagens anteriores
+                </button>
+              )}
+
               {messages.length === 0 ? (
                 <div className="flex h-[60dvh] items-center justify-center">
                   <p className="text-sm text-zinc-500">Nenhuma mensagem ainda</p>
@@ -749,6 +856,22 @@ export function ChatPage() {
               </Card>
             );
           })
+        )}
+
+        {hasMoreConversations && (
+          <button
+            type="button"
+            onClick={loadMoreConversations}
+            disabled={loadingMoreConversations}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-bold text-zinc-400 transition-all active:scale-95"
+          >
+            {loadingMoreConversations ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            Carregar mais conversas
+          </button>
         )}
       </div>
     </div>

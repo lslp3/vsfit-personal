@@ -126,9 +126,10 @@ function createLocalId() {
     return crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+
+  return `${Date.now()}-${values[0].toString(16)}`;
 }
 
 function normalizeExercise(exercise: Exercise) {
@@ -385,9 +386,9 @@ export function WorkoutBuilderPage() {
     setLoadingExercises(true);
 
     exerciseService
-      .getExercises()
+      .getExercises({ limit: 2000 })
       .then((result) => {
-        setExercises(result || []);
+        setExercises(result.exercises || []);
       })
       .catch((loadError) => {
         console.error(

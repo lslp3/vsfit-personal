@@ -229,13 +229,13 @@ export async function getPaymentsByTrainer(trainerId: string): Promise<Payment[]
 
     if (error) {
       console.error('[PaymentService] getPaymentsByTrainer error:', error);
-      return [];
+      throw error;
     }
 
     return data || [];
   } catch (error) {
     console.error('[PaymentService] getPaymentsByTrainer exception:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -249,13 +249,13 @@ export async function getPaymentsByStudent(studentId: string): Promise<Payment[]
 
     if (error) {
       console.error('[PaymentService] getPaymentsByStudent error:', error);
-      return [];
+      throw error;
     }
 
     return data || [];
   } catch (error) {
     console.error('[PaymentService] getPaymentsByStudent exception:', error);
-    return [];
+    throw error;
   }
 }
 

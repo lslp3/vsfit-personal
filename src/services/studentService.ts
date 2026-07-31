@@ -158,13 +158,13 @@ export async function getStudentsByTrainer(trainerId: string): Promise<Student[]
 
     if (error) {
       console.error('[StudentService] getStudentsByTrainer error:', error);
-      return [];
+      throw error;
     }
 
     return (data || []).map(mapStudentFromDb);
   } catch (error) {
     console.error('[StudentService] getStudentsByTrainer exception:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -201,8 +201,6 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
   const muscleMass = toNullableNumber(input.muscleMass ?? input.musclemass);
   const waterIntake = toNullableNumber(input.waterIntake ?? input.waterintake);
   const targetWeight = toNullableNumber(input.targetWeight);
-  let temporaryPassword = '';
-
   const { data: student, error } = await supabase
     .from('students')
     .insert({
@@ -269,8 +267,6 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
       if (!data?.success) {
         throw new Error(data?.error || 'Erro ao criar acesso do aluno via Edge Function');
       }
-
-      temporaryPassword = data.credentials.password;
     } catch (e) {
       console.error('[StudentService] create-student-access error:', e);
       throw e;
@@ -281,7 +277,7 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
 
   return {
     ...student,
-    temporary_password: temporaryPassword || null,
+    temporary_password: null,
   };
 }
 

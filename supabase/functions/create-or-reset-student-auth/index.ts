@@ -328,12 +328,6 @@ serve(async (request) => {
         body.email
       );
 
-    console.log('[EMAIL DEBUG]', {
-  email,
-  length: email.length,
-  chars: [...email].map(c => c.charCodeAt(0)),
-});
-
     const name =
       String(
         student.name ||
@@ -475,7 +469,6 @@ serve(async (request) => {
       if (updateUserError) {
   console.error('[UPDATE USER ERROR]', {
     userId: authUser.id,
-    email,
     error: updateUserError,
   });
 
@@ -512,8 +505,6 @@ serve(async (request) => {
 
      if (createUserError) {
   console.error('[CREATE USER ERROR]', {
-    email,
-    passwordLength: password.length,
     error: createUserError,
   });
 
@@ -604,7 +595,7 @@ serve(async (request) => {
             email,
 
             temporary_password:
-              password,
+              null,
 
             must_change_password:
               true,

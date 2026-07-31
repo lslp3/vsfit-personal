@@ -193,12 +193,6 @@ serve(async (req) => {
   );
 }
 
-      throw new Error(
-        preapprovalData?.message ||
-          "Erro ao criar pré-aprovação no Mercado Pago."
-      );
-    }
-
     const checkoutUrl =
       preapprovalData?.init_point;
 

@@ -10,14 +10,15 @@ function generateTemporaryPassword(): string {
   const chars =
     'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
+  const values = new Uint32Array(8);
+  crypto.getRandomValues(values);
+
   let password = '';
 
   for (let index = 0; index < 8; index += 1) {
     password +=
       chars[
-        Math.floor(
-          Math.random() * chars.length
-        )
+        values[index] % chars.length
       ];
   }
 

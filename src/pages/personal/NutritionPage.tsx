@@ -110,7 +110,10 @@ function createLocalId() {
     return crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const values = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(values);
+
+  return `${Date.now()}-${values[0].toString(16)}`;
 }
 
 function toNumberOrNull(value: string) {

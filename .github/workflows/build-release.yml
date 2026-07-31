@@ -1,4 +1,4 @@
-name: Build APK Release
+name: Build APK + AAB Release
 
 on:
   workflow_dispatch:
@@ -10,23 +10,22 @@ on:
       version_code:
         description: 'Version code (integer)'
         required: true
-        default: '1'
-      create_release:
-        description: 'Create GitHub Release?'
-        required: true
-        type: boolean
-        default: false
+        default: '2'
 
-env:
-  RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-  RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-  RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-  RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build APK Release
+    name: Build APK + AAB Release
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      ANDROID_KEYSTORE_PATH: release.keystore
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -50,6 +49,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+
+      - name: Validate env vars
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "ERROR: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set as GitHub Secrets"
+            exit 1
+          fi
+          if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD must be set as GitHub Secrets"
+            exit 1
+          fi
+          test -s android/app/release.keystore || { echo "ERROR: release.keystore was not decoded"; exit 1; }
+
       - name: Update version
         working-directory: android/app
         run: |
@@ -62,52 +77,39 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync
 
-      - name: Build APK Release (unsigned)
+      - name: Build APK Release (signed)
         working-directory: android
         run: ./gradlew assembleRelease
 
-      - name: Sign APK Release
-        if: env.RELEASE_KEYSTORE_BASE64 != ''
-        uses: ilharp/sign-android-release@v1
-        with:
-          releaseDir: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.RELEASE_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      - name: Build AAB Release (signed)
+        working-directory: android
+        run: ./gradlew bundleRelease
 
-      - name: Rename APK
-        working-directory: android/app/build/outputs/apk/release
+      - name: Rename artifacts
+        working-directory: android/app/build/outputs
         run: |
-          if [ -f "app-release-signed.apk" ]; then
-            mv app-release-signed.apk vsfit-personal-v${{ inputs.version_name }}.apk
-          elif [ -f "app-release-unsigned.apk" ]; then
-            mv app-release-unsigned.apk vsfit-personal-v${{ inputs.version_name }}-unsigned.apk
-          fi
+          cp apk/release/*.apk vsfit-personal-v${{ inputs.version_name }}.apk
+          cp bundle/release/*.aab vsfit-personal-v${{ inputs.version_name }}.aab
+          ls -la .
+
+      - name: Verify signing
+        working-directory: android
+        run: |
+          $ANDROID_HOME/build-tools/*/apksigner verify --print-certs app/build/outputs/apk/release/*.apk
+          echo "AAB is signed by Gradle (jarsigner) if key matches"
 
       - name: Upload APK Release
         uses: actions/upload-artifact@v4
         with:
-          name: vsfit-personal-v${{ inputs.version_name }}
-          path: android/app/build/outputs/apk/release/*.apk
+          name: vsfit-personal-v${{ inputs.version_name }}-apk
+          path: android/app/build/outputs/vsfit-personal-v${{ inputs.version_name }}.apk
           if-no-files-found: error
           retention-days: 90
 
-      - name: Create GitHub Release
-        if: inputs.create_release && env.RELEASE_KEYSTORE_BASE64 != ''
-        uses: softprops/action-gh-release@v2
+      - name: Upload AAB Release
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ inputs.version_name }}
-          name: VSFit Personal v${{ inputs.version_name }}
-          body: |
-            ## VSFit Personal v${{ inputs.version_name }}
-
-            APK assinado gerado automaticamente via GitHub Actions.
-
-            ### Como instalar
-            1. Baixe o APK anexado
-            2. Abra no seu dispositivo Android
-            3. Confirme a instalação de fontes desconhecidas
-          files: android/app/build/outputs/apk/release/*.apk
-          draft: false
-          prerelease: false
+          name: vsfit-personal-v${{ inputs.version_name }}-aab
+          path: android/app/build/outputs/vsfit-personal-v${{ inputs.version_name }}.aab
+          if-no-files-found: error
+          retention-days: 90

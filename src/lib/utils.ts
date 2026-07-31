@@ -4,18 +4,22 @@ export function cn(...classes: (string | boolean | number | undefined | null)[])
 
 export function generateSlug(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const values = new Uint32Array(8);
+  crypto.getRandomValues(values);
   let slug = '';
   for (let i = 0; i < 8; i++) {
-    slug += chars.charAt(Math.floor(Math.random() * chars.length));
+    slug += chars.charAt(values[i] % chars.length);
   }
   return slug;
 }
 
 export function generatePassword(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$';
+  const values = new Uint32Array(10);
+  crypto.getRandomValues(values);
   let password = '';
   for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(values[i] % chars.length);
   }
   return password;
 }

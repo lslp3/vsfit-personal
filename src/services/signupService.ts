@@ -34,7 +34,9 @@ function normalizeSlug(value: string) {
 
 function randomSlug(title: string) {
   const base = normalizeSlug(title) || 'captacao';
-  const suffix = Math.random().toString(36).slice(2, 8);
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  const suffix = values[0].toString(36).padStart(6, '0').slice(0, 6);
 
   return `${base}-${suffix}`;
 }
@@ -58,7 +60,7 @@ export async function getSignupLinks(trainerId: string): Promise<SignupLink[]> {
     return (data || []) as SignupLink[];
   } catch (error) {
     console.error('[signupService] getSignupLinks error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -76,7 +78,7 @@ export async function getLeadsByTrainer(trainerId: string): Promise<SignupLead[]
     return (data || []) as SignupLead[];
   } catch (error) {
     console.error('[signupService] getLeadsByTrainer error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -282,7 +284,7 @@ export async function convertLeadToStudent(
           student_id: student.id,
           auth_user_id: authUserId,
           email: emailNormalized,
-          temporary_password: temporaryPassword,
+          temporary_password: null,
           must_change_password: true,
           is_active: true,
           updated_at: new Date().toISOString(),

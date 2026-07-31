@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ComponentType } from 'react';
 import {
   createBrowserRouter,
   Navigate,
@@ -5,22 +6,182 @@ import {
 } from 'react-router-dom';
 
 import { RoleGuard } from '../components/auth/RoleGuard';
-import { AdminShell } from '../components/layout/AdminShell';
-import { MobileShell } from '../components/layout/MobileShell';
-import { PersonalShell } from '../components/layout/PersonalShell';
-import { StudentShell } from '../components/layout/StudentShell';
-
-import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
-import { LoginPage } from '../pages/auth/LoginPage';
-import { RegisterPage } from '../pages/auth/RegisterPage';
-import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
-import { StudentLoginPage } from '../pages/auth/StudentLoginPage';
-
-import LandingPage from '../pages/LandingPage';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useAuthStore } from '../store/authStore';
 
-import { SignupPublicPage } from '../pages/public/SignupPublicPage';
+function lazyPage<T extends ComponentType<any>>(
+  loader: () => Promise<{ default: T }>
+) {
+  const LazyComponent = lazy(loader);
+
+  return function LazyPage(props: React.ComponentProps<T>) {
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <LazyComponent {...props} />
+      </Suspense>
+    );
+  };
+}
+
+const AdminShell = lazyPage(() =>
+  import('../components/layout/AdminShell').then((m) => ({ default: m.AdminShell }))
+);
+
+const MobileShell = lazyPage(() =>
+  import('../components/layout/MobileShell').then((m) => ({ default: m.MobileShell }))
+);
+
+const PersonalShell = lazyPage(() =>
+  import('../components/layout/PersonalShell').then((m) => ({ default: m.PersonalShell }))
+);
+
+const StudentShell = lazyPage(() =>
+  import('../components/layout/StudentShell').then((m) => ({ default: m.StudentShell }))
+);
+
+const LandingPage = lazyPage(() =>
+  import('../pages/LandingPage').then((m) => ({ default: m.default }))
+);
+
+const ForgotPasswordPage = lazyPage(() =>
+  import('../pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage }))
+);
+
+const LoginPage = lazyPage(() =>
+  import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
+);
+
+const RegisterPage = lazyPage(() =>
+  import('../pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage }))
+);
+
+const ResetPasswordPage = lazyPage(() =>
+  import('../pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage }))
+);
+
+const StudentLoginPage = lazyPage(() =>
+  import('../pages/auth/StudentLoginPage').then((m) => ({ default: m.StudentLoginPage }))
+);
+
+const SignupPublicPage = lazyPage(() =>
+  import('../pages/public/SignupPublicPage').then((m) => ({ default: m.SignupPublicPage }))
+);
+
+const ChatPage = lazyPage(() =>
+  import('../pages/personal/ChatPage').then((m) => ({ default: m.ChatPage }))
+);
+
+const DashboardPage = lazyPage(() =>
+  import('../pages/personal/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+
+const ExerciseLibraryPage = lazyPage(() =>
+  import('../pages/personal/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
+);
+
+const FinancialPage = lazyPage(() =>
+  import('../pages/personal/FinancialPage').then((m) => ({ default: m.FinancialPage }))
+);
+
+const NotificationsPage = lazyPage(() =>
+  import('../pages/personal/NotificationsPage').then((m) => ({ default: m.NotificationsPage }))
+);
+
+const NutritionPage = lazyPage(() =>
+  import('../pages/personal/NutritionPage').then((m) => ({ default: m.NutritionPage }))
+);
+
+const ProgressPage = lazyPage(() =>
+  import('../pages/personal/ProgressPage').then((m) => ({ default: m.ProgressPage }))
+);
+
+const ReportsPage = lazyPage(() =>
+  import('../pages/personal/ReportsPage').then((m) => ({ default: m.ReportsPage }))
+);
+
+const SignupLinksPage = lazyPage(() =>
+  import('../pages/personal/SignupLinksPage').then((m) => ({ default: m.SignupLinksPage }))
+);
+
+const StudentProfilePage = lazyPage(() =>
+  import('../pages/personal/StudentProfilePage').then((m) => ({ default: m.StudentProfilePage }))
+);
+
+const StudentsPage = lazyPage(() =>
+  import('../pages/personal/StudentsPage').then((m) => ({ default: m.StudentsPage }))
+);
+
+const SubscriptionPage = lazyPage(() =>
+  import('../pages/personal/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage }))
+);
+
+const TrainerProfilePage = lazyPage(() =>
+  import('../pages/personal/TrainerProfilePage').then((m) => ({ default: m.TrainerProfilePage }))
+);
+
+const WorkoutBuilderPage = lazyPage(() =>
+  import('../pages/personal/WorkoutBuilderPage').then((m) => ({ default: m.WorkoutBuilderPage }))
+);
+
+const StudentChatPage = lazyPage(() =>
+  import('../pages/student/StudentChatPage').then((m) => ({ default: m.StudentChatPage }))
+);
+
+const StudentHomePage = lazyPage(() =>
+  import('../pages/student/StudentHomePage').then((m) => ({ default: m.StudentHomePage }))
+);
+
+const StudentNutritionPage = lazyPage(() =>
+  import('../pages/student/NutritionPage').then((m) => ({ default: m.NutritionPage }))
+);
+
+const StudentProfile = lazyPage(() =>
+  import('../pages/student/StudentProfilePage').then((m) => ({ default: m.StudentProfilePage }))
+);
+
+const StudentProgressPage = lazyPage(() =>
+  import('../pages/student/StudentProgressPage').then((m) => ({ default: m.StudentProgressPage }))
+);
+
+const StudentWorkoutsPage = lazyPage(() =>
+  import('../pages/student/StudentWorkoutsPage').then((m) => ({ default: m.StudentWorkoutsPage }))
+);
+
+const WorkoutCompletedPage = lazyPage(() =>
+  import('../pages/student/WorkoutCompletedPage').then((m) => ({ default: m.WorkoutCompletedPage }))
+);
+
+const WorkoutDetailPage = lazyPage(() =>
+  import('../pages/student/WorkoutDetailPage').then((m) => ({ default: m.WorkoutDetailPage }))
+);
+
+const WorkoutExecutionPage = lazyPage(() =>
+  import('../pages/student/WorkoutExecutionPage').then((m) => ({ default: m.WorkoutExecutionPage }))
+);
+
+const AdminDashboardPage = lazyPage(() =>
+  import('../pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+);
+
+const AdminFinancialPage = lazyPage(() =>
+  import('../pages/admin/AdminFinancialPage').then((m) => ({ default: m.AdminFinancialPage }))
+);
+
+const AdminReportsPage = lazyPage(() =>
+  import('../pages/admin/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage }))
+);
+
+const AdminSubscriptionsPage = lazyPage(() =>
+  import('../pages/admin/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage }))
+);
+
+const TrainerApprovalPage = lazyPage(() =>
+  import('../pages/admin/TrainerApprovalPage').then((m) => ({ default: m.TrainerApprovalPage }))
+);
+
+const TrainersPage = lazyPage(() =>
+  import('../pages/admin/TrainersPage').then((m) => ({ default: m.TrainersPage }))
+);
 
 function getHomeByRole(role?: string | null) {
   if (role === 'admin') {
@@ -84,42 +245,6 @@ function AuthAwareLandingPage() {
 
   return <LandingPage />;
 }
-
-import { ChatPage } from '../pages/personal/ChatPage';
-import { DashboardPage } from '../pages/personal/DashboardPage';
-import { ExerciseLibraryPage } from '../pages/personal/ExerciseLibraryPage';
-import { FinancialPage } from '../pages/personal/FinancialPage';
-import { NotificationsPage } from '../pages/personal/NotificationsPage';
-import { NutritionPage } from '../pages/personal/NutritionPage';
-import { ProgressPage } from '../pages/personal/ProgressPage';
-import { ReportsPage } from '../pages/personal/ReportsPage';
-import { SignupLinksPage } from '../pages/personal/SignupLinksPage';
-import { StudentProfilePage } from '../pages/personal/StudentProfilePage';
-import { StudentsPage } from '../pages/personal/StudentsPage';
-import { SubscriptionPage } from '../pages/personal/SubscriptionPage';
-import { TrainerProfilePage } from '../pages/personal/TrainerProfilePage';
-import { WorkoutBuilderPage } from '../pages/personal/WorkoutBuilderPage';
-
-import { StudentChatPage } from '../pages/student/StudentChatPage';
-import { StudentHomePage } from '../pages/student/StudentHomePage';
-import {
-  NutritionPage as StudentNutritionPage,
-} from '../pages/student/NutritionPage';
-import {
-  StudentProfilePage as StudentProfile,
-} from '../pages/student/StudentProfilePage';
-import { StudentProgressPage } from '../pages/student/StudentProgressPage';
-import { StudentWorkoutsPage } from '../pages/student/StudentWorkoutsPage';
-import { WorkoutCompletedPage } from '../pages/student/WorkoutCompletedPage';
-import { WorkoutDetailPage } from '../pages/student/WorkoutDetailPage';
-import { WorkoutExecutionPage } from '../pages/student/WorkoutExecutionPage';
-
-import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
-import { AdminFinancialPage } from '../pages/admin/AdminFinancialPage';
-import { AdminReportsPage } from '../pages/admin/AdminReportsPage';
-import { AdminSubscriptionsPage } from '../pages/admin/AdminSubscriptionsPage';
-import { TrainerApprovalPage } from '../pages/admin/TrainerApprovalPage';
-import { TrainersPage } from '../pages/admin/TrainersPage';
 
 export const router =
   createBrowserRouter([

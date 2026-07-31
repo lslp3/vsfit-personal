@@ -16,3 +16,4 @@ supabase/.temp/
 *.keystore
 .vercel
 .env*
+*.apk

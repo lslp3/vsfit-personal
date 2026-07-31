@@ -270,7 +270,7 @@ export async function getWorkoutPlansByStudent(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as WorkoutPlan[];
@@ -280,7 +280,7 @@ export async function getWorkoutPlansByStudent(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -302,7 +302,7 @@ export async function getWorkoutPlansByTrainer(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as WorkoutPlanWithStudent[];
@@ -312,7 +312,7 @@ export async function getWorkoutPlansByTrainer(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -906,7 +906,7 @@ export async function getWorkoutLogsByStudent(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as WorkoutLog[];
@@ -916,7 +916,7 @@ export async function getWorkoutLogsByStudent(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -938,7 +938,7 @@ export async function getWorkoutLogsByTrainer(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as WorkoutLog[];
@@ -948,6 +948,6 @@ export async function getWorkoutLogsByTrainer(
       error
     );
 
-    return [];
+    throw error;
   }
 }

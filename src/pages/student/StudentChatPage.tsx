@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   CheckCheck,
+  ChevronUp,
   Loader2,
   MessageSquare,
   Send,
@@ -15,7 +16,6 @@ import { supabase } from '../../lib/supabase';
 import { cn, getInitials } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
 import * as studentService from '../../services/studentService';
-import { getTrainerProfile } from '../../services/trainerService';
 import { getMessages, sendMessage } from '../../services/messageService';
 
 type PresenceUser = {
@@ -141,6 +141,8 @@ export function StudentChatPage() {
   const [trainer, setTrainer] = useState<any | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [newMessage, setNewMessage] = useState('');
 
   const [loading, setLoading] = useState(true);
@@ -416,69 +418,74 @@ export function StudentChatPage() {
 
       setAuthUserId(authUser.id);
 
-      // ── Fluxo principal: students → trainer_profiles (query única) ──────────
-      // auth.uid() → students.auth_user_id → students.trainer_id → trainer_profiles.id
-      const { data: studentWithTrainer, error: studentError } = await supabase
+      // ═══════════════════════════════════════════════════════════════════════
+      // FLUXO EXPLÍCITO — 2 etapas, sem depender de FK join do Supabase
+      // Etapa 1: students pelo auth_user_id
+      // Etapa 2: trainer_profiles pelo trainer_id
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // ── Etapa 1: buscar aluno ────────────────────────────────────────────────
+
+      let { data: studentFromDb } = await supabase
         .from('students')
-        .select(`
-          *,
-          trainer:trainer_profiles (
-            id,
-            name,
-            email,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('auth_user_id', authUser.id)
         .maybeSingle();
 
-      if (studentError && studentError.code !== 'PGRST116') {
-        console.error('[StudentChatPage] student query error:', studentError);
-      }
-
-      // Extrai dados do aluno
-      let studentData: any = null;
-      let trainerData: any = null;
-
-      if (studentWithTrainer?.id) {
-        studentData = studentWithTrainer;
-        trainerData = studentWithTrainer.trainer || null;
-      }
-
-      // ── Fallback: tenta via student_accounts se não achou pelo student ──────
-      if (!studentData?.id) {
+      // ── Fallback via student_accounts ────────────────────────────────────────
+      if (!studentFromDb?.id) {
         const accountResult = await studentService.getStudentAccountByAuthUser(authUser.id);
-        studentData = accountResult?.student || null;
+        studentFromDb = accountResult?.student || null;
 
-        if (!studentData?.id) {
-          studentData = await studentService.getStudentByAuthUser(authUser.id);
+        if (!studentFromDb?.id) {
+          studentFromDb = await studentService.getStudentByAuthUser(authUser.id);
         }
+
       }
 
-      if (!studentData?.id) {
+      if (!studentFromDb?.id) {
         setError('Perfil do aluno não encontrado.');
         return;
       }
 
-      setStudent(studentData);
+      setStudent(studentFromDb);
 
-      // ── Se o FK join não resolveu (trainer veio null), busca separadamente ──
-      if (!trainerData) {
-        const trainerId = studentData?.trainer_id || null;
+      // ── Etapa 2: buscar personal pelo trainer_id ────────────────────────────
+      const trainerId = studentFromDb?.trainer_id || null;
 
-        if (trainerId) {
-          trainerData = await getTrainerProfile(trainerId);
-        } else {
-          // Fallback 2: workout_plans (trainer_id veio vazio)
-          const { data: plans } = await supabase
-            .from('workout_plans')
-            .select('trainer_id')
-            .eq('student_id', studentData.id)
-            .limit(1);
+      let trainerData: any = null;
 
-          if (plans && plans.length > 0) {
-            trainerData = await getTrainerProfile(plans[0].trainer_id);
-          }
+      if (trainerId) {
+        const { data: tp, error: tpErr } = await supabase
+          .from('trainer_profiles')
+          .select('*')
+          .eq('id', trainerId)
+          .maybeSingle();
+
+        if (tpErr) {
+          // Não throw — deixa o catch tratar erro de RLS
+        }
+
+        trainerData = tp || null;
+      } else {
+        // Fallback: tenta workout_plans
+
+        const { data: plans } = await supabase
+          .from('workout_plans')
+          .select('trainer_id')
+          .eq('student_id', studentFromDb.id)
+          .limit(1);
+
+        if (plans && plans.length > 0) {
+          const altTrainerId = plans[0].trainer_id;
+
+          const { data: tp } = await supabase
+            .from('trainer_profiles')
+            .select('*')
+            .eq('id', altTrainerId)
+            .maybeSingle();
+
+          trainerData = tp || null;
         }
       }
 
@@ -490,19 +497,46 @@ export function StudentChatPage() {
       }
 
       // ── Carrega mensagens ──────────────────────────────────────────────────
-      const [msgs] = await Promise.all([
-        getMessages(trainerData.id, studentData.id),
+      const [{ messages: msgs, hasMore }] = await Promise.all([
+        getMessages(trainerData.id, studentFromDb.id),
       ]);
 
       setTrainer(trainerData);
       setMessages(Array.isArray(msgs) ? msgs : []);
+      setHasMoreMessages(Boolean(hasMore));
 
-      await markTrainerMessagesAsRead(trainerData.id, studentData.id);
+      await markTrainerMessagesAsRead(trainerData.id, studentFromDb.id);
     } catch (loadError: any) {
       console.error('[StudentChatPage] loadData error:', loadError);
       setError(loadError?.message || 'Erro ao carregar chat.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!trainer || !studentId || messages.length === 0 || loadingOlder) return;
+
+    setLoadingOlder(true);
+
+    const oldest = messages[0];
+
+    try {
+      const { messages: older, hasMore } = await getMessages(trainer.id, studentId, {
+        before: oldest.created_at,
+      });
+
+      setMessages((prev) => {
+        const knownIds = new Set(prev.map((item) => item.id));
+
+        return [...older.filter((item) => !knownIds.has(item.id)), ...prev];
+      });
+
+      setHasMoreMessages(hasMore);
+    } catch (loadError: any) {
+      console.error('[StudentChatPage] loadOlderMessages error:', loadError);
+    } finally {
+      setLoadingOlder(false);
     }
   }
 
@@ -639,6 +673,22 @@ export function StudentChatPage() {
           }}
         >
           <div className="space-y-3">
+            {hasMoreMessages && (
+              <button
+                type="button"
+                onClick={loadOlderMessages}
+                disabled={loadingOlder}
+                className="mx-auto flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[11px] font-bold text-zinc-400 transition-all active:scale-95"
+              >
+                {loadingOlder ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                )}
+                Carregar mensagens anteriores
+              </button>
+            )}
+
             {messages.length === 0 ? (
               <div className="flex h-[60dvh] flex-col items-center justify-center text-center">
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/5 bg-white/[0.03]">

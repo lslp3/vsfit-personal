@@ -41,10 +41,14 @@ function createUuid() {
     return globalThis.crypto.randomUUID();
   }
 
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let byteIndex = 0;
+
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
     /[xy]/g,
     (character) => {
-      const random = Math.floor(Math.random() * 16);
+      const random = bytes[byteIndex++] % 16;
       const value =
         character === 'x'
           ? random
@@ -90,7 +94,7 @@ export async function getStudentMetricsByTrainer(
         studentsError
       );
 
-      return [];
+      throw studentsError;
     }
 
     const studentIds = (students || [])
@@ -114,7 +118,7 @@ export async function getStudentMetricsByTrainer(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as StudentMetricRecord[];
@@ -124,7 +128,7 @@ export async function getStudentMetricsByTrainer(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -149,7 +153,7 @@ export async function getMetricsByStudent(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []) as StudentMetricRecord[];
@@ -159,7 +163,7 @@ export async function getMetricsByStudent(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -179,7 +183,7 @@ export async function getProgressPhotosByTrainer(
         studentsError
       );
 
-      return [];
+      throw studentsError;
     }
 
     const studentIds = (students || [])
@@ -203,7 +207,7 @@ export async function getProgressPhotosByTrainer(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []).map(normalizeProgressPhoto);
@@ -213,7 +217,7 @@ export async function getProgressPhotosByTrainer(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -238,7 +242,7 @@ export async function getProgressPhotosByStudent(
         error
       );
 
-      return [];
+      throw error;
     }
 
     return (data || []).map(normalizeProgressPhoto);
@@ -248,7 +252,7 @@ export async function getProgressPhotosByStudent(
       error
     );
 
-    return [];
+    throw error;
   }
 }
 
@@ -261,15 +265,15 @@ export async function saveProgressPhoto(
   const date = input.date || getTodayDate();
 
   if (!studentId) {
-    throw new Error('O aluno nÃ£o foi informado.');
+    throw new Error('O aluno não foi informado.');
   }
 
   if (!photoUrl) {
-    throw new Error('A imagem nÃ£o foi informada.');
+    throw new Error('A imagem não foi informada.');
   }
 
   if (!['front', 'side', 'back'].includes(position)) {
-    throw new Error('A posiÃ§Ã£o da foto Ã© invÃ¡lida.');
+    throw new Error('A posição da foto é inválida.');
   }
 
   /*
@@ -326,7 +330,7 @@ export async function deleteProgressPhoto(
   const cleanPhotoId = String(photoId || '').trim();
 
   if (!cleanPhotoId) {
-    throw new Error('A foto nÃ£o foi informada.');
+    throw new Error('A foto não foi informada.');
   }
 
   const { error } = await supabase
@@ -350,7 +354,7 @@ export async function deleteProgressPhotoByPosition(
   date?: string
 ): Promise<void> {
   if (!studentId) {
-    throw new Error('O aluno nÃ£o foi informado.');
+    throw new Error('O aluno não foi informado.');
   }
 
   let query = supabase

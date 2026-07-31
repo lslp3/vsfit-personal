@@ -665,6 +665,7 @@ async function processPreapproval({
     new Date().toISOString();
 
     const {
+      data,
       error,
     } = await supabaseAdmin
       .from("subscriptions")
@@ -714,8 +715,6 @@ async function processPreapproval({
         })
         .eq("trainer_id", trainer.id);
     }
-
-    );
 
   if (error) {
     throw error;

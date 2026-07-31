@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 import { useAuthStore } from '../store/authStore';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { supabase } from '../lib/supabase';
 
 export function App() {
@@ -62,5 +63,9 @@ export function App() {
     return <LoadingScreen />;
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }
