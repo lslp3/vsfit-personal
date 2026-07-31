@@ -45,6 +45,23 @@ function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function extractTemporaryPassword(response: any): string | null {
+  return (
+    response?.credentials?.password ||
+    response?.credentials?.temporary_password ||
+    response?.password ||
+    response?.temporary_password ||
+    response?.temporaryPassword ||
+    response?.studentAccount?.temporary_password ||
+    response?.account?.temporary_password ||
+    response?.student?.student_accounts?.[0]?.temporary_password ||
+    response?.student?.student_accounts?.temporary_password ||
+    response?.data?.credentials?.password ||
+    response?.data?.password ||
+    null
+  );
+}
+
 function getStudentAccountCacheKey(authUserId: string) {
   return `${STUDENT_ACCOUNT_CACHE_PREFIX}${authUserId}`;
 }
@@ -253,6 +270,8 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
     }
   }
 
+  let accessData: any = null;
+
   if (input.createAppAccess) {
     try {
       const { data, error: funcError } = await supabase.functions.invoke('create-student-access', {
@@ -267,6 +286,8 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
       if (!data?.success) {
         throw new Error(data?.error || 'Erro ao criar acesso do aluno via Edge Function');
       }
+
+      accessData = data;
     } catch (e) {
       console.error('[StudentService] create-student-access error:', e);
       throw e;
@@ -275,9 +296,20 @@ export async function createStudent(trainerId: string, data: CreateStudentInput)
 
   clearStudentAccountCache();
 
+  let temporaryPassword = accessData ? extractTemporaryPassword(accessData) : null;
+
+  // Fallback: se a Edge Function não devolveu a senha no corpo da resposta,
+  // tenta ler da conta criada (student_accounts), gravada pelo backend.
+  if (!temporaryPassword && student?.id) {
+    const withAccounts = await getStudentById(student.id);
+    const accounts = withAccounts?.student_accounts;
+    const firstAccount = Array.isArray(accounts) ? accounts?.[0] : accounts;
+    temporaryPassword = firstAccount?.temporary_password || null;
+  }
+
   return {
     ...student,
-    temporary_password: null,
+    temporary_password: temporaryPassword,
   };
 }
 

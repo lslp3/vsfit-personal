@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Users, Phone, KeyRound } from 'lucide-react';
+import { Search, Plus, Users, Phone, KeyRound, Check, Copy, Send } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
 import { Input, Select, Textarea } from '../../components/ui/Input';
@@ -14,6 +14,34 @@ import { cn } from '../../lib/utils';
 import type { Student } from '../../types/database';
 
 type FilterType = 'all' | 'active' | 'paused' | 'inactive';
+
+type CreatedStudentAccess = {
+  name: string;
+  email: string;
+  phone?: string;
+  password?: string;
+};
+
+function normalizeWhatsappPhone(value?: string) {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  return digits;
+}
+
+function buildAccessMessage(access: CreatedStudentAccess) {
+  return `Olá ${access.name}, seu acesso ao VSFit Personal foi criado:
+
+Email: ${access.email}
+Senha temporária: ${access.password || 'Senha não retornada. Solicite redefinição.'}
+
+Acesse o aplicativo e altere sua senha após o primeiro login.`;
+}
 
 const filters: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'Todos' },
@@ -156,6 +184,9 @@ export function StudentsPage() {
 
   const [createForm, setCreateForm] = useState(initialCreateForm);
 
+  const [createdAccess, setCreatedAccess] = useState<CreatedStudentAccess | null>(null);
+  const [copiedAccess, setCopiedAccess] = useState(false);
+
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
       setIsCreateModalOpen(true);
@@ -236,7 +267,7 @@ export function StudentsPage() {
     setError('');
 
     try {
-      await studentService.createStudent(trainerProfile.id, {
+      const result = await studentService.createStudent(trainerProfile.id, {
         name: createForm.name.trim(),
         email: createForm.email.trim().toLowerCase(),
         phone: createForm.phone || undefined,
@@ -258,6 +289,26 @@ export function StudentsPage() {
       });
 
       await loadStudents();
+
+      if (createForm.createAppAccess) {
+        const anyResult = result as any;
+        const password =
+          anyResult?.temporary_password ||
+          anyResult?.password ||
+          anyResult?.credentials?.password ||
+          '';
+
+        setCreatedAccess({
+          name: createForm.name.trim(),
+          email: createForm.email.trim().toLowerCase(),
+          phone: createForm.phone,
+          password,
+        });
+
+        closeCreateModal();
+        return;
+      }
+
       closeCreateModal();
     } catch (err: any) {
       console.error('[StudentsPage] create student error:', err);
@@ -265,6 +316,47 @@ export function StudentsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleCopyAccess() {
+    if (!createdAccess) return;
+
+    const message = buildAccessMessage(createdAccess);
+
+    navigator.clipboard
+      .writeText(message)
+      .then(() => {
+        setCopiedAccess(true);
+
+        window.setTimeout(() => {
+          setCopiedAccess(false);
+        }, 2000);
+      })
+      .catch(() => {
+        alert('Não foi possível copiar o acesso.');
+      });
+  }
+
+  function handleSendAccessWhatsApp() {
+    if (!createdAccess) return;
+
+    const phone = normalizeWhatsappPhone(createdAccess.phone);
+    const message = encodeURIComponent(buildAccessMessage(createdAccess));
+
+    if (!phone) {
+      navigator.clipboard
+        .writeText(buildAccessMessage(createdAccess))
+        .then(() => {
+          alert('Telefone não informado. A mensagem foi copiada para envio manual.');
+        })
+        .catch(() => {
+          alert('Telefone não informado.');
+        });
+
+      return;
+    }
+
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   }
 
   const filtered = students.filter((student) => {
@@ -697,6 +789,107 @@ export function StudentsPage() {
           </div>
         </div>
       </Modal>
+
+      {createdAccess && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/95 px-4 backdrop-blur-2xl">
+          <div className="relative w-full max-w-[380px] overflow-hidden rounded-[36px] border border-white/10 bg-[#080808] shadow-[0_35px_100px_rgba(0,0,0,1)]">
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-emerald-500/20 to-transparent" />
+
+            <div className="relative p-7 pt-10">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-500/15 text-emerald-400">
+                <KeyRound className="h-10 w-10" />
+              </div>
+
+              <h2 className="mt-6 text-center text-[24px] font-black uppercase italic tracking-tight text-white">
+                Acesso Criado!
+              </h2>
+
+              <p className="mt-2 text-center text-[13px] leading-relaxed text-zinc-400">
+                Envie estes dados para o aluno acessar o aplicativo.
+              </p>
+
+              <div className="mt-8 rounded-[22px] border border-white/10 bg-white/[0.045] p-4">
+                <div className="space-y-3">
+                  <div>
+                    <p className="pl-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                      Aluno
+                    </p>
+
+                    <p className="text-[15px] font-black uppercase italic text-white">
+                      {createdAccess.name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="pl-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                      Email
+                    </p>
+
+                    <p className="truncate text-[13px] font-medium text-white">
+                      {createdAccess.email}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/70">
+                      Senha Temporária
+                    </p>
+
+                    <p className="text-2xl font-black tracking-widest text-emerald-400">
+                      {createdAccess.password || '---'}
+                    </p>
+
+                    {!createdAccess.password && (
+                      <p className="mt-2 text-[11px] font-bold text-yellow-300">
+                        A senha não foi retornada pelo serviço. Use redefinir senha no perfil do aluno.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleCopyAccess}
+                  className="h-14 rounded-[20px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white transition-all active:scale-95"
+                >
+                  {copiedAccess ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Check className="h-4 w-4 text-emerald-400" />
+                      COPIADO
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Copy className="h-4 w-4" />
+                      COPIAR
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendAccessWhatsApp}
+                  className="h-14 rounded-[20px] bg-emerald-600 text-[13px] font-black text-white transition-all active:scale-95"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Send className="h-4 w-4" />
+                    WHATSAPP
+                  </span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreatedAccess(null)}
+                className="mt-4 h-12 w-full rounded-[20px] border border-white/5 text-[12px] font-black uppercase tracking-widest text-zinc-500 transition-all active:scale-95"
+              >
+                FECHAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
