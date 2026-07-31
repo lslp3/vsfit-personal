@@ -10,7 +10,9 @@ export type JsonValue =
 export type WorkoutTechniqueType =
   | 'normal'
   | 'drop_set'
-  | 'bi_set';
+  | 'bi_set'
+  | 'rest_pause'
+  | 'pyramid';
 
 export type WorkoutRenewalStatus =
   | 'none'
@@ -22,6 +24,34 @@ export interface DropSetConfig {
   rest_between_drops_seconds?: number;
   notes?: string;
 }
+
+export interface RestPauseConfig {
+  /** Segundos de pausa entre retomadas da mesma série */
+  pause_seconds?: number;
+  /** Número máximo de pausas permitidas por série */
+  max_pauses?: number;
+  notes?: string;
+}
+
+export interface PyramidConfig {
+  /** Número de séries até o topo da pirâmide (carga máxima) */
+  top_sets?: number;
+  /** Percentual de incremento por série até o topo */
+  increment_percent?: number;
+  /** Variação opcional de carga por série, ex.: [10, 5, 0, -10] (kg ou %) */
+  increments?: number[];
+  notes?: string;
+}
+
+/**
+ * Configuração estruturada de técnica avançada.
+ * `technique_config` no banco é JSONB — estes tipos são a forma estruturada;
+ * valores legados/desconhecidos permanecem como JsonValue.
+ */
+export type TechniqueConfig =
+  | DropSetConfig
+  | RestPauseConfig
+  | PyramidConfig;
 
 export interface UserProfile {
   id: string;
@@ -184,7 +214,7 @@ export interface WorkoutPlanExercise {
   group_order: number | null;
 
   technique_type: WorkoutTechniqueType | null;
-  technique_config: DropSetConfig | JsonValue | null;
+  technique_config: TechniqueConfig | JsonValue | null;
 
   name: string;
   sets: string | null;
@@ -228,12 +258,30 @@ export interface WorkoutLog {
   workout_plan?: { name: string } | null;
 }
 
+/**
+ * Série individual registrada no log (formato v2 do JSONB `exercises_data`).
+ * Campos no topo de `ExerciseRecord` (sets_completed/reps_completed/weight_used)
+ * são mantidos como agregados para compatibilidade com consumidores atuais.
+ */
+export interface ExerciseSetRecord {
+  set_number: number;
+  weight_kg: number | null;
+  reps: number | null;
+  completed: boolean;
+  rest_after_seconds?: number | null;
+  technique?: string;
+  drop_level?: number | null;
+}
+
 export interface ExerciseRecord {
+  exercise_id?: string | null;
   exercise_name: string;
   sets_completed: number;
   reps_completed: string;
   weight_used: string;
   day_key?: string;
+  /** v2: séries individuais com carga/reps reais (opcional — logs legados não têm) */
+  sets?: ExerciseSetRecord[];
 }
 
 export interface Payment {

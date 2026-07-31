@@ -1,6 +1,6 @@
 import type {
-  DropSetConfig,
   JsonValue,
+  TechniqueConfig,
   WorkoutExerciseGroup,
   WorkoutPlan,
   WorkoutPlanExercise,
@@ -80,7 +80,7 @@ export interface CreateExerciseInWorkout {
   exercise_group_local_id?: string | null;
 
   technique_type?: WorkoutTechniqueType;
-  technique_config?: DropSetConfig | JsonValue;
+  technique_config?: TechniqueConfig | JsonValue;
 
   group_order?: number | null;
   execution_order?: number | null;
@@ -103,22 +103,61 @@ export interface CreateExerciseInWorkout {
   tips?: string | null;
 }
 
+/**
+ * Série individual durante a execução (estado em memória do hook/UI).
+ * `weightKg` e `reps` são o que o aluno REALMENTE executou — preenchidos a
+ * partir de suggested_weight/reps do plano na inicialização.
+ */
+export interface ExerciseSetDraft {
+  setNumber: number;
+  weightKg: number | null;
+  reps: number | null;
+  completed: boolean;
+  /** Preenchido ao salvar: segundos de descanso usados após esta série */
+  restAfterSeconds?: number | null;
+}
+
+/**
+ * Exercício durante a execução: os dados do plano + o estado real de cada série.
+ */
+export interface ExecutionExercise {
+  exercise: WorkoutPlanExercise;
+  sets: ExerciseSetDraft[];
+}
+
 export interface WorkoutExecutionState {
+  loading: boolean;
+  saving: boolean;
+  error: string;
+  student: unknown | null;
+  plan: WorkoutPlan | null;
   currentExerciseIndex: number;
   currentSet: number;
   totalExercises: number;
   totalSets: number;
   isResting: boolean;
   restTimeLeft: number;
+  restDuration?: number;
+  restMode?: 'set' | 'exercise';
+  restTitle?: string;
+  isCompleted?: boolean;
+  elapsedSeconds?: number;
   startedAt: string;
   completedExercises: CompletedExercise[];
 }
 
 export interface CompletedExercise {
+  exerciseId: string;
   exerciseName: string;
   setsCompleted: number;
   repsCompleted: string;
   weightUsed: string;
+  /** v2: séries reais executadas (opcional — populado a partir da Etapa 7) */
+  sets?: ExerciseSetDraft[];
+  /** Info do exercício para exibição no resumo (musculatura/equipamento/dificuldade) */
+  muscleGroup?: string | null;
+  equipment?: string | null;
+  difficulty?: string | null;
 }
 
 export function getEffectiveExerciseOrder(
