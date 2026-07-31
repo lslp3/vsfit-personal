@@ -1,6 +1,8 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { Home, Dumbbell, BarChart3, MessageSquare, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useAuthStore } from '../../store/authStore';
+import { ChangePasswordModal } from '../student/ChangePasswordModal';
 
 const navItems = [
   { to: '/student/home', icon: Home, label: 'Início' },
@@ -11,6 +13,24 @@ const navItems = [
 ];
 
 export function StudentShell() {
+  const { student, studentAccount, setStudentData } = useAuthStore();
+
+  // Primeiro login: o aluno criado pelo personal entra com senha temporária e
+  // must_change_password=true. Enquanto isso, bloqueia todo o app do aluno
+  // com o modal de troca de senha (não dispensável).
+  const mustChangePassword = Boolean(studentAccount?.must_change_password);
+
+  function handlePasswordChanged() {
+    if (!student?.id || !studentAccount) return;
+
+    // Libera o app: atualiza o flag na store e o cache de conta já foi
+    // invalidado pelo modal (clearStudentAccountCache).
+    setStudentData(student, {
+      ...studentAccount,
+      must_change_password: false,
+    });
+  }
+
   return (
     <div className="min-h-screen bg-vs-dark pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-lg mx-auto pb-20">
@@ -35,6 +55,15 @@ export function StudentShell() {
           ))}
         </div>
       </nav>
+
+      {mustChangePassword && (
+        <ChangePasswordModal
+          open
+          mustChange
+          studentId={student?.id}
+          onChanged={handlePasswordChanged}
+        />
+      )}
     </div>
   );
 }
