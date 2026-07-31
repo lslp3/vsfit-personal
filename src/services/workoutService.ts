@@ -128,6 +128,16 @@ async function insertWorkoutDays(
       .select('*')
       .single();
 
+    // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+    if (error) {
+      console.error('[DIAG-PUBLISH] insertWorkoutDays: INSERT workout_days FALHOU', {
+        workoutPlanId,
+        day,
+        error,
+      });
+    }
+    // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
+
     if (error) throw error;
 
     const createdDay = data as WorkoutDay;
@@ -181,6 +191,17 @@ async function insertExerciseGroups({
       })
       .select('*')
       .single();
+
+    // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+    if (error) {
+      console.error('[DIAG-PUBLISH] insertExerciseGroups: INSERT workout_exercise_groups FALHOU', {
+        workoutPlanId,
+        workoutDayId,
+        group,
+        error,
+      });
+    }
+    // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
 
     if (error) throw error;
 
@@ -246,6 +267,17 @@ async function insertWorkoutExercises({
     .from('workout_plan_exercises')
     .insert(payload)
     .select('*');
+
+  // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+  if (error) {
+    console.error('[DIAG-PUBLISH] insertWorkoutExercises: INSERT workout_plan_exercises FALHOU', {
+      workoutPlanId,
+      totalExercises: payload.length,
+      primeiroItem: payload[0],
+      error,
+    });
+  }
+  // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
 
   if (error) throw error;
 
@@ -412,6 +444,16 @@ export async function createWorkoutPlan(
       .insert(buildPlanPayload(trainerId, data))
       .select('*')
       .single();
+
+  // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+  if (planError) {
+    console.error('[DIAG-PUBLISH] createWorkoutPlan: INSERT workout_plans FALHOU', {
+      trainerId,
+      payload: buildPlanPayload(trainerId, data),
+      error: planError,
+    });
+  }
+  // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
 
   if (planError) throw planError;
 
@@ -851,6 +893,15 @@ export async function publishWorkoutPlan(
     .eq('id', id)
     .select('*')
     .single();
+
+  // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+  if (error) {
+    console.error('[DIAG-PUBLISH] publishWorkoutPlan: UPDATE workout_plans FALHOU', {
+      id,
+      error,
+    });
+  }
+  // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
 
   if (error) throw error;
 

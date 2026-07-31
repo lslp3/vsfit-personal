@@ -1464,11 +1464,35 @@ export function WorkoutBuilderPage() {
     } catch (
       publishError: unknown
     ) {
+      // ─── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ───
+      const errObj = publishError as Record<string, unknown>;
+      console.error('[DIAG-PUBLISH] valor lançado:', publishError);
+      console.error('[DIAG-PUBLISH] detalhes:', {
+        tipo: typeof publishError,
+        eInstanceOfError: publishError instanceof Error,
+        name: errObj?.name ?? null,
+        message: errObj?.message ?? String(publishError),
+        code: errObj?.code ?? null,
+        details: errObj?.details ?? null,
+        hint: errObj?.hint ?? null,
+        stack: publishError instanceof Error ? (publishError as Error).stack : null,
+        json: (() => {
+          try {
+            return JSON.stringify(publishError);
+          } catch {
+            return null;
+          }
+        })(),
+      });
       setError(
-        publishError instanceof Error
-          ? publishError.message
-          : 'Erro ao publicar treino.'
+        [
+          `msg: ${errObj?.message ?? String(publishError)}`,
+          `code: ${errObj?.code ?? '-'}`,
+          `details: ${errObj?.details ?? '-'}`,
+          `hint: ${errObj?.hint ?? '-'}`,
+        ].join(' | ')
       );
+      // ─── FIM DO DIAGNÓSTICO TEMPORÁRIO ───
     } finally {
       setPublishing(false);
     }
