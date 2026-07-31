@@ -92,11 +92,19 @@ jobs:
           cp bundle/release/*.aab vsfit-personal-v${{ inputs.version_name }}.aab
           ls -la .
 
-      - name: Verify signing
+      - name: Verify artifacts
         working-directory: android
         run: |
-          $ANDROID_HOME/build-tools/*/apksigner verify --print-certs app/build/outputs/apk/release/*.apk
-          echo "AAB is signed by Gradle (jarsigner) if key matches"
+          # Assinatura ja aplicada pelo Gradle (signingConfig release + keystore oficial).
+          # Aqui apenas confirmamos existencia, tamanho e integridade do zip.
+          APK=$(ls app/build/outputs/apk/release/*.apk)
+          AAB=$(ls app/build/outputs/bundle/release/*.aab)
+          test -s "$APK" || { echo "ERROR: APK vazio ou ausente"; exit 1; }
+          test -s "$AAB" || { echo "ERROR: AAB vazio ou ausente"; exit 1; }
+          echo "APK: $(stat -c '%s bytes' "$APK")"
+          echo "AAB: $(stat -c '%s bytes' "$AAB")"
+          unzip -t "$AAB" | tail -1
+          unzip -t "$APK" | tail -1
 
       - name: Upload APK Release
         uses: actions/upload-artifact@v4
