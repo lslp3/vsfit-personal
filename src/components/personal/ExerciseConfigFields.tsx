@@ -222,15 +222,11 @@ export function ExerciseConfigFields({
                 key={option.value}
                 type="button"
                 onClick={() => {
-                  setField(
-                    'technique',
-                    option.value
-                  );
-
-                  setField(
-                    'technique_config',
-                    {}
-                  );
+                  onChange({
+                    ...value,
+                    technique: option.value,
+                    technique_config: {},
+                  });
                 }}
                 className={cn(
                   'min-h-10 rounded-xl border px-2 text-[10px] font-black',
