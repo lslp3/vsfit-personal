@@ -12,23 +12,21 @@ import {
   Clock3,
   Dumbbell,
   Flame,
-  Layers2,
   Loader2,
   Timer,
   Trophy,
-  Zap,
 } from 'lucide-react';
 
 import { useWorkoutExecution } from '../../hooks/useWorkoutExecution';
-import type {
-  DropSetConfig,
-  WorkoutExerciseGroup,
-} from '../../types/database';
 import {
   getDropSetConfig,
   getStudentName,
   normalizeDayKey,
 } from '../../utils/workoutPlan';
+import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
+import { MetricCard } from '../../components/workout-execution/MetricCard';
+import { SummaryCard } from '../../components/workout-execution/SummaryCard';
+import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
 
 const DAY_NAMES: Record<string, string> = {
   dom: 'Domingo',
@@ -581,150 +579,6 @@ export function WorkoutExecutionPage() {
           </motion.main>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function TechniqueBadge({
-  technique,
-  group,
-  groupOrder,
-}: {
-  technique: string;
-  group: WorkoutExerciseGroup | null;
-  groupOrder: number | null;
-}) {
-  if (
-    technique === 'bi_set' ||
-    group?.group_type === 'bi_set'
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-400/20 bg-purple-400/10 px-2.5 py-0.5 text-[10px] font-black text-purple-300">
-        <Layers2 className="h-3 w-3" />
-
-        BI-SET • EXERCÍCIO{' '}
-        {groupOrder || 1}
-      </span>
-    );
-  }
-
-  if (
-    technique === 'drop_set'
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/20 bg-orange-400/10 px-2.5 py-0.5 text-[10px] font-black text-orange-300">
-        <Zap className="h-3 w-3" />
-
-        DROP-SET
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ff2a32]/20 bg-[#ff2a32]/10 px-2.5 py-0.5 text-[10px] font-black text-[#ff2a32]">
-      <Zap className="h-3 w-3" />
-
-      EXERCÍCIO NORMAL
-    </span>
-  );
-}
-
-function DropSetPanel({
-  config,
-}: {
-  config: DropSetConfig;
-}) {
-  return (
-    <div className="mt-3 rounded-[20px] border border-orange-400/20 bg-orange-400/[0.07] p-3 text-left">
-      <p className="text-[9px] font-black uppercase text-orange-300">
-        Drop-set
-      </p>
-
-      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-zinc-300">
-        {config.drops !==
-          undefined && (
-          <span>
-            {config.drops}{' '}
-            queda
-            {config.drops ===
-            1
-              ? ''
-              : 's'}
-          </span>
-        )}
-
-        {config.reduction_percent !==
-          undefined && (
-          <span>
-            • Redução de{' '}
-            {
-              config.reduction_percent
-            }
-            %
-          </span>
-        )}
-
-        {config.rest_between_drops_seconds !==
-          undefined && (
-          <span>
-            •{' '}
-            {
-              config.rest_between_drops_seconds
-            }
-            s entre quedas
-          </span>
-        )}
-      </div>
-
-      {config.notes && (
-        <p className="mt-1.5 text-[10px] text-zinc-400">
-          {config.notes}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[20px] border border-white/10 bg-black/25 p-3">
-      <p className="text-[9px] font-black uppercase text-zinc-600">
-        {label}
-      </p>
-
-      <p className="mt-1 text-xl font-black">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function SummaryCard({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof Clock3;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="rounded-[20px] border border-white/10 bg-black/25 p-2.5">
-      <Icon className="mx-auto mb-1.5 h-3.5 w-3.5 text-[#ff2a32]" />
-
-      <p className="text-base font-black">
-        {value}
-      </p>
-
-      <p className="text-[8px] font-black uppercase text-zinc-600">
-        {label}
-      </p>
     </div>
   );
 }
