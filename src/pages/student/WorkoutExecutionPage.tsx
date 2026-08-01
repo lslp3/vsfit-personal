@@ -23,6 +23,8 @@ import {
   normalizeDayKey,
 } from '../../utils/workoutPlan';
 import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
+import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
+import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
 import { MetricCard } from '../../components/workout-execution/MetricCard';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
 import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
@@ -423,32 +425,15 @@ export function WorkoutExecutionPage() {
                 }}
                 className="rounded-[32px] border border-white/10 bg-white/[0.04] p-3"
               >
-                <div className="h-[200px] overflow-hidden rounded-[24px] border border-white/10 bg-black/30">
-                  {currentExercise.video_url ? (
-                    <video
-                      src={
-                        currentExercise.video_url
-                      }
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="h-full w-full object-contain"
-                    />
-                  ) : currentExercise.image_url ? (
-                    <img
-                      src={
-                        currentExercise.image_url
-                      }
-                      alt={exerciseName}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <Dumbbell className="h-10 w-10 text-[#ff2a32]" />
-                    </div>
-                  )}
-                </div>
+                <ExerciseMediaCard
+                  videoUrl={
+                    currentExercise.video_url
+                  }
+                  imageUrl={
+                    currentExercise.image_url
+                  }
+                  exerciseName={exerciseName}
+                />
 
                 <div className="mt-3 text-center">
                   <TechniqueBadge
@@ -464,9 +449,21 @@ export function WorkoutExecutionPage() {
                     }
                   />
 
-                  <h1 className="mt-2 text-xl font-black">
-                    {exerciseName}
-                  </h1>
+                  <ExerciseInfoPanel
+                    exerciseName={exerciseName}
+                    muscleGroup={
+                      currentExercise.muscle_group
+                    }
+                    equipment={
+                      currentExercise.equipment
+                    }
+                    difficulty={
+                      currentExercise.difficulty
+                    }
+                    tempo={
+                      currentExercise.tempo
+                    }
+                  />
 
                   <p className="mt-1.5 text-[11px] font-black uppercase text-[#ff2a32]">
                     Série {currentSet}{' '}
