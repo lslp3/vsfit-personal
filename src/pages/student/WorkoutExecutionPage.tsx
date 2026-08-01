@@ -19,12 +19,16 @@ import {
 import { useWorkoutExecution } from '../../hooks/useWorkoutExecution';
 import {
   getDropSetConfig,
+  getPyramidConfig,
+  getRestPauseConfig,
   getStudentName,
   normalizeDayKey,
 } from '../../utils/workoutPlan';
 import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
 import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
 import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
+import { PyramidPanel } from '../../components/workout-execution/PyramidPanel';
+import { RestPausePanel } from '../../components/workout-execution/RestPausePanel';
 import { SetList } from '../../components/workout-execution/SetList';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
 import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
@@ -99,6 +103,20 @@ export function WorkoutExecutionPage() {
   const dropConfig =
     currentExercise
       ? getDropSetConfig(
+          currentExercise
+        )
+      : {};
+
+  const restPauseConfig =
+    currentExercise
+      ? getRestPauseConfig(
+          currentExercise
+        )
+      : {};
+
+  const pyramidConfig =
+    currentExercise
+      ? getPyramidConfig(
           currentExercise
         )
       : {};
@@ -496,6 +514,24 @@ export function WorkoutExecutionPage() {
                     <DropSetPanel
                       config={
                         dropConfig
+                      }
+                    />
+                  )}
+
+                  {currentExercise.technique_type ===
+                    'rest_pause' && (
+                    <RestPausePanel
+                      config={
+                        restPauseConfig
+                      }
+                    />
+                  )}
+
+                  {currentExercise.technique_type ===
+                    'pyramid' && (
+                    <PyramidPanel
+                      config={
+                        pyramidConfig
                       }
                     />
                   )}

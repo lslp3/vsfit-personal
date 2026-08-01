@@ -1,6 +1,8 @@
 import type {
   CompleteWorkoutPlan,
   DropSetConfig,
+  PyramidConfig,
+  RestPauseConfig,
   WorkoutExerciseGroup,
   WorkoutPlanExercise,
 } from '../types/database';
@@ -104,6 +106,38 @@ export function getDropSetConfig(
     !Array.isArray(config)
   ) {
     return config as DropSetConfig;
+  }
+
+  return {};
+}
+
+export function getRestPauseConfig(
+  exercise: WorkoutPlanExercise
+): RestPauseConfig {
+  const config = exercise.technique_config;
+
+  if (
+    config &&
+    typeof config === 'object' &&
+    !Array.isArray(config)
+  ) {
+    return config as RestPauseConfig;
+  }
+
+  return {};
+}
+
+export function getPyramidConfig(
+  exercise: WorkoutPlanExercise
+): PyramidConfig {
+  const config = exercise.technique_config;
+
+  if (
+    config &&
+    typeof config === 'object' &&
+    !Array.isArray(config)
+  ) {
+    return config as PyramidConfig;
   }
 
   return {};
