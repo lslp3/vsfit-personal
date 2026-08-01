@@ -25,7 +25,7 @@ import {
 import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
 import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
 import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
-import { MetricCard } from '../../components/workout-execution/MetricCard';
+import { SetList } from '../../components/workout-execution/SetList';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
 import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
 import { WorkoutExecutionHeader } from '../../components/workout-execution/WorkoutExecutionHeader';
@@ -85,9 +85,9 @@ export function WorkoutExecutionPage() {
     currentGroup,
     safeTotalSets,
     totalSets,
+    setDrafts,
+    updateSet,
     exerciseName,
-    exerciseReps,
-    exerciseWeight,
     handleCompleteSet,
     finishRest,
     handleSave,
@@ -103,17 +103,20 @@ export function WorkoutExecutionPage() {
         )
       : {};
 
-  // Séries concluídas (base do progresso do header — Etapa 5):
-  // exercícios já finalizados (setsCompleted) + séries marcadas no
-  // exercício atual (currentSet é 1-based). Não altera a lógica de
-  // conclusão; apenas a métrica exibida.
+  // Séries concluídas (base do progresso do header — Etapa 5/7):
+  // exercícios já finalizados (setsCompleted) + séries marcadas como
+  // concluídas no exercício atual. Não altera a lógica de conclusão;
+  // apenas a métrica exibida.
   const completedSets =
     completedExercises.reduce(
       (sum, exercise) =>
         sum +
         (exercise.setsCompleted || 0),
       0
-    ) + (currentSet - 1);
+    ) +
+    setDrafts.filter(
+      (set) => set.completed
+    ).length;
 
   // Grupo muscular do dia (deduplicado dos exercícios do dia).
   const muscleGroup = [
@@ -471,21 +474,22 @@ export function WorkoutExecutionPage() {
                     {safeTotalSets}
                   </p>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2.5">
-                    <MetricCard
-                      label="Repetições"
-                      value={
-                        exerciseReps
-                      }
-                    />
-
-                    <MetricCard
-                      label="Carga"
-                      value={
-                        exerciseWeight
-                      }
-                    />
-                  </div>
+                  <SetList
+                    sets={setDrafts}
+                    currentSet={currentSet}
+                    onToggleComplete={(
+                      setNumber
+                    ) =>
+                      updateSet(setNumber, {
+                        completed: !setDrafts.find(
+                          (set) =>
+                            set.setNumber ===
+                            setNumber
+                        )?.completed,
+                      })
+                    }
+                    onUpdate={updateSet}
+                  />
 
                   {currentExercise.technique_type ===
                     'drop_set' && (

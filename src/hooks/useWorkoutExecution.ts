@@ -19,8 +19,10 @@ import type {
 } from '../types/database';
 import type {
   CompletedExercise,
+  ExerciseSetDraft,
   WorkoutExecutionState,
 } from '../types/workout';
+import { createSetDrafts } from '../utils/workoutMath';
 import {
   getExerciseGroup,
   getExerciseName,
@@ -52,6 +54,16 @@ export interface UseWorkoutExecutionResult
   nextExercise: WorkoutPlanExercise | null;
   currentGroup: WorkoutExerciseGroup | null;
   safeTotalSets: number;
+  setDrafts: ExerciseSetDraft[];
+  updateSet: (
+    setNumber: number,
+    patch: Partial<
+      Pick<
+        ExerciseSetDraft,
+        'weightKg' | 'reps' | 'completed'
+      >
+    >
+  ) => void;
   exerciseName: string;
   exerciseReps: string;
   exerciseWeight: string;
@@ -303,6 +315,11 @@ export function useWorkoutExecution({
     setCompletedExercises,
   ] = useState<CompletedExercise[]>([]);
 
+  // Etapa 7: séries do exercício atual em memória (carga/repetições
+  // reais + conclusão visual). Recriado ao trocar de exercício.
+  const [setDrafts, setSetDrafts] =
+    useState<ExerciseSetDraft[]>([]);
+
   const [
     elapsedSeconds,
     setElapsedSeconds,
@@ -543,6 +560,38 @@ export function useWorkoutExecution({
         )
       : '—';
 
+  // Etapa 7: inicializa as séries do exercício atual a partir do plano
+  // (carga e repetições sugeridas) quando o exercício muda.
+  useEffect(() => {
+    if (!currentExercise) return;
+
+    setSetDrafts(
+      createSetDrafts(
+        safeTotalSets,
+        exerciseWeight,
+        exerciseReps
+      )
+    );
+  }, [currentExercise?.id]);
+
+  function updateSet(
+    setNumber: number,
+    patch: Partial<
+      Pick<
+        ExerciseSetDraft,
+        'weightKg' | 'reps' | 'completed'
+      >
+    >
+  ) {
+    setSetDrafts((previous) =>
+      previous.map((set) =>
+        set.setNumber === setNumber
+          ? { ...set, ...patch }
+          : set
+      )
+    );
+  }
+
   function startRest({
     seconds,
     mode,
@@ -600,6 +649,17 @@ export function useWorkoutExecution({
       return;
     }
 
+    // Etapa 7: marca a série atual como concluída no estado visual.
+    // A progressão (descanso/avanço) continua sendo feita pelo fluxo
+    // abaixo — sem mudança de comportamento.
+    setSetDrafts((previous) =>
+      previous.map((set) =>
+        set.setNumber === currentSet
+          ? { ...set, completed: true }
+          : set
+      )
+    );
+
     if (
       currentSet <
       safeTotalSets
@@ -643,6 +703,15 @@ export function useWorkoutExecution({
 
         weightUsed:
           exerciseWeight,
+
+        // Etapa 7: séries reais em memória (snapshot com a série atual
+        // marcada). O payload v1 do log continua idêntico — a gravação
+        // de sets[] acontece somente na Etapa 11 (buildWorkoutLogData).
+        sets: setDrafts.map((set) =>
+          set.setNumber === currentSet
+            ? { ...set, completed: true }
+            : { ...set }
+        ),
       };
 
     setCompletedExercises(
@@ -841,6 +910,8 @@ export function useWorkoutExecution({
     nextExercise,
     currentGroup,
     safeTotalSets,
+    setDrafts,
+    updateSet,
     exerciseName,
     exerciseReps,
     exerciseWeight,

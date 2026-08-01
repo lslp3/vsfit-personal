@@ -24,6 +24,7 @@ import {
   calculateProgressPercent,
   calculateSetsVolume,
   calculateTotalVolume,
+  createSetDrafts,
   formatDuration,
   formatWeight,
   getExerciseSetsCount,
@@ -320,6 +321,53 @@ assertEqual(
 assert(
   hasStructuredSets(v2Log),
   'hasStructuredSets true v2'
+);
+
+// --- Etapa 7: createSetDrafts (inicialização das séries em memória) ---
+const drafts = createSetDrafts(3, '20 kg', '12');
+assertEqual(drafts.length, 3, 'createSetDrafts cria 3 séries');
+assertEqual(drafts[0].setNumber, 1, 'createSetDrafts setNumber 1-based');
+assertEqual(drafts[2].setNumber, 3, 'createSetDrafts setNumber sequencial');
+assertEqual(drafts[0].weightKg, 20, 'createSetDrafts parse "20 kg" -> 20');
+assertEqual(drafts[0].reps, 12, 'createSetDrafts parse reps "12" -> 12');
+assert(
+  drafts.every((set) => set.completed === false),
+  'createSetDrafts todas as séries não concluídas'
+);
+assert(
+  drafts.every((set) => set.restAfterSeconds === null),
+  'createSetDrafts restAfterSeconds null'
+);
+
+const draftsNoWeight = createSetDrafts(2, null, '10');
+assertEqual(
+  draftsNoWeight[0].weightKg,
+  null,
+  'createSetDrafts sem carga -> null'
+);
+assertEqual(
+  draftsNoWeight[0].reps,
+  10,
+  'createSetDrafts reps sem peso'
+);
+
+const draftsNoReps = createSetDrafts(1, '20,5', null);
+assertEqual(
+  draftsNoReps[0].weightKg,
+  20.5,
+  'createSetDrafts peso decimal "20,5"'
+);
+assertEqual(
+  draftsNoReps[0].reps,
+  null,
+  'createSetDrafts sem reps -> null'
+);
+
+const draftsZero = createSetDrafts(0, '20', '10');
+assertEqual(
+  draftsZero.length,
+  0,
+  'createSetDrafts setsCount 0 -> lista vazia'
 );
 
 console.log('');

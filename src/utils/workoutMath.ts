@@ -197,3 +197,28 @@ export function calculateCompletedPercent({
 
   return Math.round((completedCount / totalExercises) * 100);
 }
+
+/**
+ * Inicializa as séries de um exercício durante a execução (Etapa 7).
+ * Cria `setsCount` séries com a carga/repetições sugeridas do plano,
+ * todas não concluídas — estado em memória, sem tocar no banco.
+ */
+export function createSetDrafts(
+  setsCount: number,
+  weightText?: string | null,
+  repsText?: string | null
+): ExerciseSetDraft[] {
+  const weightKg = parseWeightKg(weightText);
+  const reps = safeParseInt(repsText, 0) || null;
+
+  return Array.from(
+    { length: Math.max(0, setsCount) },
+    (_, index) => ({
+      setNumber: index + 1,
+      weightKg,
+      reps,
+      completed: false,
+      restAfterSeconds: null,
+    })
+  );
+}
