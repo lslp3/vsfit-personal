@@ -6,7 +6,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -27,6 +26,7 @@ import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
 import { MetricCard } from '../../components/workout-execution/MetricCard';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
 import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
+import { WorkoutExecutionHeader } from '../../components/workout-execution/WorkoutExecutionHeader';
 
 const DAY_NAMES: Record<string, string> = {
   dom: 'Domingo',
@@ -82,6 +82,7 @@ export function WorkoutExecutionPage() {
     nextExercise,
     currentGroup,
     safeTotalSets,
+    totalSets,
     exerciseName,
     exerciseReps,
     exerciseWeight,
@@ -100,14 +101,34 @@ export function WorkoutExecutionPage() {
         )
       : {};
 
-  const progressPercent =
-    exercises.length > 0
-      ? ((currentExerciseIndex +
-          (currentSet - 1) /
-            safeTotalSets) /
-          exercises.length) *
-        100
-      : 0;
+  // Séries concluídas (base do progresso do header — Etapa 5):
+  // exercícios já finalizados (setsCompleted) + séries marcadas no
+  // exercício atual (currentSet é 1-based). Não altera a lógica de
+  // conclusão; apenas a métrica exibida.
+  const completedSets =
+    completedExercises.reduce(
+      (sum, exercise) =>
+        sum +
+        (exercise.setsCompleted || 0),
+      0
+    ) + (currentSet - 1);
+
+  // Grupo muscular do dia (deduplicado dos exercícios do dia).
+  const muscleGroup = [
+    ...new Set(
+      exercises
+        .map(
+          (exercise) =>
+            exercise.muscle_group
+        )
+        .filter(
+          (
+            value
+          ): value is string =>
+            Boolean(value)
+        )
+    ),
+  ].join(' • ');
 
   const completedPercent =
     exercises.length > 0
@@ -369,64 +390,25 @@ export function WorkoutExecutionPage() {
             }}
             className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4"
           >
-            <header>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(-1)
-                  }
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-
-                <div className="min-w-0 flex-1 text-center">
-                  <p className="truncate text-[10px] font-black uppercase text-[#ff2a32]">
-                    {plan.name}
-                  </p>
-
-                  <p className="text-[11px] text-zinc-500">
-                    {DAY_NAMES[
-                      selectedDayKey
-                    ] ||
-                      selectedDayKey}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[11px] font-black">
-                  {formatDuration(
-                    elapsedSeconds
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3 flex justify-between text-[11px]">
-                <span className="text-zinc-500">
-                  Exercício{' '}
-                  {currentExerciseIndex +
-                    1}{' '}
-                  de{' '}
-                  {exercises.length}
-                </span>
-
-                <span className="font-black text-[#ff2a32]">
-                  {Math.round(
-                    progressPercent
-                  )}
-                  %
-                </span>
-              </div>
-
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <motion.div
-                  className="h-full bg-[#ff2a32]"
-                  animate={{
-                    width: `${progressPercent}%`,
-                  }}
-                />
-              </div>
-            </header>
+            <WorkoutExecutionHeader
+              workoutName={plan.name}
+              dayName={
+                DAY_NAMES[
+                  selectedDayKey
+                ] ||
+                selectedDayKey
+              }
+              muscleGroup={muscleGroup}
+              elapsedSeconds={elapsedSeconds}
+              currentExerciseLabel={`Exercício ${
+                currentExerciseIndex + 1
+              } de ${exercises.length}`}
+              completedSets={completedSets}
+              totalSets={totalSets}
+              onBack={() =>
+                navigate(-1)
+              }
+            />
 
             <section className="flex flex-1 flex-col pt-2 pb-4">
               <motion.div
