@@ -393,7 +393,7 @@ export function WorkoutExecutionPage() {
             animate={{
               opacity: 1,
             }}
-            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4"
+            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-4"
           >
             <WorkoutExecutionHeader
               workoutName={plan.name}
@@ -545,7 +545,7 @@ export function WorkoutExecutionPage() {
                onClick={
                  handleCompleteSet
                }
-               style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 16px)' }}
+               style={{ bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
                className="fixed inset-x-0 z-40 mx-4 flex h-14 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-sm font-black uppercase"
              >
               <CheckCircle2 className="h-6 w-6" />
