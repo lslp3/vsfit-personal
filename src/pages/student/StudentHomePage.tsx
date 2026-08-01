@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
+import { isWorkoutPlanExpired } from '../../services/workoutExpirationService';
 
 type StudentHomeState = {
   student: any | null;
@@ -769,9 +770,17 @@ export function StudentHomePage() {
             )
           : [];
 
+      // O aluno não vê planos expirados na Home — mesma validação da
+      // execução do treino (isWorkoutPlanExpired). O Personal continua
+      // vendo todos os planos no painel dele.
+      const activeWorkouts = rawWorkouts.filter(
+        (workout) =>
+          !isWorkoutPlanExpired(workout?.end_date)
+      );
+
       const workouts =
         await enrichWorkoutPlans(
-          rawWorkouts
+          activeWorkouts
         );
 
       const workoutLogs =

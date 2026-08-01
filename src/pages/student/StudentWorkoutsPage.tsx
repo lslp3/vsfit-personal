@@ -22,6 +22,7 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
+import { isWorkoutPlanExpired } from '../../services/workoutExpirationService';
 import type {
   CompleteWorkoutPlan,
   WorkoutLog,
@@ -130,7 +131,15 @@ function isVisibleWorkout(workout: WorkoutPlan) {
 function parseDateOnly(value?: string | null) {
   if (!value) return null;
 
-  const date = new Date(`${value}T12:00:00`);
+  // Mesmo normalizador usado na execução (normalizeDateKey do
+  // workoutExpirationService): aceita 'YYYY-MM-DD' ou ISO com horário.
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (!match) return null;
+
+  const date = new Date(
+    `${match[1]}-${match[2]}-${match[3]}T12:00:00`
+  );
 
   return Number.isFinite(date.getTime()) ? date : null;
 }
@@ -354,11 +363,20 @@ export function StudentWorkoutsPage() {
         visibleWorkouts.map((workout) => hydrateWorkout(workout))
       );
 
+      // O aluno não vê planos expirados — mesma validação usada na
+      // execução do treino (isWorkoutPlanExpired). O Personal continua
+      // vendo todos os planos no painel dele.
+      const activeWorkouts = hydratedResults.filter(
+        (workout): workout is CompleteWorkoutPlan => {
+          if (!workout) return false;
+
+          return !isWorkoutPlanExpired(workout.end_date);
+        }
+      );
+
       setData({
         student: studentData,
-        workouts: hydratedResults.filter(
-          (workout): workout is CompleteWorkoutPlan => Boolean(workout)
-        ),
+        workouts: activeWorkouts,
         logs: logsData,
       });
     } catch (loadError: unknown) {
