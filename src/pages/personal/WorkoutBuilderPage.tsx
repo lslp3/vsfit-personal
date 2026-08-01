@@ -12,7 +12,6 @@ import {
   Layers2,
   Plus,
   Save,
-  Search,
   Send,
   Trash2,
   Unlink,
@@ -25,6 +24,8 @@ import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
+import { ExercisePickerModal, type NewExerciseData } from '../../components/personal/ExercisePickerModal';
+import type { ExerciseConfigValues } from '../../components/personal/ExerciseConfigFields';
 import { useAuthStore } from '../../store/authStore';
 import { useStudentStore } from '../../store/studentStore';
 import * as workoutService from '../../services/workoutService';
@@ -289,45 +290,9 @@ export function WorkoutBuilderPage() {
     useState<Exercise[]>([]);
 
   const [
-    exerciseSearch,
-    setExerciseSearch,
-  ] = useState('');
-
-  const [
     loadingExercises,
     setLoadingExercises,
   ] = useState(false);
-
-  const [
-    showNewExercise,
-    setShowNewExercise,
-  ] = useState(false);
-
-  const [newExName, setNewExName] =
-    useState('');
-
-  const [newExMuscle, setNewExMuscle] =
-    useState('');
-
-  const [
-    newExCategory,
-    setNewExCategory,
-  ] = useState('');
-
-  const [
-    newExDifficulty,
-    setNewExDifficulty,
-  ] = useState('');
-
-  const [
-    newExEquipment,
-    setNewExEquipment,
-  ] = useState('');
-
-  const [
-    newExInstructions,
-    setNewExInstructions,
-  ] = useState('');
 
   const [
     creatingExercise,
@@ -461,37 +426,6 @@ export function WorkoutBuilderPage() {
       );
     }, [students, studentSearch]);
 
-  const filteredExercises =
-    useMemo(() => {
-      const query = exerciseSearch
-        .trim()
-        .toLowerCase();
-
-      if (!query) return exercises;
-
-      return exercises.filter(
-        (exercise) => {
-          const normalized =
-            normalizeExercise(exercise);
-
-          return (
-            exercise.name
-              .toLowerCase()
-              .includes(query) ||
-            normalized.muscleGroup
-              .toLowerCase()
-              .includes(query) ||
-            normalized.category
-              .toLowerCase()
-              .includes(query) ||
-            normalized.equipment
-              .toLowerCase()
-              .includes(query)
-          );
-        }
-      );
-    }, [exercises, exerciseSearch]);
-
   function resetMessages() {
     setError('');
     setSuccessMessage('');
@@ -623,20 +557,17 @@ export function WorkoutBuilderPage() {
     resetMessages();
     ensureDay(day);
     setCurrentDay(day);
-    setExerciseSearch('');
-    setShowNewExercise(false);
     setShowAddExercise(true);
   }
 
   function closeExerciseModal() {
     setShowAddExercise(false);
     setCurrentDay(null);
-    setExerciseSearch('');
-    setShowNewExercise(false);
   }
 
   function addExerciseToDay(
-    exercise: Exercise
+    exercise: Exercise,
+    values?: ExerciseConfigValues
   ) {
     if (!currentDay) return;
 
@@ -648,14 +579,19 @@ export function WorkoutBuilderPage() {
       exercise_id: exercise.id,
       day_key: currentDay,
       name: exercise.name,
-      sets: '4',
-      reps: '10',
-      rest_seconds: 60,
-      suggested_weight: '',
-      observation: '',
-      tempo: '2-0-2-0',
-      technique_type: 'normal',
-      technique_config: {},
+      sets: values?.sets ?? '4',
+      reps: values?.reps ?? '10',
+      rest_seconds:
+        values?.rest_seconds ?? 60,
+      suggested_weight:
+        values?.suggested_weight ?? '',
+      observation:
+        values?.observation ?? '',
+      tempo: values?.tempo ?? '2-0-2-0',
+      technique_type:
+        values?.technique ?? 'normal',
+      technique_config:
+        values?.technique_config ?? {},
       exercise_group_local_id:
         null,
       group_order: null,
@@ -1498,12 +1434,14 @@ export function WorkoutBuilderPage() {
     }
   }
 
-  async function handleCreateExercise() {
+  async function handleCreateExerciseFromModal(
+    data: NewExerciseData
+  ): Promise<boolean> {
     if (
       !trainerProfile?.id ||
-      !newExName.trim()
+      !data.name.trim()
     ) {
-      return;
+      return false;
     }
 
     setCreatingExercise(true);
@@ -1515,21 +1453,21 @@ export function WorkoutBuilderPage() {
           trainerProfile.id,
           {
             name:
-              newExName.trim(),
+              data.name.trim(),
             muscle_group:
-              newExMuscle ||
+              data.muscleGroup ||
               null,
             category:
-              newExCategory ||
+              data.category ||
               null,
             equipment:
-              newExEquipment ||
+              data.equipment ||
               null,
             difficulty:
-              newExDifficulty ||
+              data.difficulty ||
               null,
             instructions:
-              newExInstructions ||
+              data.instructions ||
               null,
             tips: null,
           }
@@ -1542,13 +1480,7 @@ export function WorkoutBuilderPage() {
 
       addExerciseToDay(created);
 
-      setNewExName('');
-      setNewExMuscle('');
-      setNewExCategory('');
-      setNewExDifficulty('');
-      setNewExEquipment('');
-      setNewExInstructions('');
-      setShowNewExercise(false);
+      return true;
     } catch (createError) {
       console.error(
         '[WorkoutBuilderPage] create exercise:',
@@ -1558,6 +1490,8 @@ export function WorkoutBuilderPage() {
       setError(
         'Erro ao criar exercício.'
       );
+
+      return false;
     } finally {
       setCreatingExercise(false);
     }
@@ -2431,227 +2365,32 @@ export function WorkoutBuilderPage() {
         </div>
       </div>
 
-      <Modal
+      <ExercisePickerModal
         open={showAddExercise}
         onClose={closeExerciseModal}
-        title={
+        exercises={exercises}
+        loading={loadingExercises}
+        dayName={
           currentDay
-            ? `Adicionar em ${getWeekdayName(
+            ? getWeekdayName(
                 currentDay
-              )}`
-            : 'Adicionar exercício'
+              )
+            : 'treino'
         }
-      >
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-
-            <input
-              value={exerciseSearch}
-              onChange={(event) =>
-                setExerciseSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Buscar exercício..."
-              className="input-field pl-10"
-            />
-          </div>
-
-          {loadingExercises ? (
-            <div className="max-h-80 space-y-2 overflow-y-auto">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-                  <div className="h-12 w-12 shrink-0 animate-pulse rounded-xl bg-white/10" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
-                    <div className="h-3 w-1/2 animate-pulse rounded bg-white/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="max-h-80 space-y-2 overflow-y-auto">
-              {filteredExercises.map(
-                (exercise) => {
-                  const normalized =
-                    normalizeExercise(
-                      exercise
-                    );
-
-                   return (
-                    <button
-                      key={exercise.id}
-                      type="button"
-                      onClick={() =>
-                        addExerciseToDay(
-                          exercise
-                        )
-                      }
-                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/30">
-                        {normalized.imageUrl ? (
-                          <img
-                            src={
-                              normalized.imageUrl
-                            }
-                            alt={
-                              exercise.name
-                            }
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Dumbbell className="h-5 w-5 text-[#ff2a32]" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black">
-                          {exercise.name}
-                        </p>
-
-                        <p className="truncate text-xs text-zinc-500">
-                          {normalized.category ||
-                            normalized.muscleGroup ||
-                            'Exercício'}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                }
-              )}
-            </div>
-          )}
-
-          <div className="border-t border-white/10 pt-4">
-            {showNewExercise ? (
-              <div className="space-y-3">
-                <Input
-                  label="Nome"
-                  value={newExName}
-                  onChange={(event) =>
-                    setNewExName(
-                      event.target.value
-                    )
-                  }
-                />
-
-                <Input
-                  label="Grupo muscular"
-                  value={newExMuscle}
-                  onChange={(event) =>
-                    setNewExMuscle(
-                      event.target.value
-                    )
-                  }
-                />
-
-                <Input
-                  label="Categoria"
-                  value={newExCategory}
-                  onChange={(event) =>
-                    setNewExCategory(
-                      event.target.value
-                    )
-                  }
-                />
-
-                <Input
-                  label="Equipamento"
-                  value={newExEquipment}
-                  onChange={(event) =>
-                    setNewExEquipment(
-                      event.target.value
-                    )
-                  }
-                />
-
-                <div>
-                  <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
-                    Dificuldade
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {LEVELS.map(
-                      (option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() =>
-                            setNewExDifficulty(
-                              option
-                            )
-                          }
-                          className={cn(
-                            'h-10 rounded-xl border text-[10px] font-black',
-                            newExDifficulty ===
-                              option
-                              ? 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
-                              : 'border-white/10 text-zinc-500'
-                          )}
-                        >
-                          {option}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                <Textarea
-                  label="Instruções"
-                  value={
-                    newExInstructions
-                  }
-                  onChange={(event) =>
-                    setNewExInstructions(
-                      event.target.value
-                    )
-                  }
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setShowNewExercise(
-                        false
-                      )
-                    }
-                  >
-                    Cancelar
-                  </Button>
-
-                  <Button
-                    onClick={() =>
-                      void handleCreateExercise()
-                    }
-                    loading={
-                      creatingExercise
-                    }
-                  >
-                    Criar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() =>
-                  setShowNewExercise(
-                    true
-                  )
-                }
-              >
-                <Plus className="h-4 w-4" />
-                Criar novo exercício
-              </Button>
-            )}
-          </div>
-        </div>
-      </Modal>
+        creating={creatingExercise}
+        onCreateExercise={
+          handleCreateExerciseFromModal
+        }
+        onAdd={(
+          exercise,
+          values
+        ) =>
+          addExerciseToDay(
+            exercise,
+            values
+          )
+        }
+      />
 
       <Modal
         open={showBiSetModal}
