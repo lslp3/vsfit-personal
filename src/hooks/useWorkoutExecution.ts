@@ -24,17 +24,18 @@ import type {
 } from '../types/workout';
 import { createSetDrafts } from '../utils/workoutMath';
 import {
+  evaluateNextStep,
+  type ThenStep,
+} from '../execution/techniqueEngine';
+import {
   getBiSetRounds,
   getExerciseGroup,
   getExerciseName,
   getExerciseReps,
-  getExerciseRest,
   getExerciseSets,
   getExerciseWeight,
   getExercisesForDay,
   getStudentName,
-  getTransitionRest,
-  getTransitionTitle,
   normalizeDayKey,
 } from '../utils/workoutPlan';
 
@@ -322,11 +323,10 @@ export function useWorkoutExecution({
   const [setDrafts, setSetDrafts] =
     useState<ExerciseSetDraft[]>([]);
 
-  // Issue 3: progressão em blocos do bi-set. A rodada atual é o próprio
-  // currentSet (alternado A↔B sem reset); pendingBiReturn sinaliza que o
-  // descanso pós-B deve voltar para A na rodada seguinte.
-  const [pendingBiReturn, setPendingBiReturn] =
-    useState(false);
+  // Próximo passo decidido pela TechniqueEngine ao concluir a série.
+  // Guardado para ser aplicado no fim do descanso (ver finishRest).
+  const [pendingTransition, setPendingTransition] =
+    useState<ThenStep | null>(null);
 
   // Fonte da verdade das séries por exercício. Preserva o progresso de A
   // (rodadas marcadas) quando o usuário alterna A↔B dentro de um bi-set.
@@ -474,7 +474,7 @@ export function useWorkoutExecution({
       setRestTitle('Descanso');
       setIsCompleted(false);
       setElapsedSeconds(0);
-      setPendingBiReturn(false);
+      setPendingTransition(null);
       draftsByExerciseRef.current = {};
 
       startedAtRef.current =
@@ -622,7 +622,7 @@ export function useWorkoutExecution({
       !currentGroup ||
       currentGroup.group_type !== 'bi_set'
     ) {
-      setPendingBiReturn(false);
+      setPendingTransition(null);
     }
 
     const existing =
@@ -732,49 +732,40 @@ export function useWorkoutExecution({
     setIsCompleted(true);
   }
 
-  function returnToPartner() {
-    if (!currentGroup) return;
-
-    const partnerA = exercises.find(
-      (exercise) =>
-        exercise.exercise_group_id ===
-          currentGroup.id &&
-        exercise.group_order === 1
-    );
-
-    if (!partnerA) {
-      // Dado inconsistente (grupo sem exercício A): avança para não travar
-      // o aluno num loop de descanso.
-      goToNextExercise();
-
-      return;
+  function applyThen(then: ThenStep) {
+    switch (then.kind) {
+      case 'advance-set':
+        setCurrentSet(
+          (previous) => previous + 1
+        );
+        break;
+      case 'go-to':
+        goToExerciseById(then.exerciseId);
+        break;
+      case 'back-to-a':
+        goToExerciseById(then.exerciseId);
+        setCurrentSet(
+          (previous) => previous + 1
+        );
+        break;
+      case 'next':
+        goToNextExercise();
+        break;
+      case 'done':
+        setIsCompleted(true);
+        break;
     }
-
-    goToExerciseById(partnerA.id);
-
-    setCurrentSet(
-      (previous) => previous + 1
-    );
   }
 
   function finishRest() {
     setIsResting(false);
     setRestTimeLeft(0);
 
-    if (pendingBiReturn) {
-      setPendingBiReturn(false);
+    const pending = pendingTransition;
 
-      returnToPartner();
-
-      return;
-    }
-
-    if (restMode === 'set') {
-      setCurrentSet(
-        (previous) =>
-          previous + 1
-      );
-
+    if (pending) {
+      setPendingTransition(null);
+      applyThen(pending);
       return;
     }
 
@@ -863,170 +854,34 @@ export function useWorkoutExecution({
       currentSet
     );
 
-    // Issue 3 — BI-SET fase A (group_order 1): segue para B SEM descanso.
-    if (
-      currentGroup?.group_type ===
-        'bi_set' &&
-      currentExercise.group_order === 1
-    ) {
-      // Última rodada de A: registra A como concluído.
-      if (currentSet >= safeTotalSets) {
-        registerCompletedExercise();
-      }
+    // A decisão de progressão pertence à TechniqueEngine (evaluateNextStep).
+    const outcome = evaluateNextStep({
+      exercise: currentExercise,
+      nextExercise,
+      group: currentGroup,
+      partner: partnerExercise,
+      currentSet,
+      safeTotalSets,
+      groups: dayGroups,
+    });
 
-      if (partnerExercise) {
-        goToExerciseById(
-          partnerExercise.id
-        );
-
-        return;
-      }
-    }
-
-    // Issue 3 — BI-SET fase B (group_order 2): descanso entre rodadas
-    // (rest_after_seconds do grupo) ou fim do bloco.
-    if (
-      currentGroup?.group_type ===
-        'bi_set' &&
-      currentExercise.group_order === 2
-    ) {
-      if (currentSet < safeTotalSets) {
-        const rest =
-          getTransitionRest({
-            exercise:
-              currentExercise,
-
-            nextExercise:
-              partnerExercise,
-
-            groups: dayGroups,
-          });
-
-        if (rest > 0) {
-          setPendingBiReturn(true);
-
-          startRest({
-            seconds: rest,
-            mode: 'set',
-            title:
-              'Descanso entre rodadas do bi-set',
-          });
-
-          return;
-        }
-
-        returnToPartner();
-
-        return;
-      }
-
-      // Fim do bloco: registra B e segue o fluxo normal (transição).
+    if (outcome.registerExercise) {
       registerCompletedExercise();
-
-      if (!nextExercise) {
-        setIsCompleted(true);
-
-        return;
-      }
-
-      const transitionRest =
-        getTransitionRest({
-          exercise:
-            currentExercise,
-
-          nextExercise,
-
-          groups: dayGroups,
-        });
-
-      if (transitionRest > 0) {
-        startRest({
-          seconds:
-            transitionRest,
-
-          mode: 'exercise',
-
-          title:
-            getTransitionTitle(
-              currentExercise,
-              dayGroups
-            ),
-        });
-
-        return;
-      }
-
-      goToNextExercise();
-
-      return;
     }
 
-    // FLUXO NORMAL (exercícios sem bi-set; drop-set, rest-pause e
-    // pirâmide continuam exatamente como antes).
-    if (
-      currentSet <
-      safeTotalSets
-    ) {
-      const rest =
-        getExerciseRest(
-          currentExercise
-        );
+    if (outcome.rest) {
+      setPendingTransition(outcome.then);
 
-      if (rest > 0) {
-        startRest({
-          seconds: rest,
-          mode: 'set',
-          title:
-            'Descanso entre séries',
-        });
-
-        return;
-      }
-
-      setCurrentSet(
-        (previous) =>
-          previous + 1
-      );
-
-      return;
-    }
-
-    registerCompletedExercise();
-
-    if (!nextExercise) {
-      setIsCompleted(true);
-
-      return;
-    }
-
-    const transitionRest =
-      getTransitionRest({
-        exercise:
-          currentExercise,
-
-        nextExercise,
-
-        groups: dayGroups,
-      });
-
-    if (transitionRest > 0) {
       startRest({
-        seconds:
-          transitionRest,
-
-        mode: 'exercise',
-
-        title:
-          getTransitionTitle(
-            currentExercise,
-            dayGroups
-          ),
+        seconds: outcome.rest.seconds,
+        mode: outcome.rest.mode,
+        title: outcome.rest.title,
       });
 
       return;
     }
 
-    goToNextExercise();
+    applyThen(outcome.then);
   }
 
   async function handleSave() {
