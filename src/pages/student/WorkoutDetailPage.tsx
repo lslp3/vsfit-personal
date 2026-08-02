@@ -25,9 +25,12 @@ import {
   notifyTrainerAboutExpiredPlan,
 } from '../../services/workoutExpirationService';
 import { getWorkoutPlanById } from '../../services/workoutService';
+import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
 import type {
   CompleteWorkoutPlan,
   DropSetConfig,
+  PyramidConfig,
+  RestPauseConfig,
   WorkoutDay,
   WorkoutExerciseGroup,
   WorkoutPlanExercise,
@@ -156,6 +159,38 @@ function getDropSetConfig(
     !Array.isArray(config)
   ) {
     return config as DropSetConfig;
+  }
+
+  return {};
+}
+
+function getRestPauseConfig(
+  exercise: WorkoutPlanExercise
+): RestPauseConfig {
+  const config = exercise.technique_config;
+
+  if (
+    config &&
+    typeof config === 'object' &&
+    !Array.isArray(config)
+  ) {
+    return config as RestPauseConfig;
+  }
+
+  return {};
+}
+
+function getPyramidConfig(
+  exercise: WorkoutPlanExercise
+): PyramidConfig {
+  const config = exercise.technique_config;
+
+  if (
+    config &&
+    typeof config === 'object' &&
+    !Array.isArray(config)
+  ) {
+    return config as PyramidConfig;
   }
 
   return {};
@@ -1160,6 +1195,12 @@ function ExerciseCard({
   const dropConfig =
     getDropSetConfig(exercise);
 
+  const restConfig =
+    getRestPauseConfig(exercise);
+
+  const pyramidConfig =
+    getPyramidConfig(exercise);
+
   const observation =
     getExerciseObservation(
       exercise
@@ -1212,13 +1253,18 @@ function ExerciseCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          {technique ===
-            'drop_set' && (
-            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-orange-400/15 px-2 py-0.5 text-[8px] font-black text-orange-300">
-              <Zap className="h-2.5 w-2.5" />
-
-              DROP-SET
-            </span>
+          {technique !==
+            'normal' && (
+            <div className="mb-1.5">
+              <TechniqueBadge
+                technique={technique}
+                group={null}
+                groupOrder={
+                  exercise.group_order ??
+                  null
+                }
+              />
+            </div>
           )}
 
           <h3 className="text-[14px] font-black">
@@ -1315,6 +1361,101 @@ function ExerciseCard({
                   {
                     dropConfig.notes
                   }
+                </p>
+              )}
+            </div>
+          )}
+
+          {technique ===
+            'rest_pause' && (
+            <div className="mt-2 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5">
+              <p className="text-[9px] font-black uppercase text-sky-300">
+                Configuração
+              </p>
+
+              <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-sky-100/80">
+                {restConfig.pause_seconds !==
+                  undefined && (
+                  <span>
+                    {
+                      restConfig.pause_seconds
+                    }{' '}
+                    s de pausa
+                  </span>
+                )}
+
+                {restConfig.max_pauses !==
+                  undefined && (
+                  <span>
+                    • até{' '}
+                    {
+                      restConfig.max_pauses
+                    }{' '}
+                    pausa
+                    {restConfig.max_pauses ===
+                    1
+                      ? ''
+                      : 's'}
+                  </span>
+                )}
+              </div>
+
+              {restConfig.notes && (
+                <p className="mt-1.5 text-[11px] text-zinc-400">
+                  {restConfig.notes}
+                </p>
+              )}
+            </div>
+          )}
+
+          {technique ===
+            'pyramid' && (
+            <div className="mt-2 rounded-2xl border border-teal-400/20 bg-teal-400/[0.06] p-2.5">
+              <p className="text-[9px] font-black uppercase text-teal-300">
+                Pirâmide
+              </p>
+
+              <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-teal-100/80">
+                {pyramidConfig.top_sets !==
+                  undefined && (
+                  <span>
+                    {
+                      pyramidConfig.top_sets
+                    }{' '}
+                    séries até o topo
+                  </span>
+                )}
+
+                {pyramidConfig.increment_percent !==
+                  undefined && (
+                  <span>
+                    • +{' '}
+                    {
+                      pyramidConfig.increment_percent
+                    }
+                    %
+                  </span>
+                )}
+
+                {Array.isArray(
+                  pyramidConfig.increments
+                ) &&
+                  pyramidConfig.increments.length >
+                    0 && (
+                    <span>
+                      •{' '}
+                      {pyramidConfig.increments
+                        .map(
+                          (value) => `${value}%`
+                        )
+                        .join(' / ')}
+                    </span>
+                  )}
+              </div>
+
+              {pyramidConfig.notes && (
+                <p className="mt-1.5 text-[11px] text-zinc-400">
+                  {pyramidConfig.notes}
                 </p>
               )}
             </div>
