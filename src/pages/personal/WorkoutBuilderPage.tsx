@@ -219,6 +219,67 @@ function getTechniqueLabel(
   );
 }
 
+/**
+ * Ordena os exercícios de um dia para persistência do execution_order:
+ * preserva a ordem visual dos exercícios normais e mantém os blocos de
+ * bi-set adjacentes (group_order 1 antes do 2), na posição do primeiro
+ * membro do grupo. Não muta o array de origem.
+ */
+function orderExercisesForDay(
+  exercises: DayExercise[]
+): DayExercise[] {
+  const byGroup = new Map<
+    string,
+    DayExercise[]
+  >();
+
+  for (const exercise of exercises) {
+    const groupLocalId =
+      exercise.exercise_group_local_id;
+
+    if (!groupLocalId) continue;
+
+    const bucket =
+      byGroup.get(groupLocalId) || [];
+
+    bucket.push(exercise);
+    byGroup.set(groupLocalId, bucket);
+  }
+
+  const emitted = new Set<string>();
+  const ordered: DayExercise[] = [];
+
+  for (const exercise of exercises) {
+    const groupLocalId =
+      exercise.exercise_group_local_id;
+
+    if (!groupLocalId) {
+      ordered.push(exercise);
+      continue;
+    }
+
+    if (emitted.has(groupLocalId)) {
+      continue;
+    }
+
+    const members = byGroup.get(
+      groupLocalId
+    ) || [];
+
+    ordered.push(
+      ...[...members].sort(
+        (a, b) =>
+          (a.group_order ?? 0) -
+          (b.group_order ?? 0)
+      )
+    );
+
+    emitted.add(groupLocalId);
+  }
+
+  return ordered;
+}
+
 export function WorkoutBuilderPage() {
   const [searchParams] = useSearchParams();
 
@@ -571,7 +632,9 @@ export function WorkoutBuilderPage() {
           exercise.workout_day_id || null,
         exercise_group_id:
           exercise.exercise_group_id || null,
-        exercise_group_local_id: null,
+        exercise_group_local_id:
+          exercise.exercise_group_id ||
+          null,
         technique_type:
           exercise.technique_type ?? 'normal',
         technique_config:
@@ -1444,6 +1507,7 @@ export function WorkoutBuilderPage() {
                   {},
                 exercise_group_local_id:
                   null,
+                exercise_group_id: null,
                 group_order: null,
               }
             : exercise
@@ -1573,8 +1637,9 @@ export function WorkoutBuilderPage() {
     selectedDaysArray.forEach(
       (day) => {
         const dayExercises =
-          exercisesByDay[day] ||
-          [];
+          orderExercisesForDay(
+            exercisesByDay[day] || []
+          );
 
         dayExercises.forEach(
           (exercise, index) => {
@@ -1886,7 +1951,9 @@ export function WorkoutBuilderPage() {
         continue;
       }
 
-      const dayExercises = exercisesByDay[day] || [];
+      const dayExercises = orderExercisesForDay(
+        exercisesByDay[day] || []
+      );
 
       for (
         let index = 0;
@@ -1901,11 +1968,15 @@ export function WorkoutBuilderPage() {
             exercise.localId
           );
 
-        const exerciseGroupId = exercise.exercise_group_local_id
-          ? groupIdMap.get(
-              exercise.exercise_group_local_id
-            ) || null
-          : null;
+        const exerciseGroupId =
+          (exercise.exercise_group_local_id
+            ? (groupIdMap.get(
+                exercise.exercise_group_local_id
+              ) ??
+              exercise.exercise_group_id)
+            : (exercise.exercise_group_id ??
+              null)) ??
+          null;
 
         const exercisePayload = {
           exercise_id:
