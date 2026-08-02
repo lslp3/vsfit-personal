@@ -9,10 +9,18 @@ import { RoleGuard } from '../components/auth/RoleGuard';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useAuthStore } from '../store/authStore';
 
+import { reloadForStaleChunk } from '../utils/chunkReload';
+
 function lazyPage<T extends ComponentType<any>>(
   loader: () => Promise<{ default: T }>
 ) {
-  const LazyComponent = lazy(loader);
+  const LazyComponent = lazy(() =>
+    loader().catch((error: unknown) =>
+      reloadForStaleChunk(error)
+        ? new Promise<{ default: T }>(() => {})
+        : Promise.reject(error)
+    )
+  );
 
   return function LazyPage(props: React.ComponentProps<T>) {
     return (

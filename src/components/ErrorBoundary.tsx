@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 
+import { isChunkLoadError } from '../utils/chunkReload';
+
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
@@ -30,6 +32,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
+      const isChunkError = isChunkLoadError(
+        this.state.error
+      );
+
       return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[#050505] px-6 text-center text-white">
           <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ff2a32]/25 bg-[#ff2a32]/15">
@@ -39,7 +45,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <h1 className="mt-5 text-xl font-black">Algo deu errado</h1>
 
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-400">
-            Ocorreu um erro inesperado. Recarregue a aplicação ou tente novamente.
+            {isChunkError
+              ? 'Uma nova versão da aplicação foi publicada. Recarregue para atualizar.'
+              : 'Ocorreu um erro inesperado. Recarregue a aplicação ou tente novamente.'}
           </p>
 
           {this.state.error?.message && (
@@ -50,11 +58,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
           <button
             type="button"
-            onClick={this.handleReset}
+            onClick={
+              isChunkError
+                ? () => window.location.reload()
+                : this.handleReset
+            }
             className="mt-6 flex h-12 items-center gap-2 rounded-2xl bg-[#ff2a32] px-6 text-sm font-black text-white active:scale-95"
           >
             <RotateCcw className="h-4 w-4" />
-            TENTAR NOVAMENTE
+            {isChunkError
+              ? 'RECARREGAR'
+              : 'TENTAR NOVAMENTE'}
           </button>
         </div>
       );
