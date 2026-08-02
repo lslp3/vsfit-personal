@@ -7,6 +7,7 @@ import {
   getDropSetConfig,
   getExerciseRest,
   getExerciseSets,
+  getPyramidConfig,
   getRestPauseConfig,
   getTransitionRest,
   getTransitionTitle,
@@ -20,9 +21,8 @@ import {
  * aplica as ações retornadas. Isso centraliza a lógica das estratégias de
  * técnica num único lugar testável, mantendo o contrato do hook intacto.
  *
- * Estratégias: normal, bi_set, drop_set, rest_pause, pyramid. `pyramid`
- * segue o comportamento de `normal` (progressão linear) — extraído
- * separadamente para evolução futura sem tocar no hook.
+ * Estratégias: normal, bi_set, drop_set, rest_pause, pyramid — cada uma com
+ * comportamento próprio (drop, rest-pause e pyramid são execuções premium).
  */
 
 export type RestKind = 'set' | 'exercise';
@@ -77,10 +77,27 @@ export interface RestPauseInfo {
   isLast: boolean;
 }
 
+/** Carga/repetições de UMA etapa (série) da pirâmide. */
+export interface PyramidStep {
+  weight: number | null;
+  reps: number | null;
+}
+
+/** Dados expositivos para a UI específica da pirâmide. */
+export interface PyramidInfo {
+  current: number;
+  total: number;
+  currentWeight: number | null;
+  nextWeight: number | null;
+  currentReps: number | null;
+  nextReps: number | null;
+  isLast: boolean;
+}
+
 /**
  * Ponto de entrada das estratégias de técnica.
- * `pyramid` puxa a estratégia `normal` — deste modo a REGRA é idêntica ao
- * comportamento atual e o ponto de extensão já existe para evolução posterior.
+ * normal / bi_set / drop_set / rest_pause / pyramid — cada técnica tem sua
+ * própria estratégia (as premium drop, rest-pause e pyramid não delegam).
  */
 export function evaluateNextStep(
   input: NextStepInput
@@ -144,6 +161,12 @@ export function resolveStepCount(
     return getExerciseSets(exercise);
   }
 
+  // pyramid: a quantidade de passos é EXATAMENTE o número de séries
+  // configuradas no exercício (top_sets do config não é usado aqui).
+  if (technique === 'pyramid') {
+    return getExerciseSets(exercise);
+  }
+
   return getExerciseSets(exercise);
 }
 
@@ -202,6 +225,62 @@ export function getDropStepWeights(
       );
     }
   );
+}
+
+/**
+ * Carga/repetições por série de uma pirâmide. A contagem é o nº de séries do
+ * exercício (`getExerciseSets`). O peso da 1ª série = `suggested_weight` do
+ * plano; a partir daí sobe por `increment_percent` (linear aditivo sobre a
+ * base, ex.: 25% → 20/25/30/35…) OU pela lista `increments` (variação em kg
+ * por série, relativa à base). Repetições: usa o `reps` do plano (o builder
+ * não captura reps diferentes por série). Sem carga base definida, pesos null.
+ */
+export function getPyramidSteps(
+  exercise: WorkoutPlanExercise
+): PyramidStep[] {
+  const config = getPyramidConfig(exercise);
+  const count = Math.max(
+    1,
+    getExerciseSets(exercise)
+  );
+
+  const baseWeight = Number(
+    String(exercise.suggested_weight || '')
+      .replace(',', '.')
+      .trim()
+  );
+  const baseReps = Number(
+    String(exercise.reps || '').replace(
+      ',',
+      '.'
+    )
+  );
+  const increment = Math.max(
+    0,
+    Number(config.increment_percent) || 0
+  );
+
+  const hasBaseWeight =
+    Number.isFinite(baseWeight) &&
+    baseWeight > 0;
+
+  return Array.from({ length: count }, (_, i) => {
+    const weight = hasBaseWeight
+      ? Math.round(
+          (baseWeight *
+            (1 + (increment / 100) * i)) *
+            10
+        ) / 10
+      : null;
+
+    return {
+      weight,
+      reps:
+        Number.isFinite(baseReps) && baseReps > 0
+          ? baseReps
+          : null,
+    };
+  });
 }
 
 function normalStrategy(
@@ -302,11 +381,42 @@ function restPauseStrategy(
   return completeToNext(input);
 }
 
-/** pyramid (por ora) segue o mesmo fluxo de `normal`. */
+/**
+ * pyramid (execução premium): séries em rampa. Cada série tem peso/reps
+ * próprios (da rampa). Após concluir cada série, inicia o DESCanso configurado
+ * (`rest_seconds`) do exercício e então avança (`advance-set`) para a próxima.
+ * Na última série, `completeToNext` aplica o descanso final normal e segue
+ * para o próximo exercício. Não altera a quantidade de séries.
+ */
 function pyramidStrategy(
   input: NextStepInput
 ): TechniqueOutcome {
-  return normalStrategy(input);
+  const { exercise, currentSet, safeTotalSets } =
+    input;
+
+  if (currentSet < safeTotalSets) {
+    const restSeconds = getExerciseRest(
+      exercise
+    );
+
+    return {
+      registerExercise: false,
+      then: { kind: 'advance-set' },
+      // Cada série da pirâmide é seguida pelo descanso configurado do
+      // exercício; só então avança para a próxima série.
+      rest:
+        restSeconds > 0
+          ? {
+              seconds: restSeconds,
+              mode: 'set',
+              title: 'Descanso entre séries',
+            }
+          : null,
+    };
+  }
+
+  // Última série concluída: descanso normal do exercício + próximo passo.
+  return completeToNext(input);
 }
 
 function biSetStrategy(

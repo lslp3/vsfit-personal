@@ -28,6 +28,7 @@ import { DropSetExecutionPanel } from '../../components/workout-execution/DropSe
 import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
 import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
 import { PyramidPanel } from '../../components/workout-execution/PyramidPanel';
+import { PyramidExecutionPanel } from '../../components/workout-execution/PyramidExecutionPanel';
 import { RestPauseExecutionPanel } from '../../components/workout-execution/RestPauseExecutionPanel';
 import { RestPausePanel } from '../../components/workout-execution/RestPausePanel';
 import { SetList } from '../../components/workout-execution/SetList';
@@ -92,6 +93,7 @@ export function WorkoutExecutionPage() {
     biSetActive,
     dropSetInfo,
     restPauseInfo,
+    pyramidInfo,
     totalSets,
     setDrafts,
     updateSet,
@@ -543,6 +545,14 @@ export function WorkoutExecutionPage() {
                       config={
                         restPauseConfig
                       }
+                    />
+                  )}
+
+                  {currentExercise.technique_type ===
+                    'pyramid' &&
+                    pyramidInfo && (
+                    <PyramidExecutionPanel
+                      info={pyramidInfo}
                     />
                   )}
 

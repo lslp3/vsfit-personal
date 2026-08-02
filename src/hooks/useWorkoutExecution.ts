@@ -26,8 +26,10 @@ import { createSetDrafts } from '../utils/workoutMath';
 import {
   evaluateNextStep,
   getDropStepWeights,
+  getPyramidSteps,
   resolveStepCount,
   type DropSetInfo,
+  type PyramidInfo,
   type RestPauseInfo,
   type ThenStep,
 } from '../execution/techniqueEngine';
@@ -64,6 +66,7 @@ export interface UseWorkoutExecutionResult
   biSetActive: boolean;
   dropSetInfo: DropSetInfo | null;
   restPauseInfo: RestPauseInfo | null;
+  pyramidInfo: PyramidInfo | null;
   setDrafts: ExerciseSetDraft[];
   updateSet: (
     setNumber: number,
@@ -629,6 +632,34 @@ export function useWorkoutExecution({
         }
       : null;
 
+  // Pirâmide: expõe peso/reps atuais e da próxima série da rampa.
+  const pyramidSteps =
+    currentExercise?.technique_type ===
+    'pyramid'
+      ? getPyramidSteps(currentExercise)
+      : [];
+
+  const pyramidInfo: PyramidInfo | null =
+    currentExercise?.technique_type ===
+    'pyramid'
+      ? (() => {
+          const index = currentSet - 1;
+          const step = pyramidSteps[index];
+          const next = pyramidSteps[index + 1];
+
+          return {
+            current: currentSet,
+            total: safeTotalSets,
+            currentWeight:
+              step?.weight ?? null,
+            nextWeight: next?.weight ?? null,
+            currentReps: step?.reps ?? null,
+            nextReps: next?.reps ?? null,
+            isLast: currentSet >= safeTotalSets,
+          };
+        })()
+      : null;
+
   const exerciseName =
     currentExercise
       ? getExerciseName(
@@ -733,6 +764,22 @@ export function useWorkoutExecution({
           restAfterSeconds: null,
         })
       );
+    } else if (
+      currentExercise.technique_type ===
+      'pyramid'
+    ) {
+      // Pirâmide: um draft POR SÉRIE, com peso/reps de cada etapa da rampa
+      // (peso sobe por série; reps = do plano). `safeTotalSets` = nº de
+      // séries == quantidade de passos da pirâmide.
+      drafts = getPyramidSteps(
+        currentExercise
+      ).map((step, index) => ({
+        setNumber: index + 1,
+        weightKg: step.weight,
+        reps: step.reps,
+        completed: false,
+        restAfterSeconds: null,
+      }));
     } else {
       drafts = createSetDrafts(
         getExerciseSets(currentExercise),
@@ -1124,6 +1171,7 @@ export function useWorkoutExecution({
     biSetActive,
     dropSetInfo,
     restPauseInfo,
+    pyramidInfo,
     setDrafts,
     updateSet,
     exerciseName,
