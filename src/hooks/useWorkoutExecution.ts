@@ -24,6 +24,7 @@ import type {
 } from '../types/workout';
 import { createSetDrafts } from '../utils/workoutMath';
 import {
+  getBiSetRounds,
   getExerciseGroup,
   getExerciseName,
   getExerciseReps,
@@ -54,6 +55,7 @@ export interface UseWorkoutExecutionResult
   nextExercise: WorkoutPlanExercise | null;
   currentGroup: WorkoutExerciseGroup | null;
   safeTotalSets: number;
+  biSetActive: boolean;
   setDrafts: ExerciseSetDraft[];
   updateSet: (
     setNumber: number,
@@ -320,6 +322,18 @@ export function useWorkoutExecution({
   const [setDrafts, setSetDrafts] =
     useState<ExerciseSetDraft[]>([]);
 
+  // Issue 3: progressão em blocos do bi-set. A rodada atual é o próprio
+  // currentSet (alternado A↔B sem reset); pendingBiReturn sinaliza que o
+  // descanso pós-B deve voltar para A na rodada seguinte.
+  const [pendingBiReturn, setPendingBiReturn] =
+    useState(false);
+
+  // Fonte da verdade das séries por exercício. Preserva o progresso de A
+  // (rodadas marcadas) quando o usuário alterna A↔B dentro de um bi-set.
+  const draftsByExerciseRef = useRef<
+    Record<string, ExerciseSetDraft[]>
+  >({});
+
   const [
     elapsedSeconds,
     setElapsedSeconds,
@@ -460,6 +474,8 @@ export function useWorkoutExecution({
       setRestTitle('Descanso');
       setIsCompleted(false);
       setElapsedSeconds(0);
+      setPendingBiReturn(false);
+      draftsByExerciseRef.current = {};
 
       startedAtRef.current =
         new Date().toISOString();
@@ -532,11 +548,47 @@ export function useWorkoutExecution({
         )
       : null;
 
+  // Issue 3: parceiro do bi-set e rodadas do bloco.
+  const partnerExercise = (() => {
+    if (
+      !currentExercise ||
+      !currentGroup ||
+      currentGroup.group_type !== 'bi_set'
+    ) {
+      return null;
+    }
+
+    return (
+      exercises.find(
+        (exercise) =>
+          exercise.id !==
+            currentExercise.id &&
+          exercise.exercise_group_id ===
+            currentGroup.id
+      ) || null
+    );
+  })();
+
+  const biRounds =
+    currentGroup?.group_type === 'bi_set' &&
+    currentExercise
+      ? getBiSetRounds(
+          currentExercise,
+          partnerExercise,
+          currentGroup
+        )
+      : null;
+
+  const biSetActive =
+    currentGroup?.group_type === 'bi_set' &&
+    currentExercise?.group_order != null;
+
   const safeTotalSets =
     currentExercise
-      ? getExerciseSets(
+      ? (biRounds ??
+        getExerciseSets(
           currentExercise
-        )
+        ))
       : 1;
 
   const exerciseName =
@@ -560,18 +612,43 @@ export function useWorkoutExecution({
         )
       : '—';
 
-  // Etapa 7: inicializa as séries do exercício atual a partir do plano
-  // (carga e repetições sugeridas) quando o exercício muda.
+  // Etapa 7 + Issue 3: inicializa/restaura as séries do exercício atual.
+  // Fora de bi-set, reseta a rodada do bloco. Dentro de bi-set, restaura
+  // os drafts de cada exercício (A/B) preservando o progresso das rodadas.
   useEffect(() => {
     if (!currentExercise) return;
 
-    setSetDrafts(
-      createSetDrafts(
-        safeTotalSets,
-        exerciseWeight,
-        exerciseReps
-      )
+    if (
+      !currentGroup ||
+      currentGroup.group_type !== 'bi_set'
+    ) {
+      setPendingBiReturn(false);
+    }
+
+    const existing =
+      draftsByExerciseRef.current[
+        currentExercise.id
+      ];
+
+    if (existing) {
+      setSetDrafts(existing);
+
+      return;
+    }
+
+    const drafts = createSetDrafts(
+      getExerciseSets(
+        currentExercise
+      ),
+      exerciseWeight,
+      exerciseReps
     );
+
+    draftsByExerciseRef.current[
+      currentExercise.id
+    ] = drafts;
+
+    setSetDrafts(drafts);
   }, [currentExercise?.id]);
 
   function updateSet(
@@ -583,13 +660,27 @@ export function useWorkoutExecution({
       >
     >
   ) {
-    setSetDrafts((previous) =>
-      previous.map((set) =>
-        set.setNumber === setNumber
-          ? { ...set, ...patch }
-          : set
-      )
+    const exerciseId =
+      currentExercise?.id;
+
+    if (!exerciseId) return;
+
+    const current =
+      draftsByExerciseRef.current[
+        exerciseId
+      ] || [];
+
+    const next = current.map((set) =>
+      set.setNumber === setNumber
+        ? { ...set, ...patch }
+        : set
     );
+
+    draftsByExerciseRef.current[
+      exerciseId
+    ] = next;
+
+    setSetDrafts(next);
   }
 
   function startRest({
@@ -606,6 +697,19 @@ export function useWorkoutExecution({
     setRestDuration(seconds);
     setRestTimeLeft(seconds);
     setIsResting(true);
+  }
+
+  function goToExerciseById(
+    exerciseId: string
+  ) {
+    const index = exercises.findIndex(
+      (exercise) =>
+        exercise.id === exerciseId
+    );
+
+    if (index >= 0) {
+      setCurrentExerciseIndex(index);
+    }
   }
 
   function goToNextExercise() {
@@ -628,9 +732,42 @@ export function useWorkoutExecution({
     setIsCompleted(true);
   }
 
+  function returnToPartner() {
+    if (!currentGroup) return;
+
+    const partnerA = exercises.find(
+      (exercise) =>
+        exercise.exercise_group_id ===
+          currentGroup.id &&
+        exercise.group_order === 1
+    );
+
+    if (!partnerA) {
+      // Dado inconsistente (grupo sem exercício A): avança para não travar
+      // o aluno num loop de descanso.
+      goToNextExercise();
+
+      return;
+    }
+
+    goToExerciseById(partnerA.id);
+
+    setCurrentSet(
+      (previous) => previous + 1
+    );
+  }
+
   function finishRest() {
     setIsResting(false);
     setRestTimeLeft(0);
+
+    if (pendingBiReturn) {
+      setPendingBiReturn(false);
+
+      returnToPartner();
+
+      return;
+    }
 
     if (restMode === 'set') {
       setCurrentSet(
@@ -644,22 +781,188 @@ export function useWorkoutExecution({
     goToNextExercise();
   }
 
+  function markDraftCompleted(
+    exerciseId: string,
+    setNumber: number
+  ) {
+    const current =
+      draftsByExerciseRef.current[
+        exerciseId
+      ] || [];
+
+    const next = current.map((set) =>
+      set.setNumber === setNumber
+        ? { ...set, completed: true }
+        : set
+    );
+
+    draftsByExerciseRef.current[
+      exerciseId
+    ] = next;
+
+    setSetDrafts(next);
+  }
+
+  function registerCompletedExercise() {
+    if (!currentExercise) return;
+
+    const completed: CompletedExercise =
+      {
+        exerciseId:
+          currentExercise.id,
+
+        exerciseName,
+
+        setsCompleted:
+          safeTotalSets,
+
+        repsCompleted:
+          exerciseReps,
+
+        weightUsed:
+          exerciseWeight,
+
+        // Etapa 7 + Issue 3: snapshot das séries reais em memória (com a
+        // rodada/série atual já marcada). O payload v1 do log continua
+        // idêntico — a gravação de sets[] só ocorre na Etapa 11.
+        sets:
+          draftsByExerciseRef.current[
+            currentExercise.id
+          ] || [],
+      };
+
+    setCompletedExercises(
+      (previous) => {
+        const alreadyCompleted =
+          previous.some(
+            (exercise) =>
+              exercise.exerciseId ===
+              currentExercise.id
+          );
+
+        if (alreadyCompleted) {
+          return previous;
+        }
+
+        return [
+          ...previous,
+          completed,
+        ];
+      }
+    );
+  }
+
   function handleCompleteSet() {
     if (!currentExercise) {
       return;
     }
 
-    // Etapa 7: marca a série atual como concluída no estado visual.
-    // A progressão (descanso/avanço) continua sendo feita pelo fluxo
-    // abaixo — sem mudança de comportamento.
-    setSetDrafts((previous) =>
-      previous.map((set) =>
-        set.setNumber === currentSet
-          ? { ...set, completed: true }
-          : set
-      )
+    // Marca a rodada/série atual como concluída (fonte da verdade: Map).
+    markDraftCompleted(
+      currentExercise.id,
+      currentSet
     );
 
+    // Issue 3 — BI-SET fase A (group_order 1): segue para B SEM descanso.
+    if (
+      currentGroup?.group_type ===
+        'bi_set' &&
+      currentExercise.group_order === 1
+    ) {
+      // Última rodada de A: registra A como concluído.
+      if (currentSet >= safeTotalSets) {
+        registerCompletedExercise();
+      }
+
+      if (partnerExercise) {
+        goToExerciseById(
+          partnerExercise.id
+        );
+
+        return;
+      }
+    }
+
+    // Issue 3 — BI-SET fase B (group_order 2): descanso entre rodadas
+    // (rest_after_seconds do grupo) ou fim do bloco.
+    if (
+      currentGroup?.group_type ===
+        'bi_set' &&
+      currentExercise.group_order === 2
+    ) {
+      if (currentSet < safeTotalSets) {
+        const rest =
+          getTransitionRest({
+            exercise:
+              currentExercise,
+
+            nextExercise:
+              partnerExercise,
+
+            groups: dayGroups,
+          });
+
+        if (rest > 0) {
+          setPendingBiReturn(true);
+
+          startRest({
+            seconds: rest,
+            mode: 'set',
+            title:
+              'Descanso entre rodadas do bi-set',
+          });
+
+          return;
+        }
+
+        returnToPartner();
+
+        return;
+      }
+
+      // Fim do bloco: registra B e segue o fluxo normal (transição).
+      registerCompletedExercise();
+
+      if (!nextExercise) {
+        setIsCompleted(true);
+
+        return;
+      }
+
+      const transitionRest =
+        getTransitionRest({
+          exercise:
+            currentExercise,
+
+          nextExercise,
+
+          groups: dayGroups,
+        });
+
+      if (transitionRest > 0) {
+        startRest({
+          seconds:
+            transitionRest,
+
+          mode: 'exercise',
+
+          title:
+            getTransitionTitle(
+              currentExercise,
+              dayGroups
+            ),
+        });
+
+        return;
+      }
+
+      goToNextExercise();
+
+      return;
+    }
+
+    // FLUXO NORMAL (exercícios sem bi-set; drop-set, rest-pause e
+    // pirâmide continuam exatamente como antes).
     if (
       currentSet <
       safeTotalSets
@@ -688,51 +991,7 @@ export function useWorkoutExecution({
       return;
     }
 
-    const completed: CompletedExercise =
-      {
-        exerciseId:
-          currentExercise.id,
-
-        exerciseName,
-
-        setsCompleted:
-          safeTotalSets,
-
-        repsCompleted:
-          exerciseReps,
-
-        weightUsed:
-          exerciseWeight,
-
-        // Etapa 7: séries reais em memória (snapshot com a série atual
-        // marcada). O payload v1 do log continua idêntico — a gravação
-        // de sets[] acontece somente na Etapa 11 (buildWorkoutLogData).
-        sets: setDrafts.map((set) =>
-          set.setNumber === currentSet
-            ? { ...set, completed: true }
-            : { ...set }
-        ),
-      };
-
-    setCompletedExercises(
-      (previous) => {
-        const alreadyCompleted =
-          previous.some(
-            (exercise) =>
-              exercise.exerciseId ===
-              currentExercise.id
-          );
-
-        if (alreadyCompleted) {
-          return previous;
-        }
-
-        return [
-          ...previous,
-          completed,
-        ];
-      }
-    );
+    registerCompletedExercise();
 
     if (!nextExercise) {
       setIsCompleted(true);
@@ -910,6 +1169,7 @@ export function useWorkoutExecution({
     nextExercise,
     currentGroup,
     safeTotalSets,
+    biSetActive,
     setDrafts,
     updateSet,
     exerciseName,

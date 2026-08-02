@@ -95,6 +95,37 @@ export function getExerciseRest(
     : 0;
 }
 
+/**
+ * Número de rodadas de um bi-set. Prioriza rounds do grupo; sem rounds,
+ * usa o mínimo entre as séries dos dois exercícios (compatibilidade com
+ * bi-sets antigos que não definem rounds).
+ */
+export function getBiSetRounds(
+  exercise: WorkoutPlanExercise,
+  partner: WorkoutPlanExercise | null,
+  group: WorkoutExerciseGroup | null
+): number {
+  if (!group || group.group_type !== 'bi_set') {
+    return getExerciseSets(exercise);
+  }
+
+  if (group.rounds && group.rounds > 0) {
+    return group.rounds;
+  }
+
+  const partnerSets = partner
+    ? getExerciseSets(partner)
+    : getExerciseSets(exercise);
+
+  return Math.max(
+    1,
+    Math.min(
+      getExerciseSets(exercise),
+      partnerSets
+    )
+  );
+}
+
 export function getDropSetConfig(
   exercise: WorkoutPlanExercise
 ): DropSetConfig {

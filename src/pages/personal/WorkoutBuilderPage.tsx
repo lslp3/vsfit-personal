@@ -21,7 +21,6 @@ import {
   Trash2,
   Unlink,
   User,
-  Zap,
 } from 'lucide-react';
 
 import { Header } from '../../components/ui/Header';
@@ -30,7 +29,12 @@ import { Input, Textarea } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { ExercisePickerModal, type NewExerciseData } from '../../components/personal/ExercisePickerModal';
-import type { ExerciseConfigValues } from '../../components/personal/ExerciseConfigFields';
+import {
+  TECHNIQUE_OPTIONS,
+  TechniqueConfigPanels,
+  getTechniqueOption,
+  type ExerciseConfigValues,
+} from '../../components/personal/ExerciseConfigFields';
 import { useAuthStore } from '../../store/authStore';
 import { useStudentStore } from '../../store/studentStore';
 import * as workoutService from '../../services/workoutService';
@@ -45,7 +49,6 @@ import type {
 import { isWorkoutDayKey } from '../../types/workout';
 import type {
   CompleteWorkoutPlan,
-  DropSetConfig,
   Exercise,
   WorkoutDay,
   WorkoutExerciseGroup,
@@ -185,9 +188,11 @@ function normalizeExercise(exercise: Exercise) {
   };
 }
 
-function getDropSetConfig(
+function getExerciseTechniqueConfig<
+  T extends object
+>(
   exercise: DayExercise
-): DropSetConfig {
+): T {
   const config = exercise.technique_config;
 
   if (
@@ -195,24 +200,23 @@ function getDropSetConfig(
     typeof config === 'object' &&
     !Array.isArray(config)
   ) {
-    return config as DropSetConfig;
+    return config as T;
   }
 
-  return {};
+  return {} as T;
 }
 
 function getTechniqueLabel(
   technique?: WorkoutTechniqueType
 ) {
-  if (technique === 'drop_set') {
-    return 'DROP-SET';
+  if (!technique || technique === 'normal') {
+    return 'NORMAL';
   }
 
-  if (technique === 'bi_set') {
-    return 'BI-SET';
-  }
-
-  return 'NORMAL';
+  return (
+    getTechniqueOption(technique)?.label.toUpperCase() ||
+    'NORMAL'
+  );
 }
 
 export function WorkoutBuilderPage() {
@@ -272,6 +276,28 @@ export function WorkoutBuilderPage() {
   const [biSets, setBiSets] = useState<
     LocalBiSet[]
   >([]);
+
+  // Issue 2: cards de exercício em acordeão — localIds expandidos.
+  const [
+    expandedExercises,
+    setExpandedExercises,
+  ] = useState<Set<string>>(new Set());
+
+  function toggleExerciseExpanded(
+    localId: string
+  ) {
+    setExpandedExercises((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(localId)) {
+        next.delete(localId);
+      } else {
+        next.add(localId);
+      }
+
+      return next;
+    });
+  }
 
   const [error, setError] = useState('');
   const [
@@ -1108,6 +1134,48 @@ export function WorkoutBuilderPage() {
       return;
     }
 
+    if (technique === 'rest_pause') {
+      updateExercise(
+        day,
+        exercise.localId,
+        {
+          technique_type:
+            'rest_pause',
+          technique_config: {
+            pause_seconds: 15,
+            max_pauses: 3,
+            notes: '',
+          },
+          exercise_group_local_id:
+            null,
+          group_order: null,
+        }
+      );
+
+      return;
+    }
+
+    if (technique === 'pyramid') {
+      updateExercise(
+        day,
+        exercise.localId,
+        {
+          technique_type: 'pyramid',
+          technique_config: {
+            top_sets: 3,
+            increment_percent: 10,
+            increments: [10, 5, 0, -10],
+            notes: '',
+          },
+          exercise_group_local_id:
+            null,
+          group_order: null,
+        }
+      );
+
+      return;
+    }
+
     updateExercise(
       day,
       exercise.localId,
@@ -1121,21 +1189,22 @@ export function WorkoutBuilderPage() {
     );
   }
 
-  function updateDropSetConfig(
+  function updateTechniqueConfig(
     day: WorkoutDayKey,
     exercise: DayExercise,
-    values: Partial<DropSetConfig>
+    values: Record<string, unknown>
   ) {
     updateExercise(
       day,
       exercise.localId,
       {
         technique_type:
-          'drop_set',
+          exercise.technique_type ||
+          'normal',
         technique_config: {
-          ...getDropSetConfig(
-            exercise
-          ),
+          ...getExerciseTechniqueConfig<
+            Record<string, unknown>
+          >(exercise),
           ...values,
         },
       }
@@ -2555,10 +2624,23 @@ export function WorkoutBuilderPage() {
                           exercise,
                           index
                         ) => {
-                          const dropConfig =
-                            getDropSetConfig(
-                              exercise
+                          const expanded =
+                            expandedExercises.has(
+                              exercise.localId
                             );
+
+                          const techniqueOption =
+                            getTechniqueOption(
+                              exercise.technique_type
+                            );
+
+                          const badgeClass =
+                            exercise.technique_type &&
+                            exercise.technique_type !==
+                              'normal'
+                              ? techniqueOption
+                                  ?.activeClass
+                              : 'border-white/10 bg-white/5 text-zinc-500';
 
                           return (
                             <motion.div
@@ -2575,33 +2657,60 @@ export function WorkoutBuilderPage() {
                               }}
                               className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4"
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <h3 className="truncate text-sm font-black">
-                                    {
-                                      exercise.name
-                                    }
-                                  </h3>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleExerciseExpanded(
+                                      exercise.localId
+                                    )
+                                  }
+                                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="truncate text-sm font-black">
+                                        {
+                                          exercise.name
+                                        }
+                                      </h3>
 
-                                  <span
+                                      <span
+                                        className={cn(
+                                          'inline-flex shrink-0 rounded-full border px-2 py-1 text-[9px] font-black',
+                                          badgeClass
+                                        )}
+                                      >
+                                        {getTechniqueLabel(
+                                          exercise
+                                            .technique_type
+                                        )}
+                                      </span>
+                                    </div>
+
+                                    <p className="mt-0.5 text-[10px] text-zinc-500">
+                                      {exercise.sets ||
+                                        '—'}{' '}
+                                      séries ·{' '}
+                                      {exercise.reps ||
+                                        '—'}{' '}
+                                      reps ·{' '}
+                                      {exercise.rest_seconds ??
+                                        0}{' '}
+                                      s descanso
+                                    </p>
+                                  </div>
+
+                                  <ChevronDown
                                     className={cn(
-                                      'mt-1 inline-flex rounded-full px-2 py-1 text-[9px] font-black',
-                                      exercise.technique_type ===
-                                        'drop_set'
-                                        ? 'bg-orange-400/15 text-orange-300'
-                                        : exercise.technique_type ===
-                                            'bi_set'
-                                          ? 'bg-purple-400/15 text-purple-300'
-                                          : 'bg-white/5 text-zinc-500'
+                                      'h-4 w-4 shrink-0 text-zinc-500 transition-transform',
+                                      expanded &&
+                                        'rotate-180'
                                     )}
-                                  >
-                                    {getTechniqueLabel(
-                                      exercise.technique_type
-                                    )}
-                                  </span>
-                                </div>
+                                  />
+                                </button>
 
-                                <div className="flex gap-1">
+                                <div className="flex shrink-0 gap-1">
                                   <button
                                     type="button"
                                     disabled={
@@ -2654,116 +2763,106 @@ export function WorkoutBuilderPage() {
                                 </div>
                               </div>
 
-                              <div>
-                                <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
-                                  Técnica
-                                </p>
-
-                                <div className="grid grid-cols-3 gap-2">
-                                  {(
-                                    [
-                                      'normal',
-                                      'drop_set',
-                                      'bi_set',
-                                    ] as WorkoutTechniqueType[]
-                                  ).map(
-                                    (
-                                      technique
-                                    ) => (
-                                      <button
-                                        key={
-                                          technique
-                                        }
-                                        type="button"
-                                        onClick={() =>
-                                          changeExerciseTechnique(
-                                            day,
-                                            exercise,
-                                            technique
-                                          )
-                                        }
-                                        className={cn(
-                                          'min-h-10 rounded-xl border px-2 text-[10px] font-black',
-                                          exercise.technique_type ===
-                                            technique
-                                            ? technique ===
-                                              'drop_set'
-                                              ? 'border-orange-400/40 bg-orange-400/15 text-orange-300'
-                                              : technique ===
-                                                  'bi_set'
-                                                ? 'border-purple-400/40 bg-purple-400/15 text-purple-300'
-                                                : 'border-[#ff2a32]/40 bg-[#ff2a32]/15 text-[#ff2a32]'
-                                            : 'border-white/10 bg-black/20 text-zinc-500'
-                                        )}
-                                      >
-                                        {technique ===
-                                        'drop_set'
-                                          ? 'Drop-set'
-                                          : technique ===
-                                              'bi_set'
-                                            ? 'Bi-set'
-                                            : 'Normal'}
-                                      </button>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-
-                              {exercise.technique_type ===
-                                'drop_set' && (
-                                <div className="space-y-3 rounded-2xl border border-orange-400/20 bg-orange-400/[0.06] p-3">
-                                  <div className="flex items-center gap-2">
-                                    <Zap className="h-4 w-4 text-orange-300" />
-
-                                    <p className="text-[10px] font-black uppercase text-orange-300">
-                                      Configuração do drop-set
+                              {expanded && (
+                                <div className="space-y-4">
+                                  <div>
+                                    <p className="mb-2 text-[10px] font-black uppercase text-zinc-500">
+                                      Técnica
                                     </p>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {TECHNIQUE_OPTIONS.map(
+                                        (
+                                          option
+                                        ) => (
+                                          <button
+                                            key={
+                                              option.value
+                                            }
+                                            type="button"
+                                            onClick={() =>
+                                              changeExerciseTechnique(
+                                                day,
+                                                exercise,
+                                                option.value
+                                              )
+                                            }
+                                            className={cn(
+                                              'min-h-10 rounded-xl border px-2 text-[10px] font-black',
+                                              exercise.technique_type ===
+                                                option.value
+                                                ? option.activeClass
+                                                : 'border-white/10 bg-black/20 text-zinc-500'
+                                            )}
+                                          >
+                                            {
+                                              option.label
+                                            }
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
 
-                                  <div className="grid grid-cols-3 gap-2">
-                                    <Input
-                                      label="Quedas"
-                                      type="number"
-                                      min="1"
-                                      value={
-                                        dropConfig.drops ??
-                                        ''
+                                  {exercise.technique_type !==
+                                    'normal' &&
+                                    exercise.technique_type !==
+                                      'bi_set' && (
+                                    <TechniqueConfigPanels
+                                      technique={
+                                        exercise.technique_type ??
+                                        'normal'
                                       }
-                                      onChange={(event) =>
-                                        updateDropSetConfig(
+                                      config={
+                                        exercise.technique_config ??
+                                        {}
+                                      }
+                                      onConfigChange={(
+                                        field,
+                                        fieldValue
+                                      ) =>
+                                        updateTechniqueConfig(
                                           day,
                                           exercise,
                                           {
-                                            drops:
-                                              event.target.value
-                                                ? Number(
-                                                    event.target.value
-                                                  )
-                                                : undefined,
+                                            [field]:
+                                              fieldValue,
+                                          }
+                                        )
+                                      }
+                                    />
+                                  )}
+
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <Input
+                                      label="Séries"
+                                      value={
+                                        exercise.sets
+                                      }
+                                      onChange={(event) =>
+                                        updateExercise(
+                                          day,
+                                          exercise.localId,
+                                          {
+                                            sets:
+                                              event.target.value,
                                           }
                                         )
                                       }
                                     />
 
                                     <Input
-                                      label="Redução %"
-                                      type="number"
-                                      min="1"
+                                      label="Reps"
                                       value={
-                                        dropConfig.reduction_percent ??
-                                        ''
+                                        exercise.reps
                                       }
                                       onChange={(event) =>
-                                        updateDropSetConfig(
+                                        updateExercise(
                                           day,
-                                          exercise,
+                                          exercise.localId,
                                           {
-                                            reduction_percent:
-                                              event.target.value
-                                                ? Number(
-                                                    event.target.value
-                                                  )
-                                                : undefined,
+                                            reps:
+                                              event.target.value,
                                           }
                                         )
                                       }
@@ -2774,15 +2873,15 @@ export function WorkoutBuilderPage() {
                                       type="number"
                                       min="0"
                                       value={
-                                        dropConfig.rest_between_drops_seconds ??
+                                        exercise.rest_seconds ??
                                         ''
                                       }
                                       onChange={(event) =>
-                                        updateDropSetConfig(
+                                        updateExercise(
                                           day,
-                                          exercise,
+                                          exercise.localId,
                                           {
-                                            rest_between_drops_seconds:
+                                            rest_seconds:
                                               Number(
                                                 event.target.value ||
                                                   0
@@ -2793,18 +2892,56 @@ export function WorkoutBuilderPage() {
                                     />
                                   </div>
 
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <Input
+                                      label="Carga sugerida"
+                                      value={
+                                        exercise.suggested_weight ||
+                                        ''
+                                      }
+                                      onChange={(event) =>
+                                        updateExercise(
+                                          day,
+                                          exercise.localId,
+                                          {
+                                            suggested_weight:
+                                              event.target.value,
+                                          }
+                                        )
+                                      }
+                                    />
+
+                                    <Input
+                                      label="Tempo"
+                                      value={
+                                        exercise.tempo ||
+                                        ''
+                                      }
+                                      onChange={(event) =>
+                                        updateExercise(
+                                          day,
+                                          exercise.localId,
+                                          {
+                                            tempo:
+                                              event.target.value,
+                                          }
+                                        )
+                                      }
+                                    />
+                                  </div>
+
                                   <Textarea
-                                    label="Orientação"
+                                    label="Observação"
                                     value={
-                                      dropConfig.notes ||
+                                      exercise.observation ||
                                       ''
                                     }
                                     onChange={(event) =>
-                                      updateDropSetConfig(
+                                      updateExercise(
                                         day,
-                                        exercise,
+                                        exercise.localId,
                                         {
-                                          notes:
+                                          observation:
                                             event.target.value,
                                         }
                                       )
@@ -2812,121 +2949,6 @@ export function WorkoutBuilderPage() {
                                   />
                                 </div>
                               )}
-
-                              <div className="grid grid-cols-3 gap-2">
-                                <Input
-                                  label="Séries"
-                                  value={
-                                    exercise.sets
-                                  }
-                                  onChange={(event) =>
-                                    updateExercise(
-                                      day,
-                                      exercise.localId,
-                                      {
-                                        sets:
-                                          event.target.value,
-                                      }
-                                    )
-                                  }
-                                />
-
-                                <Input
-                                  label="Reps"
-                                  value={
-                                    exercise.reps
-                                  }
-                                  onChange={(event) =>
-                                    updateExercise(
-                                      day,
-                                      exercise.localId,
-                                      {
-                                        reps:
-                                          event.target.value,
-                                      }
-                                    )
-                                  }
-                                />
-
-                                <Input
-                                  label="Descanso"
-                                  type="number"
-                                  min="0"
-                                  value={
-                                    exercise.rest_seconds ??
-                                    ''
-                                  }
-                                  onChange={(event) =>
-                                    updateExercise(
-                                      day,
-                                      exercise.localId,
-                                      {
-                                        rest_seconds:
-                                          Number(
-                                            event.target.value ||
-                                              0
-                                          ),
-                                      }
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                <Input
-                                  label="Carga sugerida"
-                                  value={
-                                    exercise.suggested_weight ||
-                                    ''
-                                  }
-                                  onChange={(event) =>
-                                    updateExercise(
-                                      day,
-                                      exercise.localId,
-                                      {
-                                        suggested_weight:
-                                          event.target.value,
-                                      }
-                                    )
-                                  }
-                                />
-
-                                <Input
-                                  label="Tempo"
-                                  value={
-                                    exercise.tempo ||
-                                    ''
-                                  }
-                                  onChange={(event) =>
-                                    updateExercise(
-                                      day,
-                                      exercise.localId,
-                                      {
-                                        tempo:
-                                          event.target.value,
-                                      }
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <Textarea
-                                label="Observação"
-                                value={
-                                  exercise.observation ||
-                                  ''
-                                }
-                                onChange={(event) =>
-                                  updateExercise(
-                                    day,
-                                    exercise.localId,
-                                    {
-                                      observation:
-                                        event.target.value,
-                                    }
-                                  )
-                                }
-                              />
                             </motion.div>
                           );
                         }

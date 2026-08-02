@@ -88,6 +88,7 @@ export function WorkoutExecutionPage() {
     nextExercise,
     currentGroup,
     safeTotalSets,
+    biSetActive,
     totalSets,
     setDrafts,
     updateSet,
@@ -487,7 +488,10 @@ export function WorkoutExecutionPage() {
                   />
 
                   <p className="mt-1.5 text-[11px] font-black uppercase text-[#ff2a32]">
-                    Série {currentSet}{' '}
+                    {biSetActive
+                      ? 'Rodada'
+                      : 'Série'}{' '}
+                    {currentSet}{' '}
                     de{' '}
                     {safeTotalSets}
                   </p>
@@ -547,14 +551,22 @@ export function WorkoutExecutionPage() {
                         Exercício{' '}
                         {currentExercise.group_order ||
                           1}{' '}
-                        de 2.
+                        de 2 · Rodada{' '}
+                        {currentSet} de{' '}
+                        {safeTotalSets}.
                         {currentExercise.group_order ===
                         1
-                          ? ' O próximo exercício será iniciado sem descanso.'
-                          : ` Depois dele, descanse ${
-                              currentGroup.rest_after_seconds ||
-                              0
-                            } segundos.`}
+                          ? ' Execute o exercício 2 sem descanso.'
+                          : currentSet <
+                            safeTotalSets
+                            ? ` Depois, descanse ${
+                                currentGroup.rest_after_seconds ||
+                                0
+                              } segundos e repita o bloco.`
+                            : ` Bloco concluído. Descanse ${
+                                currentGroup.rest_after_seconds ||
+                                0
+                              } segundos.`}
                       </p>
                     </div>
                   )}
@@ -587,7 +599,10 @@ export function WorkoutExecutionPage() {
               <CheckCircle2 className="h-6 w-6" />
 
               {currentSet <
-              safeTotalSets
+                safeTotalSets ||
+              (biSetActive &&
+                currentExercise.group_order ===
+                  1)
                 ? 'Concluir série'
                 : nextExercise
                   ? 'Próximo exercício'
