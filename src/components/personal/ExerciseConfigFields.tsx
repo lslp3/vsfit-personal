@@ -278,36 +278,6 @@ export function TechniqueConfigPanels({
             />
           </div>
 
-          <Input
-            label="Incrementos por série (ex.: 10, 5, 0, -10)"
-            value={String(
-              Array.isArray(
-                pyramidConfig.increments
-              )
-                ? (
-                    pyramidConfig.increments as unknown[]
-                  ).join(', ')
-                : ''
-            )}
-            onChange={(event) => {
-              const increments = event.target.value
-                .split(',')
-                .map((part) =>
-                  Number.parseFloat(
-                    part.trim()
-                  )
-                )
-                .filter((number) =>
-                  Number.isFinite(number)
-                );
-
-              onConfigChange(
-                'increments',
-                increments
-              );
-            }}
-          />
-
           <Textarea
             label="Observações"
             value={String(

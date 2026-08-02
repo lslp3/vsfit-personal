@@ -1535,7 +1535,6 @@ export function WorkoutBuilderPage() {
           technique_config: {
             top_sets: 3,
             increment_percent: 10,
-            increments: [10, 5, 0, -10],
             notes: '',
           },
           exercise_group_local_id:
