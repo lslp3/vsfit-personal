@@ -2002,6 +2002,22 @@ export function WorkoutBuilderPage() {
           observation:
             exercise.observation || '',
           tempo: exercise.tempo || '',
+          image_url:
+            exercise.image_url || null,
+          video_url:
+            exercise.video_url || null,
+          muscle_group:
+            exercise.muscle_group || null,
+          category:
+            exercise.category || null,
+          equipment:
+            exercise.equipment || null,
+          difficulty:
+            exercise.difficulty || null,
+          instructions:
+            exercise.instructions || null,
+          tips:
+            exercise.tips || null,
         };
 
         if (serverId) {
