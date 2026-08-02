@@ -882,6 +882,38 @@ export async function deleteWorkoutExercise(
   if (error) throw error;
 }
 
+export async function createWorkoutExercise({
+  workoutPlanId,
+  exercise,
+  index,
+  workoutDayId,
+  exerciseGroupId,
+}: {
+  workoutPlanId: string;
+  exercise: CreateExerciseInWorkout;
+  index: number;
+  workoutDayId: string | null;
+  exerciseGroupId: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('workout_plan_exercises')
+    .insert(
+      buildExercisePayload({
+        exercise,
+        workoutPlanId,
+        index,
+        workoutDayId,
+        exerciseGroupId,
+      })
+    )
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return data as WorkoutPlanExercise;
+}
+
 export async function publishWorkoutPlan(
   id: string
 ) {

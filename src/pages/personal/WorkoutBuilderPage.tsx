@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -37,9 +42,14 @@ import type {
   CreateWorkoutExerciseGroup,
   WorkoutDayKey,
 } from '../../types/workout';
+import { isWorkoutDayKey } from '../../types/workout';
 import type {
+  CompleteWorkoutPlan,
   DropSetConfig,
   Exercise,
+  WorkoutDay,
+  WorkoutExerciseGroup,
+  WorkoutPlanExercise,
   WorkoutTechniqueType,
 } from '../../types/database';
 import { cn, getWeekdayName } from '../../lib/utils';
@@ -84,12 +94,14 @@ interface DayExercise extends CreateExerciseInWorkout {
 }
 
 interface DayConfiguration {
+  id?: string;
   localId: string;
   name: string;
   notes: string;
 }
 
 interface LocalBiSet {
+  id?: string;
   localId: string;
   dayKey: WorkoutDayKey;
   firstExerciseLocalId: string;
@@ -273,10 +285,41 @@ export function WorkoutBuilderPage() {
   const [publishing, setPublishing] =
     useState(false);
 
-  const [
-    createdPlanId,
-    setCreatedPlanId,
-  ] = useState<string | null>(null);
+  const workoutId =
+    searchParams.get('workoutId');
+
+  const [isEditMode, setIsEditMode] =
+    useState(Boolean(workoutId));
+
+  const [loadingWorkout, setLoadingWorkout] =
+    useState(false);
+
+  const [editingPlanId, setEditingPlanId] =
+    useState<string | null>(
+      workoutId || null
+    );
+
+  const serverDaysRef = useRef<WorkoutDay[]>([]);
+
+  const serverGroupsRef = useRef<
+    WorkoutExerciseGroup[]
+  >([]);
+
+  const serverExercisesRef = useRef<
+    WorkoutPlanExercise[]
+  >([]);
+
+  const dayServerIdsRef = useRef(
+    new Map<string, string>()
+  );
+
+  const groupServerIdsRef = useRef(
+    new Map<string, string>()
+  );
+
+  const exerciseServerIdsRef = useRef(
+    new Map<string, string>()
+  );
 
   const [
     showAddExercise,
@@ -367,6 +410,255 @@ export function WorkoutBuilderPage() {
         setLoadingExercises(false);
       });
   }, [currentDay]);
+
+  // ─── MODO EDIÇÃO ────────────────────────────────────────────
+  // Quando a URL carrega `workoutId`, o builder abre um plano
+  // existente em vez de criar um novo.
+  useEffect(() => {
+    if (!workoutId) return;
+
+    let cancelled = false;
+
+    setLoadingWorkout(true);
+    resetMessages();
+
+    workoutService
+      .getCompleteWorkoutPlan(workoutId)
+      .then((plan) => {
+        if (cancelled) return;
+
+        if (!plan) {
+          setIsEditMode(false);
+          setEditingPlanId(null);
+          setError(
+            'Treino não encontrado. O formulário foi aberto para criar um novo treino.'
+          );
+          return;
+        }
+
+        applyWorkoutPlanToState(plan);
+      })
+      .catch(() => {
+        if (cancelled) return;
+
+        setError(
+          'Erro ao carregar o treino. Tente novamente.'
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingWorkout(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workoutId]);
+
+  // Converte o plano completo (banco) no estado local do builder.
+  function applyWorkoutPlanToState(
+    plan: CompleteWorkoutPlan
+  ) {
+    const serverDays = plan.workout_days || [];
+    const serverGroups =
+      plan.workout_exercise_groups || [];
+    const serverExercises =
+      plan.workout_plan_exercises || [];
+
+    serverDaysRef.current = serverDays;
+    serverGroupsRef.current = serverGroups;
+    serverExercisesRef.current = serverExercises;
+
+    setName(plan.name || '');
+    setObjective(plan.objective || '');
+    setLevel(plan.level || '');
+    setDuration(
+      plan.duration_minutes
+        ? String(plan.duration_minutes)
+        : ''
+    );
+    setStartDate(plan.start_date || '');
+    setEndDate(plan.end_date || '');
+
+    const nextSelectedDays =
+      new Set<WorkoutDayKey>();
+
+    const nextDayConfigurations: Partial<
+      Record<WorkoutDayKey, DayConfiguration>
+    > = {};
+
+    const nextExercisesByDay: Partial<
+      Record<WorkoutDayKey, DayExercise[]>
+    > = {};
+
+    for (const day of serverDays) {
+      if (!isWorkoutDayKey(day.day_key)) {
+        continue;
+      }
+
+      const dayKey = day.day_key as WorkoutDayKey;
+
+      nextSelectedDays.add(dayKey);
+
+      nextDayConfigurations[dayKey] = {
+        id: day.id,
+        localId: day.id,
+        name: day.name || '',
+        notes: day.notes || '',
+      };
+
+      nextExercisesByDay[dayKey] = [];
+    }
+
+    const sortedExercises = [
+      ...serverExercises,
+    ].sort(
+      (a, b) =>
+        (a.execution_order ??
+          a.order_index) -
+        (b.execution_order ??
+          b.order_index)
+    );
+
+    for (const exercise of sortedExercises) {
+      if (
+        !isWorkoutDayKey(exercise.day_key)
+      ) {
+        continue;
+      }
+
+      const dayKey =
+        exercise.day_key as WorkoutDayKey;
+
+      if (!nextSelectedDays.has(dayKey)) {
+        continue;
+      }
+
+      const mapped: DayExercise = {
+        id: exercise.id,
+        localId: createLocalId(),
+        exercise_id: exercise.exercise_id || '',
+        day_key: dayKey,
+        workout_day_id:
+          exercise.workout_day_id || null,
+        exercise_group_id:
+          exercise.exercise_group_id || null,
+        exercise_group_local_id: null,
+        technique_type:
+          exercise.technique_type ?? 'normal',
+        technique_config:
+          exercise.technique_config || {},
+        group_order: exercise.group_order ?? null,
+        execution_order:
+          exercise.execution_order ??
+          exercise.order_index,
+        name: exercise.name,
+        sets: exercise.sets ?? '4',
+        reps: exercise.reps ?? '10',
+        rest_seconds: exercise.rest_seconds ?? 60,
+        suggested_weight:
+          exercise.suggested_weight || '',
+        observation: exercise.observation || '',
+        tempo: exercise.tempo || '',
+        image_url: exercise.image_url || null,
+        video_url: exercise.video_url || null,
+        muscle_group:
+          exercise.muscle_group || null,
+        category: exercise.category || null,
+        equipment: exercise.equipment || null,
+        difficulty: exercise.difficulty || null,
+        instructions:
+          exercise.instructions || null,
+        tips: exercise.tips || null,
+      };
+
+      nextExercisesByDay[dayKey]!.push(mapped);
+    }
+
+    const nextBiSets: LocalBiSet[] = [];
+
+    for (const group of serverGroups) {
+      if (group.group_type !== 'bi_set') {
+        continue;
+      }
+
+      const members = sortedExercises.filter(
+        (exercise) =>
+          exercise.exercise_group_id ===
+          group.id
+      );
+
+      const firstMember = members.find(
+        (member) => member.group_order === 1
+      );
+
+      const dayKey = firstMember
+        ? isWorkoutDayKey(firstMember.day_key)
+          ? (firstMember.day_key as WorkoutDayKey)
+          : null
+        : null;
+
+      if (
+        !dayKey ||
+        !nextSelectedDays.has(dayKey)
+      ) {
+        continue;
+      }
+
+      const secondMember = members.find(
+        (member) => member.group_order === 2
+      );
+
+      const firstLocalId =
+        nextExercisesByDay[dayKey]!.find(
+          (exercise) =>
+            exercise.id === firstMember?.id
+        )?.localId;
+
+      const secondLocalId =
+        nextExercisesByDay[dayKey]!.find(
+          (exercise) =>
+            exercise.id === secondMember?.id
+        )?.localId;
+
+      if (!firstLocalId || !secondLocalId) {
+        continue;
+      }
+
+      for (const exercise of nextExercisesByDay[
+        dayKey
+      ]!) {
+        if (
+          exercise.exercise_group_id ===
+          group.id
+        ) {
+          exercise.exercise_group_local_id =
+            group.id;
+        }
+      }
+
+      nextBiSets.push({
+        id: group.id,
+        localId: group.id,
+        dayKey,
+        firstExerciseLocalId: firstLocalId,
+        secondExerciseLocalId: secondLocalId,
+        name: group.name || '',
+        rounds: group.rounds ?? null,
+        restAfterSeconds:
+          group.rest_after_seconds ?? null,
+        notes: group.notes || '',
+        orderIndex: group.order_index,
+      });
+    }
+
+    setSelectedDays(nextSelectedDays);
+    setDayConfigurations(nextDayConfigurations);
+    setExercisesByDay(nextExercisesByDay);
+    setBiSets(nextBiSets);
+  }
 
   const selectedDaysArray =
     useMemo(
@@ -532,6 +824,7 @@ export function WorkoutBuilderPage() {
       (previous) => ({
         ...previous,
         [day]: {
+          id: previous[day]?.id,
           localId:
             previous[day]?.localId ||
             createLocalId(),
@@ -1312,6 +1605,293 @@ export function WorkoutBuilderPage() {
     };
   }
 
+  // ─── MODO EDIÇÃO: persistência ──────────────────────────────
+  // Atualiza o plano existente preservando ids do banco. Não
+  // remove nada que continue no estado; cria apenas o que é novo.
+  async function updateExistingWorkout(
+    planId: string
+  ) {
+    await workoutService.updateWorkoutPlanBasic({
+      id: planId,
+      studentId: studentId || undefined,
+      name,
+      objective: objective || null,
+      level: level || null,
+      durationMinutes: duration
+        ? Number(duration)
+        : null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+    });
+
+    const stateExerciseIds = new Set<string>();
+
+    for (const day of DAYS) {
+      for (const exercise of exercisesByDay[
+        day
+      ] || []) {
+        if (exercise.id) {
+          stateExerciseIds.add(exercise.id);
+        }
+      }
+    }
+
+    // 1) Grupos órfãos: existem no banco (ou foram criados nesta
+    // sessão) mas não fazem mais parte do estado.
+    const liveGroupIds = new Set(
+      biSets
+        .filter((group) => group.id)
+        .map((group) => group.id as string)
+    );
+
+    const trackedGroupIds = new Set<string>([
+      ...serverGroupsRef.current.map(
+        (group) => group.id
+      ),
+      ...groupServerIdsRef.current.values(),
+    ]);
+
+    for (const groupId of trackedGroupIds) {
+      if (!liveGroupIds.has(groupId)) {
+        await workoutService.deleteExerciseGroup(
+          groupId
+        );
+      }
+    }
+
+    // 2) Exercícios órfãos (inclui os de dias/grupos removidos).
+    const trackedExerciseIds = new Set<string>([
+      ...serverExercisesRef.current.map(
+        (exercise) => exercise.id
+      ),
+      ...exerciseServerIdsRef.current.values(),
+    ]);
+
+    for (const exerciseId of trackedExerciseIds) {
+      if (!stateExerciseIds.has(exerciseId)) {
+        await workoutService.deleteWorkoutExercise(
+          exerciseId
+        );
+      }
+    }
+
+    // 3) Dias órfãos.
+    for (const serverDay of serverDaysRef.current) {
+      if (
+        serverDay.day_key &&
+        !selectedDays.has(
+          serverDay.day_key as WorkoutDayKey
+        )
+      ) {
+        await workoutService.deleteWorkoutDay(
+          serverDay.id
+        );
+      }
+    }
+
+    for (const [
+      dayKey,
+      dayId,
+    ] of dayServerIdsRef.current) {
+      if (
+        !selectedDays.has(
+          dayKey as WorkoutDayKey
+        )
+      ) {
+        await workoutService.deleteWorkoutDay(
+          dayId
+        );
+      }
+    }
+
+    // 4) Upsert de dias.
+    const dayIdMap =
+      new Map<WorkoutDayKey, string>();
+
+    for (
+      let index = 0;
+      index < selectedDaysArray.length;
+      index++
+    ) {
+      const day = selectedDaysArray[index];
+      const configuration =
+        dayConfigurations[day];
+
+      const dayPayload = {
+        weekday: WEEKDAY_NUMBER[day],
+        day_key: day,
+        order_index: index,
+        name: configuration?.name || undefined,
+        notes: configuration?.notes || undefined,
+      };
+
+      const serverDayId =
+        configuration?.id ||
+        dayServerIdsRef.current.get(day);
+
+      if (serverDayId) {
+        await workoutService.updateWorkoutDay(
+          serverDayId,
+          dayPayload
+        );
+
+        dayIdMap.set(day, serverDayId);
+      } else {
+        const created =
+          await workoutService.createWorkoutDay(
+            planId,
+            dayPayload
+          );
+
+        dayServerIdsRef.current.set(
+          day,
+          created.id
+        );
+
+        dayIdMap.set(day, created.id);
+      }
+    }
+
+    // 5) Upsert de grupos (bi-sets).
+    const groupIdMap = new Map<string, string>();
+
+    for (const group of biSets) {
+      if (!selectedDays.has(group.dayKey)) {
+        continue;
+      }
+
+      const workoutDayId =
+        dayIdMap.get(group.dayKey);
+
+      if (!workoutDayId) {
+        continue;
+      }
+
+      const serverId =
+        group.id ||
+        groupServerIdsRef.current.get(
+          group.localId
+        );
+
+      const groupPayload = {
+        group_type: 'bi_set' as const,
+        name: group.name || undefined,
+        order_index: group.orderIndex,
+        rounds: group.rounds,
+        rest_after_seconds: group.restAfterSeconds,
+        notes: group.notes || undefined,
+      };
+
+      if (serverId) {
+        await workoutService.updateExerciseGroup({
+          id: serverId,
+          group: groupPayload,
+        });
+
+        groupIdMap.set(group.localId, serverId);
+      } else {
+        const created =
+          await workoutService.createExerciseGroup({
+            workoutPlanId: planId,
+            workoutDayId,
+            group: groupPayload,
+          });
+
+        groupServerIdsRef.current.set(
+          group.localId,
+          created.id
+        );
+
+        groupIdMap.set(
+          group.localId,
+          created.id
+        );
+      }
+    }
+
+    // 6) Upsert de exercícios.
+    for (const day of selectedDaysArray) {
+      const workoutDayId = dayIdMap.get(day);
+
+      if (!workoutDayId) {
+        continue;
+      }
+
+      const dayExercises = exercisesByDay[day] || [];
+
+      for (
+        let index = 0;
+        index < dayExercises.length;
+        index++
+      ) {
+        const exercise = dayExercises[index];
+
+        const serverId =
+          exercise.id ||
+          exerciseServerIdsRef.current.get(
+            exercise.localId
+          );
+
+        const exerciseGroupId = exercise.exercise_group_local_id
+          ? groupIdMap.get(
+              exercise.exercise_group_local_id
+            ) || null
+          : null;
+
+        const exercisePayload = {
+          exercise_id:
+            exercise.exercise_id || undefined,
+          workout_day_id: workoutDayId,
+          exercise_group_id: exerciseGroupId,
+          day_key: day,
+          execution_order: index,
+          group_order: exerciseGroupId
+            ? (exercise.group_order ?? null)
+            : null,
+          technique_type:
+            exercise.technique_type || 'normal',
+          technique_config:
+            exercise.technique_config || {},
+          name: exercise.name,
+          sets: exercise.sets ?? '4',
+          reps: exercise.reps ?? '10',
+          rest_seconds:
+            exercise.rest_seconds ?? 0,
+          suggested_weight:
+            exercise.suggested_weight || '',
+          observation:
+            exercise.observation || '',
+          tempo: exercise.tempo || '',
+        };
+
+        if (serverId) {
+          await workoutService.updateWorkoutExercise(
+            {
+              id: serverId,
+              exercise: exercisePayload,
+            }
+          );
+        } else {
+          const created =
+            await workoutService.createWorkoutExercise(
+              {
+                workoutPlanId: planId,
+                exercise: exercisePayload,
+                index,
+                workoutDayId,
+                exerciseGroupId,
+              }
+            );
+
+          exerciseServerIdsRef.current.set(
+            exercise.localId,
+            created.id
+          );
+        }
+      }
+    }
+  }
+
   async function handleSave() {
     const validationError =
       validateWorkout();
@@ -1329,25 +1909,26 @@ export function WorkoutBuilderPage() {
     resetMessages();
 
     try {
-      if (createdPlanId) {
+      if (isEditMode && editingPlanId) {
+        await updateExistingWorkout(editingPlanId);
+
         setSuccessMessage(
-          'O treino já foi salvo. Agora você pode publicá-lo.'
+          'Treino atualizado com sucesso.'
         );
+      } else {
+        const plan =
+          await workoutService.createWorkoutPlan(
+            trainerProfile.id,
+            buildCreateData()
+          );
 
-        return;
+        setIsEditMode(true);
+        setEditingPlanId(plan.id);
+
+        setSuccessMessage(
+          'Treino salvo como rascunho.'
+        );
       }
-
-      const plan =
-        await workoutService.createWorkoutPlan(
-          trainerProfile.id,
-          buildCreateData()
-        );
-
-      setCreatedPlanId(plan.id);
-
-      setSuccessMessage(
-        'Treino salvo como rascunho.'
-      );
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
@@ -1376,10 +1957,11 @@ export function WorkoutBuilderPage() {
     resetMessages();
 
     try {
-      let planId =
-        createdPlanId;
+      let planId = editingPlanId;
 
-      if (!planId) {
+      if (isEditMode && planId) {
+        await updateExistingWorkout(planId);
+      } else {
         const plan =
           await workoutService.createWorkoutPlan(
             trainerProfile.id,
@@ -1387,8 +1969,11 @@ export function WorkoutBuilderPage() {
           );
 
         planId = plan.id;
-        setCreatedPlanId(plan.id);
+        setIsEditMode(true);
+        setEditingPlanId(plan.id);
       }
+
+      if (!planId) return;
 
       await workoutService.publishWorkoutPlan(
         planId
@@ -1497,10 +2082,31 @@ export function WorkoutBuilderPage() {
     }
   }
 
+  if (loadingWorkout) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white">
+        <Header
+          title="Editar Treino"
+          showBack
+        />
+
+        <div className="page-container space-y-5 pb-36">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-zinc-400">
+            Carregando treino...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <Header
-        title="Montar Treino"
+        title={
+          isEditMode
+            ? 'Editar Treino'
+            : 'Montar Treino'
+        }
         showBack
       />
 
@@ -2346,7 +2952,9 @@ export function WorkoutBuilderPage() {
             }
           >
             <Save className="h-4 w-4" />
-            Salvar
+            {isEditMode
+              ? 'Atualizar'
+              : 'Salvar'}
           </Button>
 
           <Button

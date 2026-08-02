@@ -176,7 +176,7 @@ export function getEffectiveTechnique(
 }
 
 export function isWorkoutDayKey(
-  value: string
+  value: string | null | undefined
 ): value is WorkoutDayKey {
   return WORKOUT_DAY_ORDER.includes(
     value as WorkoutDayKey
