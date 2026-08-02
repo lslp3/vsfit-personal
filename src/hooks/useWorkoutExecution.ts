@@ -45,6 +45,14 @@ import {
   getStudentName,
   normalizeDayKey,
 } from '../utils/workoutPlan';
+import {
+  clearExecutionSnapshot,
+  loadExecutionSnapshot,
+  registerExecutionLifecycleFlush,
+  saveExecutionSnapshot,
+  snapshotHasContent,
+  type WorkoutSnapshot,
+} from '../services/workoutExecutionPersistence';
 
 type RestMode = 'set' | 'exercise';
 
@@ -344,6 +352,13 @@ export function useWorkoutExecution({
     Record<string, ExerciseSetDraft[]>
   >({});
 
+  // Persistência da execução (Sprint — blindagem): último snapshot PRONTO
+  // + se estamos numa sessão de treino ativa. Usados pelo autosave/flush
+  // para gravar imediatamente ao perder foco, sem depender do debounce.
+  const executionSnapshotRef =
+    useRef<WorkoutSnapshot | null>(null);
+  const sessionActiveRef = useRef(false);
+
   const [
     elapsedSeconds,
     setElapsedSeconds,
@@ -352,6 +367,47 @@ export function useWorkoutExecution({
   const startedAtRef = useRef(
     new Date().toISOString()
   );
+
+  // Monta o snapshot completo da execução a partir do estado atual. Puro —
+  // sem I/O. Usado pelo autosave (debounce) e pelo flush síncrono.
+  const buildExecutionSnapshot = (
+    studentId: string
+  ): WorkoutSnapshot | null => {
+    // Guard de ownership/sessão: só faz sentido persistir com treino carregado
+    // e identificação de sessão válida.
+    if (!id || !dayKey || !studentId) {
+      return null;
+    }
+
+    let thenValue: ThenStep | null = null;
+
+    if (pendingTransition) {
+      thenValue = pendingTransition;
+    }
+
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      workoutId: id,
+      studentId,
+      dayKey,
+      currentExerciseIndex,
+      currentSet,
+      completedExercises,
+      draftsByExercise: draftsByExerciseRef.current,
+      pendingTransition: {
+        then: thenValue,
+        restRestore: false,
+      },
+      isResting,
+      restTimeLeft,
+      restDuration,
+      restMode,
+      restTitle,
+      elapsedSeconds,
+      startedAt: startedAtRef.current,
+    };
+  };
 
   useEffect(() => {
     void loadExecutionData();
@@ -489,6 +545,90 @@ export function useWorkoutExecution({
 
       startedAtRef.current =
         new Date().toISOString();
+
+      // ════════════════════════════════════════════════════════════════════
+      // RESTAURAÇÃO DO SNAPSHOT (persistência da execução)
+      // ════════════════════════════════════════════════════════════════════
+      // Só restaura quando identificação casa 100%: mesmo workout + mesmo
+      // aluno + mesmo dia. NUNCA um snapshot de outro treino. Técnicas
+      // premium NÃO são recalculadas — só o estado já existente é aplicado.
+      // ════════════════════════════════════════════════════════════════════
+      const snapshot = loadExecutionSnapshot();
+
+      if (
+        snapshot &&
+        snapshot.workoutId === id &&
+        snapshot.studentId === studentData.id &&
+        snapshot.dayKey === dayKey
+      ) {
+        const maxIndex = Math.max(
+          0,
+          dayExercises.length - 1
+        );
+        const restoredIndex = Math.min(
+          Math.max(0, snapshot.currentExerciseIndex),
+          maxIndex
+        );
+
+        setCurrentExerciseIndex(restoredIndex);
+        setCurrentSet(
+          snapshot.currentSet >= 1
+            ? snapshot.currentSet
+            : 1
+        );
+        setCompletedExercises(
+          Array.isArray(snapshot.completedExercises)
+            ? snapshot.completedExercises
+            : []
+        );
+        draftsByExerciseRef.current =
+          snapshot.draftsByExercise &&
+          typeof snapshot.draftsByExercise === 'object'
+            ? snapshot.draftsByExercise
+            : {};
+
+        // Descanso em andamento (inclui rest-pause em pausa)
+        setIsResting(Boolean(snapshot.isResting));
+        setRestTimeLeft(
+          snapshot.restTimeLeft || 0
+        );
+        setRestDuration(
+          snapshot.restDuration || 0
+        );
+        setRestMode(
+          snapshot.restMode === 'set'
+            ? 'set'
+            : 'exercise'
+        );
+        setRestTitle(
+          snapshot.restTitle || 'Descanso'
+        );
+
+        // Transição pendente decidida pela engine antes de alguém sair do app
+        if (
+          snapshot.pendingTransition &&
+          snapshot.pendingTransition.then
+        ) {
+          setPendingTransition(
+            snapshot.pendingTransition.then
+          );
+        }
+
+        // Tempo: mantém o cronômetro da sessão original (não reinicia do zero)
+        if (snapshot.startedAt) {
+          startedAtRef.current = snapshot.startedAt;
+        }
+
+        setElapsedSeconds(
+          snapshot.elapsedSeconds || 0
+        );
+      }
+      // Não há snapshot válido para este treino, a sessão inicia limpa
+      // (valores resetados acima). NÃO apagar snapshot alheio aqui — limpeza
+      // só após handleSave() bem-sucedido.
+
+      // Sessão ativa para o autosave/flush (só grava com treino carregado)
+      sessionActiveRef.current = true;
     } catch (
       loadError: unknown
     ) {
@@ -498,6 +638,7 @@ export function useWorkoutExecution({
           : 'Erro ao carregar treino.';
 
       setError(message);
+      sessionActiveRef.current = false;
     } finally {
       setLoading(false);
     }
@@ -1105,6 +1246,12 @@ export function useWorkoutExecution({
             ),
         });
 
+      // Treino salvo com sucesso: a partir daqui o exercício deixou de ser
+      // uma sessão em andamento. Limpar o snapshot SÓ agora (não antes).
+      // Nunca limpar em unmount/reload/troca de tela — isso perderia progresso.
+      clearExecutionSnapshot();
+      sessionActiveRef.current = false;
+
       await notifyTrainer({
         student,
         plan,
@@ -1136,6 +1283,70 @@ export function useWorkoutExecution({
       setSaving(false);
     }
   }
+
+  // ════════════════════════════════════════════════════════════════════
+  // AUTOSAVE + FLUSH (persistência da execução)
+  // ════════════════════════════════════════════════════════════════════
+  // 1) Autosave com debounce: recompõe o snapshot a cada mudança relevante
+  //    do estado de execução e o grava com pequeno atraso. O ref é atualizado
+  //    SÍNCRONO a cada render, então o flush sempre tem o estado mais novo.
+  // 2) Flush imediato ao perder foco (trocar de app / background / reload /
+  //    fechar teclado): os 4 listeners gravam síncrono via ref.
+  useEffect(() => {
+    if (!student || !plan) return;
+
+    sessionActiveRef.current = true;
+
+    const snapshot = buildExecutionSnapshot(
+      student.id
+    );
+
+    if (!snapshot) return;
+
+    executionSnapshotRef.current = snapshot;
+
+    if (!snapshotHasContent(snapshot)) return;
+
+    const timer = window.setTimeout(() => {
+      saveExecutionSnapshot(snapshot);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+    // Re-roda quando qualquer parte significativa do estado mudar.
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [
+    student,
+    plan,
+    currentExerciseIndex,
+    currentSet,
+    completedExercises,
+    setDrafts,
+    isResting,
+    restTimeLeft,
+    restDuration,
+    restMode,
+    restTitle,
+    pendingTransition,
+    elapsedSeconds,
+    isCompleted,
+    id,
+    dayKey,
+  ]);
+
+  // Registra (uma vez por montagem) o flush síncrono nos 4 eventos de
+  // ciclo de vida. O ref garante que sempre grave o snapshot mais recente.
+  useEffect(() => {
+    const unregister =
+      registerExecutionLifecycleFlush({
+        isEnabled: () => sessionActiveRef.current,
+        getSnapshot: () => executionSnapshotRef.current,
+      });
+
+    return () => {
+      unregister();
+      // Nunca limpar o snapshot no unmount — só após handleSave().
+    };
+  }, []);
 
   return {
     student,
