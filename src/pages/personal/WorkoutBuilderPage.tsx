@@ -148,6 +148,111 @@ function createLocalId() {
   return `${Date.now()}-${values[0].toString(16)}`;
 }
 
+// ─── RASCUNHO AUTOMÁTICO (localStorage) ─────────────────────────
+// O builder mantém todo o estado só em memória React: ao trocar de app
+// ou a activity/webview recarregar, o treino montado se perde. Um rascunho
+// é gravado em localStorage após cada edição e restaurado ao reabrir a tela.
+const DRAFT_KEY = 'vsfit_workout_draft_v1';
+const DRAFT_VERSION = 1;
+
+interface WorkoutDraftState {
+  version: number;
+  savedAt: number;
+  studentId: string;
+  name: string;
+  objective: string;
+  level: string;
+  duration: string;
+  startDate: string;
+  endDate: string;
+  selectedDays: WorkoutDayKey[];
+  dayConfigurations: Partial<Record<WorkoutDayKey, DayConfiguration>>;
+  exercisesByDay: Partial<Record<WorkoutDayKey, DayExercise[]>>;
+  biSets: LocalBiSet[];
+}
+
+interface WorkoutDraftInput {
+  studentId: string;
+  name: string;
+  objective: string;
+  level: string;
+  duration: string;
+  startDate: string;
+  endDate: string;
+  selectedDays: WorkoutDayKey[];
+  dayConfigurations: Partial<Record<WorkoutDayKey, DayConfiguration>>;
+  exercisesByDay: Partial<Record<WorkoutDayKey, DayExercise[]>>;
+  biSets: LocalBiSet[];
+}
+
+function buildDraftPayload(
+  input: WorkoutDraftInput
+): WorkoutDraftState {
+  return {
+    version: DRAFT_VERSION,
+    savedAt: Date.now(),
+    ...input,
+  };
+}
+
+function loadWorkoutDraft(): WorkoutDraftState | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as WorkoutDraftState;
+
+    if (
+      !parsed ||
+      parsed.version !== DRAFT_VERSION ||
+      typeof parsed !== 'object'
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveWorkoutDraft(draft: WorkoutDraftState) {
+  try {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify(draft)
+    );
+  } catch {
+    // Quota/private mode — ignora silenciosamente.
+  }
+}
+
+function clearWorkoutDraft() {
+  try {
+    window.localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function draftHasContent(
+  draft: WorkoutDraftState
+) {
+  return Boolean(
+    draft.name.trim() ||
+      draft.objective.trim() ||
+      draft.level.trim() ||
+      draft.duration.trim() ||
+      draft.startDate ||
+      draft.endDate ||
+      draft.selectedDays.length > 0 ||
+      Object.keys(draft.dayConfigurations).length > 0 ||
+      Object.keys(draft.exercisesByDay).length > 0 ||
+      draft.biSets.length > 0
+  );
+}
+
 function normalizeExercise(exercise: Exercise) {
   const record =
     exercise as unknown as Record<string, string>;
@@ -441,6 +546,152 @@ export function WorkoutBuilderPage() {
     useState<BiSetForm>(
       EMPTY_BI_SET_FORM
     );
+
+  // Rascunho automático: existe um rascunho salvo localmente?
+  const [hasDraft, setHasDraft] = useState(
+    () =>
+      !workoutId &&
+      loadWorkoutDraft() !== null
+  );
+
+  // Último payload completo do rascunho + se estamos em modo criação.
+  // Usados pelo flush síncrono ao background (events de lifecycle) para
+  // gravar imediatamente sem depender do debounce de 400ms.
+  const draftPayloadRef =
+    useRef<WorkoutDraftState | null>(null);
+  const inCreateModeRef =
+    useRef(!workoutId && !editingPlanId);
+  inCreateModeRef.current =
+    !workoutId && !editingPlanId;
+
+  // Restaura o rascunho ao abrir a tela em modo criação.
+  useEffect(() => {
+    if (workoutId) return;
+
+    const draft = loadWorkoutDraft();
+
+    if (!draft) return;
+
+    restoreDraft(draft);
+    setHasDraft(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Grava o rascunho automaticamente a cada edição (com debounce),
+  // somente em criação de plano novo (nunca deve sobrescrever a edição).
+  useEffect(() => {
+    if (workoutId || editingPlanId) return;
+
+    const draft = buildDraftPayload({
+      studentId,
+      name,
+      objective,
+      level,
+      duration,
+      startDate,
+      endDate,
+      selectedDays: Array.from(selectedDays),
+      dayConfigurations,
+      exercisesByDay,
+      biSets,
+    });
+
+    // Mantém o último payload completo no ref para o flush síncrono
+    // ao trocar de app / ir para background.
+    draftPayloadRef.current = draft;
+
+    if (!draftHasContent(draft)) {
+      setHasDraft(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      saveWorkoutDraft(draft);
+      setHasDraft(true);
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    workoutId,
+    editingPlanId,
+    studentId,
+    name,
+    objective,
+    level,
+    duration,
+    startDate,
+    endDate,
+    selectedDays,
+    dayConfigurations,
+    exercisesByDay,
+    biSets,
+  ]);
+
+  // Flush síncrono ao perder foco (troca de app / background / reload da
+  // WebView). Grava imediatamente o último rascunho PRONTO no ref, sem
+  // depender do debounce de 400ms — elimina a janela de perda ao sair.
+  useEffect(() => {
+    const flushDraft = () => {
+      if (!inCreateModeRef.current) return;
+
+      const payload = draftPayloadRef.current;
+
+      if (
+        !payload ||
+        !draftHasContent(payload)
+      ) {
+        return;
+      }
+
+      saveWorkoutDraft(payload);
+      setHasDraft(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushDraft();
+      }
+    };
+
+    const handlePageHide = () => {
+      flushDraft();
+    };
+
+    const handleBeforeUnload = () => {
+      flushDraft();
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibilityChange
+    );
+    window.addEventListener(
+      'pagehide',
+      handlePageHide
+    );
+    window.addEventListener(
+      'beforeunload',
+      handleBeforeUnload
+    );
+
+    return () => {
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange
+      );
+      window.removeEventListener(
+        'pagehide',
+        handlePageHide
+      );
+      window.removeEventListener(
+        'beforeunload',
+        handleBeforeUnload
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!trainerProfile?.id) return;
@@ -810,6 +1061,40 @@ export function WorkoutBuilderPage() {
   function resetMessages() {
     setError('');
     setSuccessMessage('');
+  }
+
+  // Restaura o rascunho salvo no estado do builder.
+  function restoreDraft(draft: WorkoutDraftState) {
+    setStudentId(draft.studentId || studentId);
+    setName(draft.name || '');
+    setObjective(draft.objective || '');
+    setLevel(draft.level || '');
+    setDuration(draft.duration || '');
+    setStartDate(draft.startDate || '');
+    setEndDate(draft.endDate || '');
+    setSelectedDays(new Set(draft.selectedDays || []));
+    setDayConfigurations(draft.dayConfigurations || {});
+    setExercisesByDay(draft.exercisesByDay || {});
+    setBiSets(draft.biSets || []);
+    setExpandedExercises(new Set());
+  }
+
+  // Descarta o rascunho salvo e volta a um builder limpo (novo plano).
+  function discardDraft() {
+    clearWorkoutDraft();
+    setHasDraft(false);
+    setName('');
+    setObjective('');
+    setLevel('');
+    setDuration('');
+    setStartDate('');
+    setEndDate('');
+    setSelectedDays(new Set());
+    setDayConfigurations({});
+    setExercisesByDay({});
+    setBiSets([]);
+    setExpandedExercises(new Set());
+    setSuccessMessage('Rascunho descartado.');
   }
 
   function ensureDay(
@@ -2080,6 +2365,8 @@ export function WorkoutBuilderPage() {
 
         setIsEditMode(true);
         setEditingPlanId(plan.id);
+        clearWorkoutDraft();
+        setHasDraft(false);
 
         setSuccessMessage(
           'Treino salvo como rascunho.'
@@ -2127,6 +2414,8 @@ export function WorkoutBuilderPage() {
         planId = plan.id;
         setIsEditMode(true);
         setEditingPlanId(plan.id);
+        clearWorkoutDraft();
+        setHasDraft(false);
       }
 
       if (!planId) return;
@@ -3080,6 +3369,18 @@ export function WorkoutBuilderPage() {
             Publicar
           </Button>
         </div>
+
+        {hasDraft && !isEditMode && (
+          <Button
+            variant="danger"
+            className="mt-3 w-full"
+            onClick={discardDraft}
+            disabled={saving || publishing}
+          >
+            <Trash2 className="h-4 w-4" />
+            Descartar rascunho
+          </Button>
+        )}
       </div>
 
       <ExercisePickerModal

@@ -223,15 +223,37 @@ export const useAuthStore =
             error
           );
 
-          if (!session?.user?.id) {
-            try {
-              await authLogout();
-            } catch (logoutError) {
-              console.warn(
-                '[AuthStore] logout after initialization error:',
-                logoutError
-              );
-            }
+          // Corner case 1: existe sessão válida do Supabase, mas não foi
+          // possível carregar o perfil/estudante (ex.: falha de rede
+          // transitória ao retomar do background, timeout, RLS momentâneo).
+          // NÃO é um logout legítimo: preservamos o token/sessão recuperado
+          // e não chamamos authLogout, permitindo que a próxima inicialização
+          // (retry) restaure a sessão sem obrigar novo login.
+          if (session?.user?.id) {
+            set({
+              user: session.user,
+              profile: null,
+              trainerProfile: null,
+              student: null,
+              studentAccount: null,
+              isLoading: false,
+              isAuthenticated: false,
+              isRecovering: false,
+              error:
+                'Falha ao carregar seu perfil. Verifique sua conexão e tente novamente.',
+            });
+            return;
+          }
+
+          // Corner case 2: nenhuma sessão real no Supabase (sessão inexistente,
+          // token inválido/expirado confirmado) → logout legítimo e limpeza.
+          try {
+            await authLogout();
+          } catch (logoutError) {
+            console.warn(
+              '[AuthStore] logout after initialization error:',
+              logoutError
+            );
           }
 
           set({
