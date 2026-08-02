@@ -22,6 +22,9 @@ import { cn } from '../../lib/utils';
 import { formatDate, formatTime } from '../../lib/formatters';
 import * as studentService from '../../services/studentService';
 import { getWorkoutLogsByStudent } from '../../services/workoutService';
+import { buildStrengthTracker, bestExerciseByVolume } from '../../services/strengthService';
+import { LineChart } from '../../components/progress/LineChart';
+import { metricPointsToEvolution } from '../../utils/evolution';
 
 type StudentProgressState = {
   student: any | null;
@@ -75,6 +78,9 @@ const TEXT = {
   semFotosDescricao:
     'Quando seu personal registrar fotos de evolu\u00e7\u00e3o, elas aparecer\u00e3o aqui.',
   semData: 'Sem data',
+  antesDepois: 'Antes / Depois',
+  antes: 'Antes',
+  depois: 'Depois',
 
   historico: 'Hist\u00f3rico',
   treinosConcluidos: 'Treinos conclu\u00eddos',
@@ -83,6 +89,14 @@ const TEXT = {
   semTreinosDescricao:
     'Finalize um treino para come\u00e7ar seu hist\u00f3rico.',
   feito: 'FEITO',
+
+  forca: 'For\u00e7a',
+  historicoDeForca: 'Hist\u00f3rico de for\u00e7a',
+  semForcaTitulo: 'Volume de treino em prepara\u00e7\u00e3o',
+  semForcaDescricao:
+    'Finalize treinos para acompanhar seu volume de carga (kg) por sess\u00e3o.',
+  volumeTotal: 'Volume total',
+  recordeDeForca: 'Recorde de for\u00e7a',
 };
 
 const DAY_NAMES: Record<string, string> = {
@@ -266,6 +280,51 @@ function getMetricMuscleMass(metric: any) {
   );
 }
 
+/** Lê uma medida de circunferência (cm) da avaliação — colunas Sprint 9. */
+function getMetricCircumference(metric: any, key: string) {
+  const direct = parseNumber(metric?.[key]);
+
+  if (direct !== null) return direct;
+
+  // Fallback tolerante a naming alternativo (braco/peito/...).
+  const aliases: Record<string, string[]> = {
+    arm_cm: ['arm', 'biceps', 'braco'],
+    chest_cm: ['chest', 'peito'],
+    waist_cm: ['waist', 'cintura'],
+    abdomen_cm: ['abdomen', 'abdomen_cm', 'abdominal'],
+    hips_cm: ['hips', 'quadril'],
+    thigh_cm: ['thigh', 'coxa'],
+    calf_cm: ['calf', 'panturrilha'],
+  };
+
+  const candidates = aliases[key] || [];
+
+  for (const alias of candidates) {
+    const aliasValue = parseNumber(metric?.[alias]);
+    if (aliasValue !== null) return aliasValue;
+  }
+
+  return null;
+}
+
+const MEASUREMENT_LABELS: Array<{ key: string; label: string }> = [
+  { key: 'arm_cm', label: 'Braço' },
+  { key: 'chest_cm', label: 'Peito' },
+  { key: 'waist_cm', label: 'Cintura' },
+  { key: 'abdomen_cm', label: 'Abdômen' },
+  { key: 'hips_cm', label: 'Quadril' },
+  { key: 'thigh_cm', label: 'Coxa' },
+  { key: 'calf_cm', label: 'Panturrilha' },
+];
+
+/** Retorna as medidas de circunferência disponíveis na última avaliação. */
+function getMeasurementRows(metric: any) {
+  return MEASUREMENT_LABELS.map(({ key, label }) => ({
+    label,
+    value: getMetricCircumference(metric, key),
+  }));
+}
+
 function getLatestMetric(metrics: any[]) {
   return sortByDateDesc(metrics)[0] || null;
 }
@@ -327,6 +386,36 @@ function getPhotoUrl(photo: any) {
       photo?.url ||
       ''
   );
+}
+
+/** Agrupa fotos por posição (Frente/Lateral/Costas) e retorna o par
+ *  antes/depois (mais antiga e mais recente) de cada posição com 2+ fotos. */
+function getBeforeAfterPairs(photos: any[]) {
+  const byPosition = new Map<string, any[]>();
+
+  for (const photo of photos) {
+    const type = getPhotoType(photo);
+    if (!byPosition.has(type)) byPosition.set(type, []);
+    byPosition.get(type)!.push(photo);
+  }
+
+  const pairs: Array<{
+    position: string;
+    before: any;
+    after: any;
+  }> = [];
+
+  for (const [position, list] of byPosition.entries()) {
+    if (list.length < 2) continue;
+    const sorted = sortByDateAsc(list);
+    pairs.push({
+      position,
+      before: sorted[0],
+      after: sorted[sorted.length - 1],
+    });
+  }
+
+  return pairs.sort((a, b) => a.position.localeCompare(b.position));
 }
 
 function getPhotoType(photo: any) {
@@ -615,33 +704,68 @@ export function StudentProgressPage() {
         )
       : null;
 
-  const weightMetrics = useMemo(() => {
-    return sortByDateAsc(data.metrics)
-      .filter(
-        (metric) => getMetricWeight(metric) !== null
-      )
-      .slice(-6);
+  // Série cronológica de peso (para LineChart) — reutiliza evolução util.
+  const weightEvolution = useMemo(() => {
+    return metricPointsToEvolution(
+      sortByDateAsc(data.metrics)
+        .map((metric) => ({
+          date: getDateValue(metric),
+          value: getMetricWeight(metric),
+        }))
+        .filter(
+          (row): row is { date: string; value: number } =>
+            Boolean(row.date) && row.value !== null
+        )
+    );
   }, [data.metrics]);
 
-  const maxWeight = useMemo(() => {
-    const values = weightMetrics
-      .map((metric) => getMetricWeight(metric))
-      .filter(
-        (value): value is number => value !== null
-      );
+  // Série cronológica de gordura corporal.
+  const bodyFatEvolution = useMemo(() => {
+    return metricPointsToEvolution(
+      sortByDateAsc(data.metrics)
+        .map((metric) => ({
+          date: getDateValue(metric),
+          value: getMetricBodyFat(metric),
+        }))
+        .filter(
+          (row): row is { date: string; value: number } =>
+            Boolean(row.date) && row.value !== null
+        )
+    );
+  }, [data.metrics]);
 
-    return values.length > 0 ? Math.max(...values) : 0;
-  }, [weightMetrics]);
+  // Medidas de circunferência da última avaliação (Sprint 9).
+  const measurementRows = useMemo(
+    () => (latestMetric ? getMeasurementRows(latestMetric) : []),
+    [latestMetric]
+  );
 
-  const minWeight = useMemo(() => {
-    const values = weightMetrics
-      .map((metric) => getMetricWeight(metric))
-      .filter(
-        (value): value is number => value !== null
-      );
+  const hasMeasurements = measurementRows.some(
+    (row) => row.value !== null
+  );
 
-    return values.length > 0 ? Math.min(...values) : 0;
-  }, [weightMetrics]);
+  // Histórico de força (volume kg por treino + totais) a partir dos logs.
+  const strengthTracker = useMemo(
+    () =>
+      buildStrengthTracker(completedLogs, {
+        limit: 30,
+      }),
+    [completedLogs]
+  );
+
+  // Pontos já normalizados (EvolutionPoint[]) pelo próprio tracker.
+  const strengthPoints = strengthTracker.byEvolution;
+
+  const bestStrengthExercise = useMemo(
+    () => bestExerciseByVolume(strengthTracker),
+    [strengthTracker]
+  );
+
+  // Pares antes/depois de fotos por posição (Frente/Lateral/Costas).
+  const beforeAfterPairs = useMemo(
+    () => getBeforeAfterPairs(data.photos),
+    [data.photos]
+  );
 
   if (loading) {
     return (
@@ -945,55 +1069,16 @@ export function StudentProgressPage() {
             <BarChart3 className="h-5 w-5 text-[#ff2a32]" />
           </div>
 
-          {weightMetrics.length > 1 ? (
-            <div className="flex h-40 items-end gap-2">
-              {weightMetrics.map((metric, index) => {
-                const weight =
-                  getMetricWeight(metric) || 0;
-
-                const range = Math.max(
-                  maxWeight - minWeight,
-                  1
-                );
-
-                const heightPct = Math.max(
-                  ((weight - minWeight) / range) * 74 + 18,
-                  18
-                );
-
-                return (
-                  <div
-                    key={metric.id || index}
-                    className="flex flex-1 flex-col items-center gap-2"
-                  >
-                    <span className="text-[10px] font-black text-zinc-500">
-                      {String(weight).replace('.', ',')}kg
-                    </span>
-
-                    <div className="relative h-24 w-full overflow-hidden rounded-t-xl bg-white/[0.06]">
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{
-                          height: `${heightPct}%`,
-                        }}
-                        transition={{
-                          duration: 0.5,
-                          delay: index * 0.08,
-                        }}
-                        className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-[#ff2a32]"
-                      />
-                    </div>
-
-                    <span className="text-[9px] font-bold text-zinc-600">
-                      {getDateValue(metric)
-                        ? formatDate(
-                            getDateValue(metric)
-                          ).slice(0, 5)
-                        : '--'}
-                    </span>
-                  </div>
-                );
-              })}
+          {weightEvolution.length > 1 ? (
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+              <LineChart
+                points={weightEvolution}
+                color="#ff2a32"
+                width={320}
+                height={140}
+                unit="kg"
+                highlightLast
+              />
             </div>
           ) : (
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
@@ -1006,6 +1091,132 @@ export function StudentProgressPage() {
               <p className="mt-2 text-sm leading-relaxed text-zinc-500">
                 {TEXT.graficoDescricao}
               </p>
+            </div>
+          )}
+
+          {bodyFatEvolution.length > 1 && (
+            <div className="mt-3">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-zinc-500">
+                {TEXT.gordura}
+              </p>
+
+              <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+                <LineChart
+                  points={bodyFatEvolution}
+                  color="#10b981"
+                  width={320}
+                  height={120}
+                  unit="%"
+                  highlightLast
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {hasMeasurements && (
+          <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff2a32]">
+                  {TEXT.medidasCorporais}
+                </p>
+
+                <h2 className="mt-1 text-lg font-black text-white">
+                  {TEXT.ultimaAvaliacao}
+                </h2>
+              </div>
+
+              <Ruler className="h-5 w-5 text-[#ff2a32]" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {measurementRows
+                .filter((row) => row.value !== null)
+                .map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-[22px] border border-white/10 bg-black/20 p-4"
+                  >
+                    <p className="text-lg font-black text-white">
+                      {formatNumber(row.value, 'cm')}
+                    </p>
+
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                      {row.label}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </section>
+        )}
+
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">
+                {TEXT.forca}
+              </p>
+
+              <h2 className="mt-1 text-lg font-black text-white">
+                {TEXT.historicoDeForca}
+              </h2>
+            </div>
+
+            <Trophy className="h-5 w-5 text-yellow-400" />
+          </div>
+
+          {strengthPoints.length > 1 ? (
+            <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+              <LineChart
+                points={strengthPoints}
+                color="#facc15"
+                width={320}
+                height={140}
+                unit="kg"
+                highlightLast
+              />
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-center">
+              <Dumbbell className="mx-auto h-10 w-10 text-zinc-700" />
+
+              <h3 className="mt-4 text-base font-black text-white">
+                {TEXT.semForcaTitulo}
+              </h3>
+
+              <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                {TEXT.semForcaDescricao}
+              </p>
+            </div>
+          )}
+
+          {strengthTracker.byWorkout.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+                <p className="text-lg font-black text-white">
+                  {formatNumber(
+                    strengthTracker.totalVolume,
+                    'kg'
+                  )}
+                </p>
+
+                <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                  {TEXT.volumeTotal}
+                </p>
+              </div>
+
+              {bestStrengthExercise && (
+                <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+                  <p className="truncate text-lg font-black text-white">
+                    {bestStrengthExercise.exerciseName}
+                  </p>
+
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                    {TEXT.recordeDeForca}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -1024,6 +1235,52 @@ export function StudentProgressPage() {
 
             <ImageIcon className="h-5 w-5 text-[#ff2a32]" />
           </div>
+
+          {beforeAfterPairs.length > 0 && (
+            <div className="mb-4 space-y-4">
+              {beforeAfterPairs.map((pair) => (
+                <div key={pair.position}>
+                  <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-zinc-500">
+                    {pair.position} — {TEXT.antesDepois}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: TEXT.antes, photo: pair.before },
+                      { label: TEXT.depois, photo: pair.after },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20"
+                      >
+                        <div className="relative aspect-[3/4] overflow-hidden bg-black">
+                          <img
+                            src={getPhotoUrl(item.photo)}
+                            alt={`${pair.position} ${item.label}`}
+                            className="h-full w-full object-contain"
+                          />
+
+                          <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                            {item.label}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5">
+                          <p className="text-[10px] font-bold text-zinc-600">
+                            {getDateValue(item.photo)
+                              ? formatDate(
+                                  getDateValue(item.photo)
+                                )
+                              : TEXT.semData}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {data.photos.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
