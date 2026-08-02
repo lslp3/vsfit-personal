@@ -7,6 +7,7 @@ import {
   getDropSetConfig,
   getExerciseRest,
   getExerciseSets,
+  getRestPauseConfig,
   getTransitionRest,
   getTransitionTitle,
 } from '../utils/workoutPlan';
@@ -19,9 +20,9 @@ import {
  * aplica as ações retornadas. Isso centraliza a lógica das estratégias de
  * técnica num único lugar testável, mantendo o contrato do hook intacto.
  *
- * Estratégias: normal, bi_set, drop_set, rest_pause, pyramid. As três
- * últimas hoje reproduzem o comportamento de `normal` (a progressão linear)
- * — extraídas separadamente para permitir evolução futura sem tocar no hook.
+ * Estratégias: normal, bi_set, drop_set, rest_pause, pyramid. `pyramid`
+ * segue o comportamento de `normal` (progressão linear) — extraído
+ * separadamente para evolução futura sem tocar no hook.
  */
 
 export type RestKind = 'set' | 'exercise';
@@ -68,11 +69,18 @@ export interface DropSetInfo {
   isLast: boolean;
 }
 
+/** Dados expositivos para a UI específica do rest-pause. */
+export interface RestPauseInfo {
+  current: number;
+  total: number;
+  pauseSeconds: number;
+  isLast: boolean;
+}
+
 /**
  * Ponto de entrada das estratégias de técnica.
- * drop_set / rest_pause / pyramid intencionalmente puxam a estratégia
- * `normal` — deste modo a REGRA é idêntica ao comportamento atual e o
- * ponto de extensão já existe para evolução posterior.
+ * `pyramid` puxa a estratégia `normal` — deste modo a REGRA é idêntica ao
+ * comportamento atual e o ponto de extensão já existe para evolução posterior.
  */
 export function evaluateNextStep(
   input: NextStepInput
@@ -121,6 +129,19 @@ export function resolveStepCount(
     return drops && drops > 0
       ? drops
       : getExerciseSets(exercise);
+  }
+
+  // Rest-pause: cada série do plano vira `max_pauses + 1` levas.
+  // Sem max_pauses configurado, cai para o número de séries (fallback).
+  if (technique === 'rest_pause') {
+    const pauses =
+      getRestPauseConfig(exercise).max_pauses;
+
+    if (typeof pauses === 'number' && pauses >= 0) {
+      return pauses + 1;
+    }
+
+    return getExerciseSets(exercise);
   }
 
   return getExerciseSets(exercise);
@@ -246,11 +267,39 @@ function dropSetStrategy(
   return completeToNext(input);
 }
 
-/** rest_pause (por ora) segue o mesmo fluxo de `normal`. */
+/**
+ * rest_pause (execução premium): `max_pauses + 1` levas. Cada leva usa a
+ * MESMA carga do plano; entre levas há uma pausa curta (`pause_seconds`).
+ * A última leva finaliza o exercício (descanso final + próximo passo).
+ */
 function restPauseStrategy(
   input: NextStepInput
 ): TechniqueOutcome {
-  return normalStrategy(input);
+  const { exercise, currentSet, safeTotalSets } =
+    input;
+
+  if (currentSet < safeTotalSets) {
+    const pauseSeconds = Number(
+      getRestPauseConfig(exercise)
+        .pause_seconds || 0
+    );
+
+    return {
+      registerExercise: false,
+      then: { kind: 'advance-set' },
+      rest:
+        pauseSeconds > 0
+          ? {
+              seconds: pauseSeconds,
+              mode: 'set',
+              title: 'Pausa curta (rest-pause)',
+            }
+          : null,
+    };
+  }
+
+  // Última leva concluída: descanso final do exercício + próximo passo.
+  return completeToNext(input);
 }
 
 /** pyramid (por ora) segue o mesmo fluxo de `normal`. */

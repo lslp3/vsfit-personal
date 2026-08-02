@@ -28,6 +28,7 @@ import {
   getDropStepWeights,
   resolveStepCount,
   type DropSetInfo,
+  type RestPauseInfo,
   type ThenStep,
 } from '../execution/techniqueEngine';
 import {
@@ -38,6 +39,7 @@ import {
   getExerciseSets,
   getExerciseWeight,
   getExercisesForDay,
+  getRestPauseConfig,
   getStudentName,
   normalizeDayKey,
 } from '../utils/workoutPlan';
@@ -61,6 +63,7 @@ export interface UseWorkoutExecutionResult
   safeTotalSets: number;
   biSetActive: boolean;
   dropSetInfo: DropSetInfo | null;
+  restPauseInfo: RestPauseInfo | null;
   setDrafts: ExerciseSetDraft[];
   updateSet: (
     setNumber: number,
@@ -612,6 +615,20 @@ export function useWorkoutExecution({
         })()
       : null;
 
+  const restPauseInfo: RestPauseInfo | null =
+    currentExercise?.technique_type ===
+      'rest_pause'
+      ? {
+          current: currentSet,
+          total: safeTotalSets,
+          pauseSeconds: Number(
+            getRestPauseConfig(currentExercise)
+              .pause_seconds || 0
+          ),
+          isLast: currentSet >= safeTotalSets,
+        }
+      : null;
+
   const exerciseName =
     currentExercise
       ? getExerciseName(
@@ -675,6 +692,40 @@ export function useWorkoutExecution({
 
       drafts = weightByDrop.map(
         (weightKg, index) => ({
+          setNumber: index + 1,
+          weightKg,
+          reps,
+          completed: false,
+          restAfterSeconds: null,
+        })
+      );
+    } else if (
+      currentExercise.technique_type ===
+      'rest_pause'
+    ) {
+      // Rest-pause: `safeTotalSets` (= max_pauses + 1) levas, TODAS com a
+      // MESMA carga do plano — retorna-se ao mesmo peso em cada leva.
+      const leveCount = Math.max(
+        1,
+        safeTotalSets
+      );
+
+      const weightKg =
+        Number.parseFloat(
+          String(exerciseWeight || '')
+            .replace(',', '.')
+            .trim()
+        ) || null;
+
+      const reps =
+        Number.parseInt(
+          String(currentExercise.reps || ''),
+          10
+        ) || null;
+
+      drafts = Array.from(
+        { length: leveCount },
+        (_, index) => ({
           setNumber: index + 1,
           weightKg,
           reps,
@@ -1072,6 +1123,7 @@ export function useWorkoutExecution({
     safeTotalSets,
     biSetActive,
     dropSetInfo,
+    restPauseInfo,
     setDrafts,
     updateSet,
     exerciseName,

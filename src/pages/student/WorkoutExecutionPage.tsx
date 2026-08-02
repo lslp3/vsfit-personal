@@ -28,6 +28,7 @@ import { DropSetExecutionPanel } from '../../components/workout-execution/DropSe
 import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
 import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
 import { PyramidPanel } from '../../components/workout-execution/PyramidPanel';
+import { RestPauseExecutionPanel } from '../../components/workout-execution/RestPauseExecutionPanel';
 import { RestPausePanel } from '../../components/workout-execution/RestPausePanel';
 import { SetList } from '../../components/workout-execution/SetList';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
@@ -90,6 +91,7 @@ export function WorkoutExecutionPage() {
     safeTotalSets,
     biSetActive,
     dropSetInfo,
+    restPauseInfo,
     totalSets,
     setDrafts,
     updateSet,
@@ -493,7 +495,9 @@ export function WorkoutExecutionPage() {
                       ? 'Rodada'
                       : dropSetInfo
                         ? 'Queda'
-                        : 'Série'}{' '}
+                        : restPauseInfo
+                          ? 'Leva'
+                          : 'Série'}{' '}
                     {currentSet}{' '}
                     de{' '}
                     {safeTotalSets}
@@ -522,6 +526,14 @@ export function WorkoutExecutionPage() {
                     <DropSetExecutionPanel
                       info={dropSetInfo}
                       config={dropConfig}
+                    />
+                  )}
+
+                  {currentExercise.technique_type ===
+                    'rest_pause' &&
+                    restPauseInfo && (
+                    <RestPauseExecutionPanel
+                      info={restPauseInfo}
                     />
                   )}
 
@@ -606,7 +618,9 @@ export function WorkoutExecutionPage() {
               (biSetActive &&
                 currentExercise.group_order ===
                   1)
-                ? 'Concluir série'
+                ? restPauseInfo
+                  ? 'Concluir leva'
+                  : 'Concluir série'
                 : nextExercise
                   ? 'Próximo exercício'
                   : 'Finalizar treino'}
