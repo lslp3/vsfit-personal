@@ -565,6 +565,11 @@ export function WorkoutBuilderPage() {
     !workoutId && !editingPlanId;
 
   // Restaura o rascunho ao abrir a tela em modo criação.
+  // INVARIANTE do guard: o restore só roda em Criação (sem `workoutId`).
+  // Em modo edição (`workoutId` presente), o rascunho de criação NUNCA é
+  // restaurado nem sobrescrito aqui — ele é apenas preservado e só é limpo
+  // no sucesso explícito de Salvar/Publicar. Evita: app fecha c/ param
+  // antigo → abre como edição → tela vazia e draft ignorado/perdido.
   useEffect(() => {
     if (workoutId) return;
 
@@ -608,7 +613,7 @@ export function WorkoutBuilderPage() {
     const timer = window.setTimeout(() => {
       saveWorkoutDraft(draft);
       setHasDraft(true);
-    }, 400);
+    }, 250);
 
     return () => {
       window.clearTimeout(timer);
@@ -663,6 +668,12 @@ export function WorkoutBuilderPage() {
       flushDraft();
     };
 
+    // Perda de foco: quando a WebView vai para background (abre outro app)
+    // ou navega, o evento `focusout` dispara e faz o flush síncrono.
+    const handleFocusOut = () => {
+      flushDraft();
+    };
+
     document.addEventListener(
       'visibilitychange',
       handleVisibilityChange
@@ -674,6 +685,10 @@ export function WorkoutBuilderPage() {
     window.addEventListener(
       'beforeunload',
       handleBeforeUnload
+    );
+    window.addEventListener(
+      'focusout',
+      handleFocusOut
     );
 
     return () => {
@@ -688,6 +703,10 @@ export function WorkoutBuilderPage() {
       window.removeEventListener(
         'beforeunload',
         handleBeforeUnload
+      );
+      window.removeEventListener(
+        'focusout',
+        handleFocusOut
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -759,6 +778,10 @@ export function WorkoutBuilderPage() {
 
     setLoadingWorkout(true);
     resetMessages();
+    // Guard de proteção: este caminho (edição) NÃO apaga nem sobrescreve o
+    // draft de criação. O rascunho em localStorage só é removido no
+    // Salvar/Publicar explícitos. Se o plano do `workoutId` não existir,
+    // cai para criação sem destruir o draft guardado.
 
     workoutService
       .getCompleteWorkoutPlan(workoutId)
