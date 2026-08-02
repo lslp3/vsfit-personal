@@ -264,6 +264,18 @@ export function TechniqueConfigPanels({
                 )
               }
             />
+          <Input
+              label="Incrementos de reps por série (ex.: 0, -3, -5, -7)"
+              value={String(
+                pyramidConfig.incrementos_por_serie ?? ''
+              )}
+              onChange={(event) =>
+                onConfigChange(
+                  'incrementos_por_serie',
+                  event.target.value
+                )
+              }
+            />
           </div>
 
           <Input

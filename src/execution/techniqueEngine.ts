@@ -232,8 +232,9 @@ export function getDropStepWeights(
  * exercício (`getExerciseSets`). O peso da 1ª série = `suggested_weight` do
  * plano; a partir daí sobe por `increment_percent` (linear aditivo sobre a
  * base, ex.: 25% → 20/25/30/35…) OU pela lista `increments` (variação em kg
- * por série, relativa à base). Repetições: usa o `reps` do plano (o builder
- * não captura reps diferentes por série). Sem carga base definida, pesos null.
+ * por série, relativa à base). Repetições: `reps` do plano + incrementos de
+ * `incrementos_por_serie` (string CSV), clampado em >=1. Sem carga base, pesos
+ * null; sem reps base, reps null.
  */
 export function getPyramidSteps(
   exercise: WorkoutPlanExercise
@@ -264,6 +265,26 @@ export function getPyramidSteps(
     Number.isFinite(baseWeight) &&
     baseWeight > 0;
 
+  // Incrementos de repetições por série (string CSV, ex.: "0,-3,-5,-7").
+  const rawRepIncrements =
+    String(config.incrementos_por_serie || '')
+      .trim();
+  const repIncrements = rawRepIncrements
+    ? rawRepIncrements
+        .split(',')
+        .map((part) => {
+          const value = Number(
+            part.trim().replace(',', '.')
+          );
+          return Number.isFinite(value)
+            ? value
+            : 0;
+        })
+    : [];
+
+  const hasBaseReps =
+    Number.isFinite(baseReps) && baseReps > 0;
+
   return Array.from({ length: count }, (_, i) => {
     const weight = hasBaseWeight
       ? Math.round(
@@ -273,12 +294,26 @@ export function getPyramidSteps(
         ) / 10
       : null;
 
+    // reps_da_série = base + incremento_i. Sem incrementos → base em todas.
+    // Menos incrementos que séries → repete o incremento anterior (último).
+    // Excedentes ignorados. Nunca menor que 1.
+    let reps: number | null = null;
+    if (hasBaseReps) {
+      const inc =
+        repIncrements.length === 0
+          ? 0
+          : repIncrements[
+              Math.min(i, repIncrements.length - 1)
+            ];
+      reps = Math.max(
+        1,
+        Math.floor(baseReps + inc)
+      );
+    }
+
     return {
       weight,
-      reps:
-        Number.isFinite(baseReps) && baseReps > 0
-          ? baseReps
-          : null,
+      reps,
     };
   });
 }

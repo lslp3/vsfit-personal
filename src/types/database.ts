@@ -40,6 +40,12 @@ export interface PyramidConfig {
   increment_percent?: number;
   /** Variação opcional de carga por série, ex.: [10, 5, 0, -10] (kg ou %) */
   increments?: number[];
+  /**
+   * Incrementos de REPETIÇÕES por série, como string CSV, ex.: "0,-3,-5,-7".
+   * reps_da_série = reps_base + incremento_i. Vazio → reps base em todas as
+   * séries. Menos incrementos que séries → repete o último. Excedentes ignorados.
+   */
+  incrementos_por_serie?: string;
   notes?: string;
 }
 
