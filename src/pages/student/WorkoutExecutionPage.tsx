@@ -1,4 +1,8 @@
 import {
+  useEffect,
+  useState,
+} from 'react';
+import {
   useNavigate,
   useParams,
   useSearchParams,
@@ -12,7 +16,6 @@ import {
   Dumbbell,
   Flame,
   Loader2,
-  Timer,
   Trophy,
 } from 'lucide-react';
 
@@ -33,6 +36,7 @@ import { RestPauseExecutionPanel } from '../../components/workout-execution/Rest
 import { RestPausePanel } from '../../components/workout-execution/RestPausePanel';
 import { SetList } from '../../components/workout-execution/SetList';
 import { SummaryCard } from '../../components/workout-execution/SummaryCard';
+import { MetricCard } from '../../components/workout-execution/MetricCard';
 import { TechniqueBadge } from '../../components/workout-execution/TechniqueBadge';
 import { WorkoutExecutionHeader } from '../../components/workout-execution/WorkoutExecutionHeader';
 
@@ -105,6 +109,24 @@ export function WorkoutExecutionPage() {
     id,
     dayKey: selectedDayKey,
   });
+
+  // Transição suave entre etapas: "Preparando próxima série..." por ~420ms.
+  const [preparing, setPreparing] =
+    useState(false);
+
+  useEffect(() => {
+    setPreparing(true);
+
+    const timer = window.setTimeout(
+      () => setPreparing(false),
+      420
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [
+    currentSet,
+    currentExercise?.id,
+  ]);
 
   const dropConfig =
     currentExercise
@@ -225,6 +247,42 @@ export function WorkoutExecutionPage() {
     currentExercise.observation ||
     currentExercise.instructions ||
     '';
+
+  // Termo visual da etapa atual (Série / Queda / Leva / Rodada).
+  const setTerm = biSetActive
+    ? 'Rodada'
+    : dropSetInfo
+      ? 'Queda'
+      : restPauseInfo
+        ? 'Leva'
+        : 'Série';
+
+  // Draft da etapa atual e da próxima (carga/reps p/ resumo e tela de descanso).
+  const currentDraft =
+    setDrafts.find(
+      (set) => set.setNumber === currentSet
+    ) || null;
+
+  const nextDraft =
+    currentSet < safeTotalSets
+      ? setDrafts.find(
+          (set) =>
+            set.setNumber === currentSet + 1
+        ) || null
+      : null;
+
+  const nextLabel =
+    nextDraft
+      ? `${setTerm} ${currentSet + 1} de ${safeTotalSets}` +
+        (nextDraft.weightKg
+          ? ` · ${nextDraft.weightKg} kg`
+          : '') +
+        (nextDraft.reps
+          ? ` · ${nextDraft.reps} reps`
+          : '')
+      : nextExercise
+        ? `Próximo exercício: ${nextExercise.name}`
+        : 'Treino concluído 😀';
 
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] pt-[env(safe-area-inset-top,0px)] text-white">
@@ -364,23 +422,25 @@ export function WorkoutExecutionPage() {
             className="flex min-h-screen items-center px-4"
           >
             <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#ff2a32]">
-                Descanso
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/15">
+                <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              </div>
+
+              <p className="mt-3 text-[11px] font-black uppercase tracking-[0.25em] text-emerald-300">
+                Série concluída ✓
               </p>
 
-              <h1 className="mt-1.5 text-lg font-black uppercase">
+              <h1 className="mt-1 text-2xl font-black uppercase">
                 {restTitle}
               </h1>
 
-              <div className="my-4">
-                <Timer className="mx-auto h-8 w-8 text-[#ff2a32]" />
-
-                <p className="mt-2 text-6xl font-black">
+              <div className="my-3">
+                <p className="text-7xl font-black tabular-nums">
                   {restTimeLeft}
                 </p>
 
                 <p className="text-xs text-zinc-500">
-                  segundos
+                  segundos de descanso
                 </p>
               </div>
 
@@ -399,11 +459,21 @@ export function WorkoutExecutionPage() {
                 />
               </div>
 
-               <button
-                 type="button"
-                 onClick={finishRest}
-                 className="mt-5 flex h-12 w-full items-center justify-center rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase"
-               >
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-3 text-left">
+                <p className="text-[10px] font-black uppercase text-[#ff2a32]">
+                  Próxima
+                </p>
+
+                <p className="mt-1 text-base font-black text-white">
+                  {nextLabel}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={finishRest}
+                className="mt-4 flex h-12 w-full items-center justify-center rounded-[22px] border border-white/10 bg-white/[0.06] text-sm font-black uppercase"
+              >
                 Pular descanso
               </button>
             </div>
@@ -460,6 +530,11 @@ export function WorkoutExecutionPage() {
                     currentExercise.image_url
                   }
                   exerciseName={exerciseName}
+                  instructions={observation}
+                  tips={
+                    currentExercise.tips ||
+                    null
+                  }
                 />
 
                 <div className="mt-3 text-center">
@@ -492,18 +567,41 @@ export function WorkoutExecutionPage() {
                     }
                   />
 
-                  <p className="mt-1.5 text-[11px] font-black uppercase text-[#ff2a32]">
-                    {biSetActive
-                      ? 'Rodada'
-                      : dropSetInfo
-                        ? 'Queda'
-                        : restPauseInfo
-                          ? 'Leva'
-                          : 'Série'}{' '}
-                    {currentSet}{' '}
-                    de{' '}
-                    {safeTotalSets}
+                  <p className="mt-1.5 text-lg font-black uppercase tracking-wide text-[#ff2a32]">
+                    {setTerm}{' '}
+                    <span className="text-white">
+                      {currentSet}
+                      <span className="text-zinc-500">
+                        {' '}de{' '}
+                        {safeTotalSets}
+                      </span>
+                    </span>
                   </p>
+
+                  {(currentDraft?.weightKg ||
+                    currentDraft?.reps) && (
+                    <div className="mt-2.5 grid grid-cols-2 gap-2 text-left">
+                      <MetricCard
+                        label="Carga"
+                        value={
+                          currentDraft?.weightKg
+                            ? `${currentDraft.weightKg} kg`
+                            : '—'
+                        }
+                      />
+
+                      <MetricCard
+                        label="Repetições"
+                        value={
+                          currentDraft?.reps
+                            ? String(
+                                currentDraft.reps
+                              )
+                            : '—'
+                        }
+                      />
+                    </div>
+                  )}
 
                   <SetList
                     sets={setDrafts}
@@ -638,6 +736,36 @@ export function WorkoutExecutionPage() {
               <ChevronRight className="h-5 w-5" />
             </button>
           </motion.main>
+        )}
+      </AnimatePresence>
+
+      {/* Transição entre etapas: "Preparando próxima série...". */}
+      <AnimatePresence>
+        {preparing &&
+          !isResting &&
+          !isCompleted && (
+          <motion.div
+            key="preparing"
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+            }}
+            className="pointer-events-none fixed inset-0 z-[99990] flex items-center justify-center bg-[#050505]/85"
+          >
+            <div className="text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#ff2a32]" />
+
+              <p className="mt-2 text-sm font-black uppercase tracking-widest">
+                Preparando próxima
+                série...
+              </p>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
