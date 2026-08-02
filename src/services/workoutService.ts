@@ -859,6 +859,46 @@ export async function updateWorkoutExercise({
       normalizeNullableText(exercise.tempo);
   }
 
+  if (exercise.image_url !== undefined) {
+    payload.image_url =
+      exercise.image_url || null;
+  }
+
+  if (exercise.video_url !== undefined) {
+    payload.video_url =
+      exercise.video_url || null;
+  }
+
+  if (exercise.muscle_group !== undefined) {
+    payload.muscle_group =
+      exercise.muscle_group || null;
+  }
+
+  if (exercise.category !== undefined) {
+    payload.category =
+      exercise.category || null;
+  }
+
+  if (exercise.equipment !== undefined) {
+    payload.equipment =
+      exercise.equipment || null;
+  }
+
+  if (exercise.difficulty !== undefined) {
+    payload.difficulty =
+      exercise.difficulty || null;
+  }
+
+  if (exercise.instructions !== undefined) {
+    payload.instructions =
+      exercise.instructions || null;
+  }
+
+  if (exercise.tips !== undefined) {
+    payload.tips =
+      exercise.tips || null;
+  }
+
   const { data, error } = await supabase
     .from('workout_plan_exercises')
     .update(payload)
