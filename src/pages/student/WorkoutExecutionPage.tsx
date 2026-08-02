@@ -24,7 +24,7 @@ import {
   getStudentName,
   normalizeDayKey,
 } from '../../utils/workoutPlan';
-import { DropSetPanel } from '../../components/workout-execution/DropSetPanel';
+import { DropSetExecutionPanel } from '../../components/workout-execution/DropSetExecutionPanel';
 import { ExerciseInfoPanel } from '../../components/workout-execution/ExerciseInfoPanel';
 import { ExerciseMediaCard } from '../../components/workout-execution/ExerciseMediaCard';
 import { PyramidPanel } from '../../components/workout-execution/PyramidPanel';
@@ -89,6 +89,7 @@ export function WorkoutExecutionPage() {
     currentGroup,
     safeTotalSets,
     biSetActive,
+    dropSetInfo,
     totalSets,
     setDrafts,
     updateSet,
@@ -490,7 +491,9 @@ export function WorkoutExecutionPage() {
                   <p className="mt-1.5 text-[11px] font-black uppercase text-[#ff2a32]">
                     {biSetActive
                       ? 'Rodada'
-                      : 'Série'}{' '}
+                      : dropSetInfo
+                        ? 'Queda'
+                        : 'Série'}{' '}
                     {currentSet}{' '}
                     de{' '}
                     {safeTotalSets}
@@ -514,11 +517,11 @@ export function WorkoutExecutionPage() {
                   />
 
                   {currentExercise.technique_type ===
-                    'drop_set' && (
-                    <DropSetPanel
-                      config={
-                        dropConfig
-                      }
+                    'drop_set' &&
+                    dropSetInfo && (
+                    <DropSetExecutionPanel
+                      info={dropSetInfo}
+                      config={dropConfig}
                     />
                   )}
 

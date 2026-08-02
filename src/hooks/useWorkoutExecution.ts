@@ -25,13 +25,16 @@ import type {
 import { createSetDrafts } from '../utils/workoutMath';
 import {
   evaluateNextStep,
+  getDropStepWeights,
+  resolveStepCount,
+  type DropSetInfo,
   type ThenStep,
 } from '../execution/techniqueEngine';
 import {
-  getBiSetRounds,
   getExerciseGroup,
   getExerciseName,
   getExerciseReps,
+  getExerciseRest,
   getExerciseSets,
   getExerciseWeight,
   getExercisesForDay,
@@ -57,6 +60,7 @@ export interface UseWorkoutExecutionResult
   currentGroup: WorkoutExerciseGroup | null;
   safeTotalSets: number;
   biSetActive: boolean;
+  dropSetInfo: DropSetInfo | null;
   setDrafts: ExerciseSetDraft[];
   updateSet: (
     setNumber: number,
@@ -569,27 +573,44 @@ export function useWorkoutExecution({
     );
   })();
 
-  const biRounds =
-    currentGroup?.group_type === 'bi_set' &&
-    currentExercise
-      ? getBiSetRounds(
-          currentExercise,
-          partnerExercise,
-          currentGroup
-        )
-      : null;
-
   const biSetActive =
     currentGroup?.group_type === 'bi_set' &&
     currentExercise?.group_order != null;
 
   const safeTotalSets =
     currentExercise
-      ? (biRounds ??
-        getExerciseSets(
-          currentExercise
-        ))
+      ? resolveStepCount(
+          currentExercise,
+          partnerExercise,
+          currentGroup
+        )
       : 1;
+
+  const dropSetInfo: DropSetInfo | null =
+    currentExercise?.technique_type ===
+      'drop_set'
+      ? (() => {
+          const weights = getDropStepWeights(
+            currentExercise
+          );
+
+          return {
+            current: currentSet,
+            total: safeTotalSets,
+            currentWeight:
+              weights[currentSet - 1] ?? null,
+            nextWeight:
+              currentSet < safeTotalSets
+                ? (weights[currentSet] ?? null)
+                : null,
+            finalRest: getExerciseRest(
+              currentExercise
+            ),
+            isLast:
+              currentSet >= safeTotalSets,
+          };
+        })()
+      : null;
 
   const exerciseName =
     currentExercise
@@ -636,13 +657,38 @@ export function useWorkoutExecution({
       return;
     }
 
-    const drafts = createSetDrafts(
-      getExerciseSets(
+    let drafts: ExerciseSetDraft[];
+
+    if (
+      currentExercise.technique_type ===
+      'drop_set'
+    ) {
+      const weightByDrop = getDropStepWeights(
         currentExercise
-      ),
-      exerciseWeight,
-      exerciseReps
-    );
+      );
+
+      const reps =
+        Number.parseInt(
+          String(currentExercise.reps || ''),
+          10
+        ) || null;
+
+      drafts = weightByDrop.map(
+        (weightKg, index) => ({
+          setNumber: index + 1,
+          weightKg,
+          reps,
+          completed: false,
+          restAfterSeconds: null,
+        })
+      );
+    } else {
+      drafts = createSetDrafts(
+        getExerciseSets(currentExercise),
+        exerciseWeight,
+        exerciseReps
+      );
+    }
 
     draftsByExerciseRef.current[
       currentExercise.id
@@ -1025,6 +1071,7 @@ export function useWorkoutExecution({
     currentGroup,
     safeTotalSets,
     biSetActive,
+    dropSetInfo,
     setDrafts,
     updateSet,
     exerciseName,
