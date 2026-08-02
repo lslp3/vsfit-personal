@@ -139,6 +139,14 @@ export interface StudentMetrics {
   target_body_fat: number | null;
   muscle_mass: number | null;
   water_intake: number | null;
+  /** Medidas corporais (circunferência, cm) — Sprint 9, colunas NULLABLE. */
+  arm_cm?: number | null;
+  chest_cm?: number | null;
+  waist_cm?: number | null;
+  abdomen_cm?: number | null;
+  hips_cm?: number | null;
+  thigh_cm?: number | null;
+  calf_cm?: number | null;
   notes: string | null;
   created_at: string;
 }
