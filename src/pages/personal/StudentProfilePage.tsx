@@ -41,6 +41,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { AssessmentModal } from '../../components/personal/AssessmentModal';
+import { GoalsModal } from '../../components/personal/GoalsModal';
 
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
@@ -398,6 +400,15 @@ export function StudentProfilePage() {
   const [metrics, setMetrics] =
     useState<StudentMetrics[]>([]);
 
+  const [assessmentModalOpen, setAssessmentModalOpen] =
+    useState(false);
+
+  const [editingMetric, setEditingMetric] =
+    useState<StudentMetrics | null>(null);
+
+  const [goalsModalOpen, setGoalsModalOpen] =
+    useState(false);
+
   const [workouts, setWorkouts] =
     useState<WorkoutPlan[]>([]);
 
@@ -574,6 +585,89 @@ export function StudentProfilePage() {
   useEffect(() => {
     void loadStudent();
   }, [loadStudent]);
+
+  /** Recarrega apenas as avaliações (após salvar/excluir). */
+  const reloadMetrics = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('student_metrics')
+        .select('*')
+        .eq('student_id', id)
+        .order('created_at', {
+          ascending: false,
+        });
+
+      if (error) {
+        console.error(
+          '[StudentProfilePage] reloadMetrics error:',
+          error
+        );
+
+        return;
+      }
+
+      setMetrics(data || []);
+    } catch (reloadError) {
+      console.error(
+        '[StudentProfilePage] reloadMetrics exception:',
+        reloadError
+      );
+    }
+  }, [id]);
+
+  const handleOpenNewAssessment = () => {
+    setEditingMetric(null);
+    setAssessmentModalOpen(true);
+  };
+
+  const handleOpenEditAssessment = (
+    metric: StudentMetrics
+  ) => {
+    setEditingMetric(metric);
+    setAssessmentModalOpen(true);
+  };
+
+  const handleAssessmentSaved = () => {
+    setAssessmentModalOpen(false);
+    setEditingMetric(null);
+    void reloadMetrics();
+  };
+
+  /** Recarrega as metas do aluno (após salvar). */
+  const reloadGoals = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('student_goals')
+        .select('*')
+        .eq('student_id', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error(
+          '[StudentProfilePage] reloadGoals error:',
+          error
+        );
+
+        return;
+      }
+
+      setGoals(data || null);
+    } catch (reloadError) {
+      console.error(
+        '[StudentProfilePage] reloadGoals exception:',
+        reloadError
+      );
+    }
+  }, [id]);
+
+  const handleGoalsSaved = () => {
+    setGoalsModalOpen(false);
+    void reloadGoals();
+  };
 
   useEffect(() => {
     if (!student) {
@@ -1180,6 +1274,18 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
             <SectionCard
               title="Metas"
               icon={Target}
+              action={
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGoalsModalOpen(true)
+                  }
+                  className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-zinc-400 hover:text-white"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Editar
+                </button>
+              }
             >
               <div className="grid grid-cols-2 gap-3">
                 <InfoBox
@@ -1215,6 +1321,15 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                       : 'Não informado'
                   }
                 />
+
+                {goals?.goal_notes && (
+                  <div className="col-span-2">
+                    <InfoBox
+                      label="Observações"
+                      value={goals.goal_notes}
+                    />
+                  </div>
+                )}
               </div>
             </SectionCard>
 
@@ -1404,11 +1519,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 
               <button
                 type="button"
-                onClick={() =>
-                  navigate(
-                    '/personal/progress'
-                  )
-                }
+                onClick={handleOpenNewAssessment}
                 className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-black"
               >
                 <Plus className="h-4 w-4" />
@@ -1429,11 +1540,28 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                       key={metric.id}
                       className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4"
                     >
-                      <p className="mb-3 text-[10px] font-black uppercase text-zinc-500">
-                        {formatDateTime(
-                          metric.created_at
-                        )}
-                      </p>
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-black uppercase text-zinc-500">
+                          {formatDateTime(
+                            metric.created_at
+                          )}
+                        </p>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleOpenEditAssessment(
+                                metric
+                              )
+                            }
+                            aria-label="Editar avaliação"
+                            className="rounded-full border border-white/10 bg-white/[0.05] p-2 text-zinc-400 hover:text-white"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <MetricBox
@@ -1468,6 +1596,71 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                           value={
                             metric.muscle_mass
                               ? `${metric.muscle_mass} kg`
+                              : '—'
+                          }
+                        />
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
+                        <MetricBox
+                          label="Braço"
+                          value={
+                            metric.arm_cm
+                              ? `${metric.arm_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Peito"
+                          value={
+                            metric.chest_cm
+                              ? `${metric.chest_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Cintura"
+                          value={
+                            metric.waist_cm
+                              ? `${metric.waist_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Abdômen"
+                          value={
+                            metric.abdomen_cm
+                              ? `${metric.abdomen_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Quadril"
+                          value={
+                            metric.hips_cm
+                              ? `${metric.hips_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Coxa"
+                          value={
+                            metric.thigh_cm
+                              ? `${metric.thigh_cm} cm`
+                              : '—'
+                          }
+                        />
+
+                        <MetricBox
+                          label="Panturrilha"
+                          value={
+                            metric.calf_cm
+                              ? `${metric.calf_cm} cm`
                               : '—'
                           }
                         />
@@ -1829,6 +2022,25 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
         </div>
       </Modal>
 
+      <AssessmentModal
+        open={assessmentModalOpen}
+        onClose={() => {
+          setAssessmentModalOpen(false);
+          setEditingMetric(null);
+        }}
+        studentId={id || ''}
+        metric={editingMetric}
+        onSaved={handleAssessmentSaved}
+      />
+
+      <GoalsModal
+        open={goalsModalOpen}
+        onClose={() => setGoalsModalOpen(false)}
+        studentId={id || ''}
+        goals={goals}
+        onSaved={handleGoalsSaved}
+      />
+
       <Modal
         open={paymentModalOpen}
         onClose={() =>
@@ -2037,22 +2249,28 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 function SectionCard({
   title,
   icon: Icon,
+  action,
   children,
 }: {
   title: string;
   icon: ElementType;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
-          <Icon className="h-4 w-4 text-[#ff2a32]" />
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff2a32]/10">
+            <Icon className="h-4 w-4 text-[#ff2a32]" />
+          </div>
+
+          <h3 className="text-xs font-black uppercase text-zinc-500">
+            {title}
+          </h3>
         </div>
 
-        <h3 className="text-xs font-black uppercase text-zinc-500">
-          {title}
-        </h3>
+        {action}
       </div>
 
       {children}

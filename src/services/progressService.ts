@@ -14,6 +14,14 @@ export interface StudentMetricRecord {
   water_intake: number | null;
   notes: string | null;
   created_at: string;
+  /** Circunferências (Sprint 9 — colunas novas no Supabase). */
+  arm_cm?: number | null;
+  chest_cm?: number | null;
+  waist_cm?: number | null;
+  abdomen_cm?: number | null;
+  hips_cm?: number | null;
+  thigh_cm?: number | null;
+  calf_cm?: number | null;
 }
 
 export interface ProgressPhotoRecord {
@@ -372,6 +380,162 @@ export async function deleteProgressPhotoByPosition(
   if (error) {
     console.error(
       '[ProgressService] deleteProgressPhotoByPosition error:',
+      error
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Cria ou atualiza uma avaliação (student_metrics).
+ *
+ * Sprint 9 — Opção A: medidas corporais (circunferências) integradas ao
+ * modelo de avaliação existente. Se `metricId` for informado, atualiza;
+ * caso contrário, insere uma nova avaliação.
+ */
+export interface SaveStudentMetricInput {
+  studentId: string;
+  date?: string;
+  height?: number | null;
+  weight?: number | null;
+  body_fat?: number | null;
+  target_body_fat?: number | null;
+  muscle_mass?: number | null;
+  water_intake?: number | null;
+  notes?: string | null;
+  arm_cm?: number | null;
+  chest_cm?: number | null;
+  waist_cm?: number | null;
+  abdomen_cm?: number | null;
+  hips_cm?: number | null;
+  thigh_cm?: number | null;
+  calf_cm?: number | null;
+}
+
+export async function saveStudentMetric(
+  input: SaveStudentMetricInput,
+  metricId?: string
+): Promise<StudentMetricRecord> {
+  const studentId = String(input.studentId || '').trim();
+
+  if (!studentId) {
+    throw new Error('O aluno não foi informado.');
+  }
+
+  const date = input.date || getTodayDate();
+
+  const payload = {
+    student_id: studentId,
+    date,
+    height: input.height ?? null,
+    weight: input.weight ?? null,
+    body_fat: input.body_fat ?? null,
+    target_body_fat: input.target_body_fat ?? null,
+    muscle_mass: input.muscle_mass ?? null,
+    water_intake: input.water_intake ?? null,
+    notes: input.notes ?? null,
+    arm_cm: input.arm_cm ?? null,
+    chest_cm: input.chest_cm ?? null,
+    waist_cm: input.waist_cm ?? null,
+    abdomen_cm: input.abdomen_cm ?? null,
+    hips_cm: input.hips_cm ?? null,
+    thigh_cm: input.thigh_cm ?? null,
+    calf_cm: input.calf_cm ?? null,
+  };
+
+  const { data, error } = metricId
+    ? await supabase
+        .from('student_metrics')
+        .update(payload)
+        .eq('id', metricId)
+        .select('*')
+        .single()
+    : await supabase
+        .from('student_metrics')
+        .insert({ ...payload, id: createUuid() })
+        .select('*')
+        .single();
+
+  if (error) {
+    console.error(
+      '[ProgressService] saveStudentMetric error:',
+      error
+    );
+
+    throw error;
+  }
+
+  return data as StudentMetricRecord;
+}
+
+export async function deleteStudentMetric(
+  metricId: string
+): Promise<void> {
+  const cleanId = String(metricId || '').trim();
+
+  if (!cleanId) {
+    throw new Error('A avaliação não foi informada.');
+  }
+
+  const { error } = await supabase
+    .from('student_metrics')
+    .delete()
+    .eq('id', cleanId);
+
+  if (error) {
+    console.error(
+      '[ProgressService] deleteStudentMetric error:',
+      error
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Salva as metas do aluno (student_goals). Insere quando não existe
+ * registro; atualiza quando existe (upsert pela student_id).
+ */
+export interface SaveStudentGoalsInput {
+  studentId: string;
+  objective?: string | null;
+  goal_notes?: string | null;
+  level?: string | null;
+  weekly_frequency?: number | null;
+  target_weight?: number | null;
+  goal_deadline_weeks?: number | null;
+}
+
+export async function saveStudentGoals(
+  input: SaveStudentGoalsInput
+): Promise<void> {
+  const studentId = String(input.studentId || '').trim();
+
+  if (!studentId) {
+    throw new Error('O aluno não foi informado.');
+  }
+
+  const payload = {
+    student_id: studentId,
+    objective: input.objective ?? null,
+    goal_notes: input.goal_notes ?? null,
+    level: input.level ?? null,
+    weekly_frequency: input.weekly_frequency ?? null,
+    target_weight: input.target_weight ?? null,
+    goal_deadline_weeks: input.goal_deadline_weeks ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('student_goals')
+    .upsert(payload, {
+      onConflict: 'student_id',
+    });
+
+  if (error) {
+    console.error(
+      '[ProgressService] saveStudentGoals error:',
       error
     );
 
