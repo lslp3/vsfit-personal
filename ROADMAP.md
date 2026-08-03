@@ -40,10 +40,25 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - Ajustes futuros relacionados à Sprint 9 serão tratados como **HOTFIX**,
   preservando esta entrega como fechada.
 
-## Sprint 10 — (PRÓXIMA — ainda não iniciada)
+## Sprint 10 — Módulo de Comunicação (chat, notificações, presence)
+
+- Status: ✅ **Concluída**
+- Validação: **Validada em Preview**
+- **Aprovada para integração futura**
+- **Congelada** — não realizar alterações, exceto HOTFIX.
+- Branch: `test/sprint-10-comunicacao`
+- Commits: `75be443`, `0ac9099`, `77afcf9`, + documentação final
+- Escopo: consolidação do módulo de comunicação (chat, notificações e presence);
+  higienização de páginas órfãs; `messageService` alinhado ao schema real;
+  rota `/student/notifications`; lista de conversas do Personal mostrando todos
+  os alunos vinculados; realtime e presence estáveis.
+- **Não realizar alterações nesta Sprint, exceto HOTFIX** — preservando esta
+  entrega como fechada.
+
+## Sprint 11 — (PRÓXIMA — ainda não iniciada)
 
 - Status: 📋 Planejada
-- Observação: a Sprint 10 ainda NÃO foi iniciada. Aguardando definição do escopo.
+- Observação: a Sprint 11 ainda NÃO foi iniciada. Aguardando definição do escopo.
 
 ---
 
