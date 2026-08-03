@@ -341,6 +341,26 @@ export interface Message {
   updated_at?: string | null;
 }
 
+/**
+ * Payload de INSERT em `messages` (Sprint 11 — consolidação de tipos).
+ * `Message` é a linha completa; `MessageInsert` é o input aceito por
+ * messageService.sendMessage. Campos de mídia preparados para a 10.2.
+ */
+export interface MessageInsert {
+  trainer_id: string;
+  student_id: string;
+  sender_role: 'personal' | 'student';
+  sender_id: string;
+  content: string;
+  type?: string;
+  media_url?: string | null;
+  payload?: unknown | null;
+  event?: string | null;
+  extension?: string | null;
+  binary_payload?: unknown | null;
+  private?: boolean | null;
+}
+
 export interface Subscription {
   id: string;
   trainer_id: string;

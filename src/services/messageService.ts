@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Message } from '../types/database';
+import type { Message, MessageInsert } from '../types/database';
 import type { Conversation } from '../types/message';
 import { getStudentsByTrainer } from './studentService';
 
@@ -57,21 +57,7 @@ export async function getMessages(
   };
 }
 
-export async function sendMessage(data: {
-  trainer_id: string;
-  student_id: string;
-  sender_role: 'personal' | 'student';
-  sender_id: string;
-  content: string;
-  /** Campos opcionais da estrutura real (preparados; envio de mídia na 10.2). */
-  type?: string;
-  media_url?: string | null;
-  payload?: unknown | null;
-  event?: string | null;
-  extension?: string | null;
-  binary_payload?: unknown | null;
-  private?: boolean | null;
-}) {
+export async function sendMessage(data: MessageInsert) {
   const { data: msg, error } = await supabase
     .from('messages')
     .insert(data)
