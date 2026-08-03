@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Dumbbell, BarChart3, MessageSquare, User } from 'lucide-react';
+import { Home, Dumbbell, BarChart3, MessageSquare, Bell, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
 import { ChangePasswordModal } from '../student/ChangePasswordModal';
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/student/workouts', icon: Dumbbell, label: 'Treinos' },
   { to: '/student/progress', icon: BarChart3, label: 'Progresso' },
   { to: '/student/chat', icon: MessageSquare, label: 'Chat' },
+  { to: '/student/notifications', icon: Bell, label: 'Notificações' },
   { to: '/student/profile', icon: User, label: 'Perfil' },
 ];
 

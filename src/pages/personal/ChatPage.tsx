@@ -18,90 +18,10 @@ import { supabase } from '../../lib/supabase';
 import * as messageService from '../../services/messageService';
 import type { Message } from '../../types/database';
 import type { Conversation } from '../../types/message';
-import { getInitials, cn } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
-
-type PresenceUser = {
-  type: 'personal' | 'student';
-  id: string;
-  name: string;
-  online_at: string;
-};
-
-function getPresenceUsers(state: Record<string, any[]>): PresenceUser[] {
-  const users: PresenceUser[] = [];
-
-  Object.values(state).forEach((presences) => {
-    presences.forEach((presence) => {
-      if (presence?.type && presence?.id) {
-        users.push({
-          type: presence.type,
-          id: presence.id,
-          name: presence.name || '',
-          online_at: presence.online_at || new Date().toISOString(),
-        });
-      }
-    });
-  });
-
-  return users;
-}
-
-function formatLastSeen(lastSeenAt?: string | null) {
-  if (!lastSeenAt) return 'visto por último recentemente';
-
-  return `visto por último ${timeAgo(lastSeenAt)}`;
-}
-
-function AvatarWithStatus({
-  src,
-  name,
-  online,
-  size = 'md',
-  accent = false,
-}: {
-  src?: string | null;
-  name: string;
-  online?: boolean;
-  size?: 'sm' | 'md';
-  accent?: boolean;
-}) {
-  const avatarSize = size === 'sm' ? 'h-8 w-8' : 'h-12 w-12';
-  const dotSize = size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5';
-
-  return (
-    <div className={cn('relative shrink-0 overflow-visible', avatarSize)}>
-      <div
-        className={cn(
-          'h-full w-full overflow-hidden rounded-full border border-white/10',
-          accent ? 'bg-[#ff2a32]/10' : 'bg-white/[0.06]'
-        )}
-      >
-        {src ? (
-          <img src={src} alt={name} className="h-full w-full object-cover" />
-        ) : (
-          <span
-            className={cn(
-              'flex h-full w-full items-center justify-center font-black',
-              size === 'sm' ? 'text-[11px]' : 'text-sm',
-              accent ? 'text-[#ff2a32]' : 'text-zinc-300'
-            )}
-          >
-            {getInitials(name)}
-          </span>
-        )}
-      </div>
-
-      <span
-        className={cn(
-          'absolute -bottom-0.5 -right-0.5 z-20 rounded-full border-[2.5px] border-[#050505]',
-          dotSize,
-          online ? 'bg-emerald-400' : 'bg-zinc-600'
-        )}
-      />
-    </div>
-  );
-}
+import { getPresenceUsers, formatLastSeen } from '../../lib/chatPresence';
+import { AvatarWithStatus } from '../../components/chat/AvatarWithStatus';
 
 export function ChatPage() {
   const { trainerProfile } = useAuthStore();

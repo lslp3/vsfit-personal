@@ -21,8 +21,20 @@ import {
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
+import { fixTextEncoding } from '../../lib/textEncoding';
+import { getStudentName } from '../../lib/studentIdentity';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markNotificationsAsRead,
+} from '../../services/notificationService';
+import {
+  markMessageAsRead,
+  markMessagesAsReadByIds,
+} from '../../services/messageService';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 type NotificationItem = {
   id: string;
@@ -35,50 +47,6 @@ type NotificationItem = {
   actionUrl?: string;
   raw?: any;
 };
-
-type NotificationRow = {
-  id: string;
-  user_id?: string | null;
-  title?: string | null;
-  message?: string | null;
-  type?: string | null;
-  read?: boolean | null;
-  created_at?: string | null;
-};
-
-function fixTextEncoding(value?: string | null) {
-  if (!value) return '';
-
-  return String(value)
-    .replace(/Ã¡/g, 'á')
-    .replace(/Ã /g, 'à')
-    .replace(/Ã¢/g, 'â')
-    .replace(/Ã£/g, 'ã')
-    .replace(/Ã©/g, 'é')
-    .replace(/Ãª/g, 'ê')
-    .replace(/Ã­/g, 'í')
-    .replace(/Ã³/g, 'ó')
-    .replace(/Ã´/g, 'ô')
-    .replace(/Ãµ/g, 'õ')
-    .replace(/Ãº/g, 'ú')
-    .replace(/Ã§/g, 'ç')
-    .replace(/Ã/g, 'Á')
-    .replace(/Ã€/g, 'À')
-    .replace(/Ã‚/g, 'Â')
-    .replace(/Ãƒ/g, 'Ã')
-    .replace(/Ã‰/g, 'É')
-    .replace(/ÃŠ/g, 'Ê')
-    .replace(/Ã/g, 'Í')
-    .replace(/Ã“/g, 'Ó')
-    .replace(/Ã”/g, 'Ô')
-    .replace(/Ã•/g, 'Õ')
-    .replace(/Ãš/g, 'Ú')
-    .replace(/Ã‡/g, 'Ç');
-}
-
-function getStudentName(student: any) {
-  return student?.name || student?.full_name || student?.email || 'Aluno';
-}
 
 function getFirstName(student: any) {
   const name = getStudentName(student);
@@ -290,6 +258,41 @@ export function StudentNotificationsPage() {
 
   useEffect(() => {
     loadNotifications();
+
+    // Realtime: notificações novas (INSERT) recarregam a lista em segundo
+    // plano, sem spinner. (Requires `notifications` na publicação
+    // supabase_realtime — ver supabase/sprint10_manual_policies.sql.)
+    let channel: RealtimeChannel | null = null;
+
+    async function subscribeRealtime() {
+      const { data: authData } = await supabase.auth.getUser();
+      const authUserId = authData?.user?.id;
+      if (!authUserId) return;
+
+      channel = supabase
+        .channel('vsfit-student-notifications-realtime-' + authUserId)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${authUserId}`,
+          },
+          () => {
+            loadNotifications({ silent: true });
+          }
+        )
+        .subscribe();
+    }
+
+    subscribeRealtime();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   const unreadCount = useMemo(() => {
@@ -311,21 +314,11 @@ export function StudentNotificationsPage() {
 
   async function loadDatabaseNotifications(authUserId: string) {
     try {
-      const { data, error: queryError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', authUserId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { notifications } = await getNotifications(authUserId, {
+        limit: 50,
+      });
 
-      if (queryError) {
-        console.warn('[StudentNotificationsPage] notifications query warning:', queryError);
-        return [];
-      }
-
-      return ((data || []) as NotificationRow[]).filter(
-        (item) => !isPersonalOnlyNotification(item)
-      );
+      return notifications.filter((item) => !isPersonalOnlyNotification(item));
     } catch (queryError) {
       console.warn('[StudentNotificationsPage] notifications query exception:', queryError);
       return [];
@@ -488,8 +481,8 @@ export function StudentNotificationsPage() {
     return smartItems;
   }
 
-  async function loadNotifications() {
-    setLoading(true);
+  async function loadNotifications(options?: { silent?: boolean }) {
+    if (!options?.silent) setLoading(true);
     setError('');
 
     try {
@@ -544,9 +537,11 @@ export function StudentNotificationsPage() {
       setItems(allItems);
     } catch (loadError: any) {
       console.error('[StudentNotificationsPage] load error:', loadError);
-      setError(loadError?.message || 'Erro ao carregar notificações.');
+      if (!options?.silent) {
+        setError(loadError?.message || 'Erro ao carregar notificações.');
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
       setRefreshing(false);
     }
   }
@@ -572,22 +567,15 @@ export function StudentNotificationsPage() {
 
     if (item.source === 'database') {
       try {
-        const { error: readError } = await supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', item.id);
-
-        if (readError) {
-          console.warn('[StudentNotificationsPage] mark one read warning:', readError);
-        }
+        await markNotificationAsRead(item.id);
       } catch (readError) {
-        console.warn('[StudentNotificationsPage] mark one read exception:', readError);
+        console.warn('[StudentNotificationsPage] mark one read warning:', readError);
       }
     }
 
     if (item.source === 'smart' && item.type === 'message' && item.raw?.id) {
       try {
-        await supabase.from('messages').update({ read: true }).eq('id', item.raw.id);
+        await markMessageAsRead(item.raw.id);
       } catch (messageReadError) {
         console.warn('[StudentNotificationsPage] mark message read warning:', messageReadError);
       }
@@ -616,18 +604,11 @@ export function StudentNotificationsPage() {
 
     try {
       if (databaseIds.length > 0) {
-        const { error: readError } = await supabase
-          .from('notifications')
-          .update({ read: true })
-          .in('id', databaseIds);
-
-        if (readError) {
-          console.warn('[StudentNotificationsPage] mark all notifications warning:', readError);
-        }
+        await markNotificationsAsRead(databaseIds);
       }
 
       if (messageIds.length > 0) {
-        await supabase.from('messages').update({ read: true }).in('id', messageIds);
+        await markMessagesAsReadByIds(messageIds);
       }
     } catch (markError) {
       console.warn('[StudentNotificationsPage] mark all warning:', markError);
@@ -669,7 +650,7 @@ export function StudentNotificationsPage() {
 
           <button
             type="button"
-            onClick={loadNotifications}
+            onClick={() => loadNotifications()}
             className="mt-6 h-12 w-full rounded-2xl bg-[#ff2a32] text-sm font-black text-white"
           >
             TENTAR NOVAMENTE

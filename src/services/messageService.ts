@@ -16,7 +16,7 @@ const DEFAULT_MESSAGE_PAGE_SIZE = 200;
 const DEFAULT_CONVERSATION_SCAN_LIMIT = 500;
 
 const MESSAGE_COLUMNS =
-  'id, trainer_id, student_id, sender_role, sender_id, content, read, created_at';
+  'id, trainer_id, student_id, sender_role, sender_id, content, type, media_url, payload, event, extension, binary_payload, private, read, created_at, updated_at';
 
 export async function getMessages(
   trainerId: string,
@@ -61,14 +61,22 @@ export async function sendMessage(data: {
   sender_role: 'personal' | 'student';
   sender_id: string;
   content: string;
+  /** Campos opcionais da estrutura real (preparados; envio de mídia na 10.2). */
+  type?: string;
+  media_url?: string | null;
+  payload?: unknown | null;
+  event?: string | null;
+  extension?: string | null;
+  binary_payload?: unknown | null;
+  private?: boolean | null;
 }) {
   const { data: msg, error } = await supabase
     .from('messages')
     .insert(data)
-    .select()
+    .select(MESSAGE_COLUMNS)
     .single();
   if (error) throw error;
-  return msg;
+  return msg as Message;
 }
 
 export async function getConversations(
@@ -81,7 +89,7 @@ export async function getConversations(
   const [messagesResult, countResult] = await Promise.all([
     supabase
       .from('messages')
-      .select(`id, student_id, content, created_at, read, students(name, avatar_url)`)
+      .select(`id, student_id, sender_role, content, created_at, read, students(name, avatar_url)`)
       .eq('trainer_id', trainerId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1),
@@ -107,16 +115,22 @@ export async function getConversations(
   const conversations: Record<string, Conversation> = {};
 
   for (const msg of data || []) {
+    // Unread do treinador = mensagens do ALUNO ainda não lidas.
+    // Mensagens enviadas pelo próprio treinador (sender_role='personal')
+    // nunca contam como não lidas na lista de conversas.
+    const isStudentMessage = msg.sender_role === 'student';
+    const isUnreadForTrainer = isStudentMessage && !msg.read;
+
     if (!conversations[msg.student_id]) {
       conversations[msg.student_id] = {
         studentId: msg.student_id,
         studentName: (msg as any).students?.name || 'Aluno',
         lastMessage: msg.content,
         lastMessageAt: msg.created_at,
-        unread: msg.read ? 0 : 1,
+        unread: isUnreadForTrainer ? 1 : 0,
         avatarUrl: (msg as any).students?.avatar_url || null,
       };
-    } else if (!msg.read) {
+    } else if (isUnreadForTrainer) {
       conversations[msg.student_id].unread += 1;
     }
   }
@@ -130,14 +144,6 @@ export async function getConversations(
   };
 }
 
-export async function getStudentConversations(
-  studentId: string,
-  trainerId: string,
-  options?: { limit?: number; before?: string | null }
-): Promise<MessagePage> {
-  return getMessages(trainerId, studentId, options);
-}
-
 export async function markMessagesAsRead(trainerId: string, studentId: string) {
   try {
     const { error } = await supabase
@@ -145,11 +151,56 @@ export async function markMessagesAsRead(trainerId: string, studentId: string) {
       .update({ read: true })
       .eq('trainer_id', trainerId)
       .eq('student_id', studentId)
+      // Apenas mensagens do aluno são marcadas como lidas pelo treinador.
+      // Sem este filtro, as próprias mensagens do treinador (read=false no
+      // insert) eram marcadas como lidas ao abrir o chat, quebrando o
+      // indicador "lida" (CheckCheck azul) das mensagens enviadas.
+      .eq('sender_role', 'student')
       .eq('read', false);
     if (error) {
       console.error('[MessageService] markMessagesAsRead error:', error);
     }
   } catch (error) {
     console.error('[MessageService] markMessagesAsRead exception:', error);
+  }
+}
+
+/**
+ * Marca uma mensagem específica como lida (usado pela central de
+ * notificações do aluno para itens de tipo 'message').
+ */
+export async function markMessageAsRead(messageId: string) {
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .update({ read: true })
+      .eq('id', messageId)
+      .eq('read', false);
+    if (error) {
+      console.error('[MessageService] markMessageAsRead error:', error);
+    }
+  } catch (error) {
+    console.error('[MessageService] markMessageAsRead exception:', error);
+  }
+}
+
+/**
+ * Marca várias mensagens como lidas por id (marcar todas na central de
+ * notificações do aluno).
+ */
+export async function markMessagesAsReadByIds(messageIds: string[]) {
+  if (messageIds.length === 0) return;
+
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .update({ read: true })
+      .in('id', messageIds)
+      .eq('read', false);
+    if (error) {
+      console.error('[MessageService] markMessagesAsReadByIds error:', error);
+    }
+  } catch (error) {
+    console.error('[MessageService] markMessagesAsReadByIds exception:', error);
   }
 }

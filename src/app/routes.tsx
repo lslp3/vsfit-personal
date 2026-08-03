@@ -135,6 +135,12 @@ const StudentChatPage = lazyPage(() =>
   import('../pages/student/StudentChatPage').then((m) => ({ default: m.StudentChatPage }))
 );
 
+const StudentNotificationsPage = lazyPage(() =>
+  import('../pages/student/StudentNotificationsPage').then((m) => ({
+    default: m.StudentNotificationsPage,
+  }))
+);
+
 const StudentHomePage = lazyPage(() =>
   import('../pages/student/StudentHomePage').then((m) => ({ default: m.StudentHomePage }))
 );
@@ -430,6 +436,10 @@ export const router =
         {
           path: 'chat',
           element: <StudentChatPage />,
+        },
+        {
+          path: 'notifications',
+          element: <StudentNotificationsPage />,
         },
         {
           path: 'profile',

@@ -316,6 +316,11 @@ export interface Payment {
   updated_at: string;
 }
 
+/**
+ * Mensagem do chat Personal ↔ Aluno.
+ * NÃO REMOVER ESTE FLUXO SEM VALIDAR PERSISTÊNCIA DO CHAT (Sprint 10.1):
+ * a tabela `messages` é a canônica; `chat_messages` é legado.
+ */
 export interface Message {
   id: string;
   trainer_id: string;
@@ -327,6 +332,13 @@ export interface Message {
   media_url: string | null;
   read: boolean;
   created_at: string;
+  /** Estrutura real da tabela messages (Sprint 10.1 — campos preparados). */
+  payload?: unknown | null;
+  event?: string | null;
+  extension?: string | null;
+  binary_payload?: unknown | null;
+  private?: boolean | null;
+  updated_at?: string | null;
 }
 
 export interface Subscription {

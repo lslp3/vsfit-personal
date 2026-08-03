@@ -11,13 +11,20 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
+import { fixTextEncoding, cleanNotificationMessage } from '../lib/textEncoding';
+import {
+  getNotifications,
+  toggleNotificationRead,
+  markNotificationsAsRead,
+} from '../services/notificationService';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 type NotificationRow = {
   id: string;
   user_id?: string | null;
-  title: string;
+  title?: string | null;
   message?: string | null;
-  type: string;
+  type?: string | null;
   read?: boolean | null;
   created_at?: string | null;
 };
@@ -25,60 +32,6 @@ type NotificationRow = {
 type NotificationsViewProps = {
   [key: string]: any;
 };
-
-function fixTextEncoding(value?: string | null) {
-  if (!value) return '';
-
-  return String(value)
-    .replace(/Ã¡/g, 'á')
-    .replace(/Ã /g, 'à')
-    .replace(/Ã¢/g, 'â')
-    .replace(/Ã£/g, 'ã')
-    .replace(/Ã©/g, 'é')
-    .replace(/Ãª/g, 'ê')
-    .replace(/Ã­/g, 'í')
-    .replace(/Ã³/g, 'ó')
-    .replace(/Ã´/g, 'ô')
-    .replace(/Ãµ/g, 'õ')
-    .replace(/Ãº/g, 'ú')
-    .replace(/Ã§/g, 'ç')
-    .replace(/Ã/g, 'Á')
-    .replace(/Ã€/g, 'À')
-    .replace(/Ã‚/g, 'Â')
-    .replace(/Ãƒ/g, 'Ã')
-    .replace(/Ã‰/g, 'É')
-    .replace(/ÃŠ/g, 'Ê')
-    .replace(/Ã/g, 'Í')
-    .replace(/Ã“/g, 'Ó')
-    .replace(/Ã”/g, 'Ô')
-    .replace(/Ã•/g, 'Õ')
-    .replace(/Ãš/g, 'Ú')
-    .replace(/Ã‡/g, 'Ç');
-}
-
-function cleanNotificationMessage(value?: string | null) {
-  const text = fixTextEncoding(value || 'Sem descrição.');
-
-  return text
-    // Remove Log antigo
-    .replace(/\s*Log:\s*[0-9a-f-]{20,}\.?/gi, '')
-
-    // Remove datas ISO antigas completas
-    .replace(/\s*Início:\s*\d{4}-\d{2}-\d{2}T[^\s.]+(?:\.\d+)?Z?\.?/gi, '')
-    .replace(/\s*Inicio:\s*\d{4}-\d{2}-\d{2}T[^\s.]+(?:\.\d+)?Z?\.?/gi, '')
-    .replace(/\s*Finalizado:\s*\d{4}-\d{2}-\d{2}T[^\s.]+(?:\.\d+)?Z?\.?/gi, '')
-
-    // Remove qualquer resto de ISO que tenha sobrado
-    .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/gi, '')
-
-    // Corrige resto tipo: min.103Z
-    .replace(/min\.\d+Z\.?/gi, 'min.')
-
-    // Limpa espaços e pontuação sobrando
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+\./g, '.')
-    .trim();
-}
 
 function getCurrentCoachEmail() {
   try {
@@ -287,8 +240,8 @@ export default function NotificationsView(_props: NotificationsViewProps) {
     };
   }
 
-  async function loadNotifications() {
-    setLoading(true);
+  async function loadNotifications(options?: { silent?: boolean }) {
+    if (!options?.silent) setLoading(true);
 
     try {
       const identity = await resolveCoachIdentity();
@@ -299,34 +252,62 @@ export default function NotificationsView(_props: NotificationsViewProps) {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', identity.userId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (error) {
-        console.error('[NotificationsView] load error:', error);
-        alert('Erro ao carregar notificações reais. Veja o console.');
-        return;
-      }
+      const { notifications } = await getNotifications(identity.userId, {
+        limit: 200,
+      });
 
       setNotifications(
-        ((data || []) as NotificationRow[]).filter((item) => !isStudentOnlyNotification(item))
+        notifications.filter((item) => !isStudentOnlyNotification(item))
       );
 
       setLastUpdated(new Date().toLocaleString('pt-BR'));
     } catch (error) {
       console.error('[NotificationsView] exception:', error);
-      alert('Erro inesperado ao carregar notificações.');
+      if (!options?.silent) {
+        alert('Erro ao carregar notificações. Veja o console.');
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadNotifications();
+
+    // Realtime: notificações novas (INSERT) recarregam a lista em segundo
+    // plano, sem spinner — o fluxo "nova notificação" funciona sem refresh
+    // manual. (Requires `notifications` na publicação supabase_realtime —
+    // ver supabase/sprint10_manual_policies.sql.)
+    let channel: RealtimeChannel | null = null;
+
+    async function subscribeRealtime() {
+      const identity = await resolveCoachIdentity();
+      if (!identity.userId) return;
+
+      channel = supabase
+        .channel('vsfit-notifications-realtime-' + identity.userId)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${identity.userId}`,
+          },
+          () => {
+            loadNotifications({ silent: true });
+          }
+        )
+        .subscribe();
+    }
+
+    subscribeRealtime();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   const filteredNotifications = useMemo(() => {
@@ -356,18 +337,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
     try {
       const nextRead = !Boolean(notification.read);
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({
-          read: nextRead,
-        })
-        .eq('id', notification.id);
-
-      if (error) {
-        console.error('[NotificationsView] toggle read error:', error);
-        alert('Erro ao atualizar notificação.');
-        return;
-      }
+      await toggleNotificationRead(notification.id, nextRead);
 
       setNotifications((prev) =>
         prev.map((item) =>
@@ -381,7 +351,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
       );
     } catch (error) {
       console.error('[NotificationsView] toggle read exception:', error);
-      alert('Erro inesperado ao atualizar notificação.');
+      alert('Erro ao atualizar notificação.');
     }
   }
 
@@ -391,18 +361,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
     if (unreadIds.length === 0) return;
 
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({
-          read: true,
-        })
-        .in('id', unreadIds);
-
-      if (error) {
-        console.error('[NotificationsView] mark all error:', error);
-        alert('Erro ao marcar todas como lidas.');
-        return;
-      }
+      await markNotificationsAsRead(unreadIds);
 
       setNotifications((prev) =>
         prev.map((item) => ({
@@ -412,7 +371,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
       );
     } catch (error) {
       console.error('[NotificationsView] mark all exception:', error);
-      alert('Erro inesperado ao marcar todas como lidas.');
+      alert('Erro ao marcar todas como lidas.');
     }
   }
 
@@ -464,7 +423,7 @@ export default function NotificationsView(_props: NotificationsViewProps) {
           <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center">
             <button
               type="button"
-              onClick={loadNotifications}
+              onClick={() => loadNotifications()}
               className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#252525] bg-[#151515] px-4 text-[11px] font-black uppercase text-white"
             >
               <RefreshCw className={`h-4 w-4 text-[#FF2B2B] ${loading ? 'animate-spin' : ''}`} />
