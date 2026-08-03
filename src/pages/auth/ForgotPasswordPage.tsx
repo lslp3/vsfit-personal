@@ -12,7 +12,6 @@ export function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const redirectTo = getAuthRedirectUrl('/auth/reset-password');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,11 +98,6 @@ export function ForgotPasswordPage() {
               icon={<Mail size={18} />}
               autoComplete="email"
             />
-
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3">
-              <span className="text-xs text-zinc-500 font-semibold tracking-wider">RESET REDIRECT</span>
-              <p className="text-xs text-zinc-300 font-mono break-all mt-1">{redirectTo}</p>
-            </div>
 
             <Button type="submit" loading={loading} className="w-full">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}

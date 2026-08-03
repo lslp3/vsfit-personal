@@ -33,87 +33,6 @@ type NotificationsViewProps = {
   [key: string]: any;
 };
 
-function getCurrentCoachEmail() {
-  try {
-    const direct =
-      localStorage.getItem('vsfit_coach_email') ||
-      localStorage.getItem('coachEmail') ||
-      localStorage.getItem('user_email') ||
-      localStorage.getItem('email');
-
-    if (direct) return String(direct).toLowerCase();
-
-    const possibleKeys = [
-      'vsfit_user_profile',
-      'vsfit_profile',
-      'vsfit_session',
-      'supabase.auth.token',
-    ];
-
-    for (const key of possibleKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-
-      const parsed = JSON.parse(raw);
-
-      const email =
-        parsed?.email ||
-        parsed?.user?.email ||
-        parsed?.profile?.email ||
-        parsed?.currentSession?.user?.email ||
-        parsed?.currentUser?.email;
-
-      if (email) return String(email).toLowerCase();
-    }
-  } catch {
-    return '';
-  }
-
-  return '';
-}
-
-function getCurrentCoachUserIdFromLocalStorage() {
-  try {
-    const direct =
-      localStorage.getItem('vsfit_coach_user_id') ||
-      localStorage.getItem('coachUserId') ||
-      localStorage.getItem('user_id') ||
-      localStorage.getItem('auth_user_id');
-
-    if (direct) return String(direct);
-
-    const possibleKeys = [
-      'vsfit_user_profile',
-      'vsfit_profile',
-      'vsfit_session',
-      'supabase.auth.token',
-    ];
-
-    for (const key of possibleKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-
-      const parsed = JSON.parse(raw);
-
-      const id =
-        parsed?.id ||
-        parsed?.user_id ||
-        parsed?.auth_user_id ||
-        parsed?.user?.id ||
-        parsed?.profile?.id ||
-        parsed?.profile?.user_id ||
-        parsed?.currentSession?.user?.id ||
-        parsed?.currentUser?.id;
-
-      if (id) return String(id);
-    }
-  } catch {
-    return '';
-  }
-
-  return '';
-}
-
 function formatDateTime(value?: string | null) {
   if (!value) return '-';
 
@@ -197,8 +116,8 @@ function isStudentOnlyNotification(notification: NotificationRow) {
 }
 
 export default function NotificationsView(_props: NotificationsViewProps) {
-  const [coachEmail, setCoachEmail] = useState(getCurrentCoachEmail());
-  const [coachUserId, setCoachUserId] = useState(getCurrentCoachUserIdFromLocalStorage());
+  const [coachEmail, setCoachEmail] = useState('');
+  const [coachUserId, setCoachUserId] = useState('');
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -206,8 +125,11 @@ export default function NotificationsView(_props: NotificationsViewProps) {
   const [lastUpdated, setLastUpdated] = useState('');
 
   async function resolveCoachIdentity() {
-    let resolvedUserId = getCurrentCoachUserIdFromLocalStorage();
-    let resolvedEmail = getCurrentCoachEmail();
+    // Identidade via API oficial do Supabase (E4 — Sprint 11): sem leitura
+    // manual de tokens no localStorage. A consulta de notificações continua
+    // protegida por RLS (notifications_self_select: user_id = auth.uid()).
+    let resolvedUserId = '';
+    let resolvedEmail = '';
 
     try {
       const { data, error } = await supabase.auth.getUser();
@@ -220,12 +142,10 @@ export default function NotificationsView(_props: NotificationsViewProps) {
 
       if (authUser?.id) {
         resolvedUserId = authUser.id;
-        localStorage.setItem('vsfit_coach_user_id', authUser.id);
       }
 
       if (authUser?.email) {
         resolvedEmail = String(authUser.email).toLowerCase();
-        localStorage.setItem('vsfit_coach_email', resolvedEmail);
       }
     } catch (error) {
       console.warn('[NotificationsView] auth identity exception:', error);
