@@ -6,6 +6,8 @@ import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { supabase } from '../lib/supabase';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { usePushReceiver } from '../hooks/usePushReceiver';
+import { PushBanner } from '../components/ui/PushBanner';
 
 export function App() {
   const { isLoading, initialize } = useAuthStore();
@@ -13,6 +15,10 @@ export function App() {
   // Sprint 12 — Push Notifications: registro de dispositivo (permissão +
   // token FCM) em plataforma nativa; no-op na web/Preview.
   usePushNotifications();
+
+  // Sprint 12 — ETAPA 6: recebimento e navegação por push (foreground banner,
+  // background/terminated). Ponto único de tratamento; no-op na web/Preview.
+  const { activePush, navigateFromPush, dismissPush } = usePushReceiver();
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -71,6 +77,13 @@ export function App() {
   return (
     <ErrorBoundary>
       <RouterProvider router={router} />
+      <PushBanner
+        push={activePush}
+        onOpen={() => {
+          if (activePush) navigateFromPush(activePush);
+        }}
+        onClose={dismissPush}
+      />
     </ErrorBoundary>
   );
 }
