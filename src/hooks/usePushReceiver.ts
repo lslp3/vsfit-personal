@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import {
   PushNotifications,
   type ActionPerformed,
@@ -76,6 +76,8 @@ export function usePushReceiver() {
     if (!isNative) return;
 
     let active = true;
+    let receivedListener: PluginListenerHandle | null = null;
+    let actionListener: PluginListenerHandle | null = null;
 
     const navigateByPayload = (payload: { route?: string; event_type?: string }) => {
       // Cold start (terminated): o perfil pode ainda não ter carregado quando
@@ -115,17 +117,24 @@ export function usePushReceiver() {
       dimissTimer.current = window.setTimeout(() => {
         if (active) setActivePush(null);
       }, 5000);
+    }).then((handle) => {
+      receivedListener = handle;
     });
 
     // Background / terminated: toque na notificação → abre e navega.
     PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
       if (!active) return;
       navigateByPayload(extractPayload(action.notification));
+    }).then((handle) => {
+      actionListener = handle;
     });
 
     return () => {
       active = false;
       clearDismissTimer();
+      // Evita listeners duplicados / vazamento de memória em remounts.
+      receivedListener?.remove();
+      actionListener?.remove();
     };
   }, [isNative]);
 

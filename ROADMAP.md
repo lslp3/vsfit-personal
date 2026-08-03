@@ -70,19 +70,18 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - E3 (quality gate TS), E5 (nutrition) e E6 (desktop responsivo) não
   implementados nesta Sprint — registrados como candidatos a sprints futuras.
 
-## Sprint 12 — Push Notifications (EM ANDAMENTO)
+## Sprint 12 — Push Notifications (AGUARDANDO VALIDAÇÃO FINAL)
 
-- Status: 🔄 **Em andamento**
+- Status: 🔄 **Em andamento** — implementação concluída, pronta para testes reais.
 - Branch: `test/sprint-12-push`
 - Origem: `test/sprint-11-hardening` (7309a03)
-- Escopo: push notifications Android via Supabase + Firebase Cloud Messaging +
-  Capacitor — registro de dispositivo, envio por Edge Functions, foreground/
-  background/terminated, navegação ao tocar, integração com mensagens, treinos,
-  pagamentos e notificações do sistema.
-- Cliente NÃO envia push (envio sempre via Edge Function); eventos
-  padronizados (event_type) e payload estruturado; domínio push desacoplado.
-- SQL (tabelas de token/preferências) entregue em arquivo para aplicação manual.
-- Dependência externa: projeto Firebase (google-services.json + service account).
+- Escopo entregue (ETAPAS 1–8): push Android via Supabase + FCM + Capacitor —
+  registro/refresh/remoção de token, Edge Function de envio (service_role),
+  eventos de negócio (mensagem, treino, pagamento, plano, sistema),
+  foreground/background/terminated, deep link + banner, preferências de push.
+- **Aguardando teste real em dispositivo** (Firebase + google-services.json +
+  Service Account + deploy da Edge Function + aplicar SQL manual + APK).
+- Sprint NÃO encerrada até validação completa.
 
 ---
 

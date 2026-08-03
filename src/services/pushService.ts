@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 /**
  * Sprint 12 — ETAPA 3: persistência de tokens FCM e preferências no Supabase.
- * TODO o acesso do domínio push ao banco fica concentrado aqui.
+ * Todo o acesso do domínio push ao banco fica concentrado aqui.
  *
  * RLS: o usuário autenticado gerencia somente os próprios registros
  * (push_tokens_self_* e push_preferences_self_*).
