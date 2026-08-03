@@ -1,0 +1,165 @@
+/**
+ * Sprint 12 — ETAPA 4 — Edge Function de envio de Push Notifications (FCM).
+ *
+ * Infraestrutura REUTILIZÁVEL: recebe um destinatário e uma mensagem e entrega
+ * a todos os dispositivos do usuário. Best-effort — nunca interrompe o fluxo
+ * do sistema se o push falhar.
+ *
+ * Request (POST, autenticado via JWT Bearer):
+ * {
+ *   user_id: string,              // auth uid do DESTINATÁRIO
+ *   title: string,
+ *   body: string,
+ *   data?: {                      // opcional; valores convertidos para string
+ *     event_type?: string,
+ *     route?: string,
+ *     trainer_id?: string,
+ *     student_id?: string,
+ *     conversation_id?: string,
+ *     notification_id?: string,
+ *     ...qualquer outro identificador
+ *   }
+ * }
+ *
+ * Secrets obrigatórios:
+ *   SUPABASE_URL               (automático no runtime Supabase)
+ *   SERVICE_ROLE_KEY           (automático no runtime Supabase)
+ *   FIREBASE_SERVICE_ACCOUNT   (JSON do service account do Firebase — para FCM)
+ *
+ * Deploy:
+ *   supabase secrets set FIREBASE_SERVICE_ACCOUNT "<json>"
+ *   supabase functions deploy send-push-notification
+ */
+
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+import { sendToTokens } from "./push.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+};
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: corsHeaders });
+  }
+
+  try {
+    if (req.method !== "POST") {
+      return jsonResponse({ ok: false, error: "Método não permitido." }, 405);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl) throw new Error("SUPABASE_URL não configurada.");
+    if (!serviceRoleKey) throw new Error("SERVICE_ROLE_KEY não configurada.");
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Valida JWT do chamador (usuário autenticado).
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return jsonResponse({ ok: false, error: "Usuário não autenticado." }, 401);
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } =
+      await supabaseAdmin.auth.getUser(accessToken);
+
+    if (userError || !userData.user) {
+      return jsonResponse({ ok: false, error: "Sessão inválida." }, 401);
+    }
+
+    const body = await req.json();
+    const user_id = body?.user_id;
+    const title = body?.title;
+    const messageBody = body?.body;
+    const data = body?.data;
+
+    if (!user_id || typeof user_id !== "string") {
+      return jsonResponse({ ok: false, error: "user_id é obrigatório." }, 400);
+    }
+    if (!title || typeof title !== "string") {
+      return jsonResponse({ ok: false, error: "title é obrigatório." }, 400);
+    }
+    if (!messageBody || typeof messageBody !== "string") {
+      return jsonResponse({ ok: false, error: "body é obrigatório." }, 400);
+    }
+
+    // Payload FCM exige valores string — converte tudo.
+    const dataPayload: Record<string, string> = {};
+    if (data && typeof data === "object") {
+      for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+        if (value !== undefined && value !== null) {
+          dataPayload[key] = String(value);
+        }
+      }
+    }
+
+    // Localiza todos os dispositivos do destinatário.
+    const { data: tokensData, error: tokensError } = await supabaseAdmin
+      .from("push_tokens")
+      .select("device_token")
+      .eq("user_id", user_id);
+
+    if (tokensError) throw tokensError;
+
+    const tokens = (tokensData ?? [])
+      .map((row) => row.device_token)
+      .filter((value): value is string => Boolean(value));
+
+    if (tokens.length === 0) {
+      return jsonResponse({ ok: true, sent: 0, failed: 0, removed: 0, devices: 0 });
+    }
+
+    // Remove token inválido do banco automaticamente (best-effort).
+    const removeInvalidToken = async (deviceToken: string) => {
+      await supabaseAdmin
+        .from("push_tokens")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("device_token", deviceToken);
+    };
+
+    const result = await sendToTokens(
+      tokens,
+      { title, body: messageBody, data: dataPayload },
+      removeInvalidToken,
+    );
+
+    return jsonResponse({
+      ok: true,
+      sent: result.sent,
+      failed: result.failed,
+      removed: result.removed,
+      devices: tokens.length,
+    });
+  } catch (error) {
+    console.error("[send-push-notification] error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    // Best-effort: erro estruturado; quem dispara não deve interromper o
+    // fluxo por causa do push.
+    return jsonResponse({ ok: false, error: message }, 500);
+  }
+});
