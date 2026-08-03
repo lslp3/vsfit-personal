@@ -57,15 +57,28 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 
 ## Sprint 11 — Hardening + Fundação V2
 
-- Status: 🔄 **Em andamento**
+- Status: ✅ **Concluída**
+- Validação: **Validada em Preview**
+- **Aprovada para integração futura**
+- **Congelada** — somente HOTFIX caso necessário.
 - Branch: `test/sprint-11-hardening`
+- Commits: `e20f441`, `6242794`, `5d356a6`, `5c85b0f`, + documentação final
 - Origem: `test/sprint-10-comunicacao` (5d1ad50)
-- Escopo: E1 RLS operacional (SQL manual), E2 higienização, E3 quality gate TS,
-  E4 segurança/sessão, E5 nutrition, E6 desktop responsivo (análise).
-- **Nenhuma alteração de banco executada pelo agente** — SQL manual entregue
-  em arquivo para aplicação pelo usuário.
-- **Não altera funcionalidades congeladas da Sprint 10.1** (ajustes viram HOTFIX).
-- Validação: `tsc --noEmit` + `npm run build` antes de cada commit.
+- Escopo entregue: C1 docs, C2 SQL manual de RLS (notifications/messages),
+  C3 remoção de código morto + consolidação de tipos Message, E4 segurança de
+  sessão (getUser() sem tokens manuais no localStorage).
+- E3 (quality gate TS), E5 (nutrition) e E6 (desktop responsivo) não
+  implementados nesta Sprint — registrados como candidatos a sprints futuras.
+
+## Sprint 12 — Push Notifications (PRÓXIMA — ainda não iniciada)
+
+- Status: 📋 Planejada
+- Descrição: **Push Notifications (Supabase + Firebase Cloud Messaging)** —
+  implementação completa de notificações push para Android, incluindo registro
+  de dispositivo, envio por Edge Functions, recebimento em
+  foreground/background/terminated, navegação ao tocar na notificação e
+  integração com mensagens, treinos, pagamentos e notificações do sistema.
+- Observação: ainda NÃO iniciada. Aguardando autorização.
 
 ---
 
