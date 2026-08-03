@@ -15,9 +15,6 @@ export interface ConversationPage {
 const DEFAULT_MESSAGE_PAGE_SIZE = 200;
 const DEFAULT_CONVERSATION_SCAN_LIMIT = 500;
 
-const MESSAGE_COLUMNS =
-  'id, trainer_id, student_id, sender_role, sender_id, content, type, media_url, payload, event, extension, binary_payload, private, read, created_at, updated_at';
-
 export async function getMessages(
   trainerId: string,
   studentId: string,
@@ -27,7 +24,11 @@ export async function getMessages(
 
   let query = supabase
     .from('messages')
-    .select(MESSAGE_COLUMNS)
+    // SELECT * (adaptável): a tabela `messages` não é versionada no repo
+    // (criada fora dos migrations) e a lista fixa de colunas fazia o
+    // INSERT...RETURNING falhar com HTTP 400 (coluna inexistente), revertendo
+    // o INSERT — mensagem nunca criada. Sprint 10.1 hotfix.
+    .select()
     .eq('trainer_id', trainerId)
     .eq('student_id', studentId)
     .order('created_at', { ascending: false })
@@ -73,7 +74,7 @@ export async function sendMessage(data: {
   const { data: msg, error } = await supabase
     .from('messages')
     .insert(data)
-    .select(MESSAGE_COLUMNS)
+    .select()
     .single();
   if (error) throw error;
   return msg as Message;
