@@ -187,6 +187,47 @@ serve(async (req) => {
       }
     }
 
+    // ── PREFERÊNCIAS (ETAPA 7) ────────────────────────────────────────────
+    // Gate centralizado de preferências do DESTINATÁRIO (com service_role —
+    // o cliente não lê preferências de outro usuário por RLS self). Se a
+    // categoria estiver desabilitada, o push é bloqueado aqui. A notificação
+    // salva no banco já foi criada pelo evento e permanece normalmente —
+    // somente o Push é bloqueado.
+    const EVENT_CATEGORY: Record<string, string> = {
+      NEW_MESSAGE: "messages",
+      WORKOUT_COMPLETED: "workouts",
+      PAYMENT_APPROVED: "payments",
+      PLAN_EXPIRING: "system",
+      SYSTEM_NOTIFICATION: "system",
+      STUDENT_CREATED: "system",
+    };
+
+    const eventType = dataPayload.event_type ?? "";
+    const category = EVENT_CATEGORY[eventType];
+
+    if (category) {
+      const { data: prefs } = await supabaseAdmin
+        .from("push_preferences")
+        .select("messages, workouts, payments, system")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      // Sem registro de preferência = defaults (tudo habilitado).
+      const categoryValue =
+        (prefs as Record<string, boolean | null | undefined> | null)?.[category];
+
+      if (categoryValue === false) {
+        return jsonResponse({
+          ok: true,
+          sent: 0,
+          failed: 0,
+          removed: 0,
+          devices: 0,
+          blocked: true,
+        });
+      }
+    }
+
     // Localiza todos os dispositivos do destinatário.
     const { data: tokensData, error: tokensError } = await supabaseAdmin
       .from("push_tokens")

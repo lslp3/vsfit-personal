@@ -13,6 +13,7 @@ function getPageTitle(pathname: string): string {
   const map: Record<string, string> = {
     '/personal/dashboard': 'Painel',
     '/personal/notifications': 'Notificações',
+    '/personal/push-preferences': 'Preferências de Notificações',
     '/personal/students': 'Alunos',
     '/personal/exercise-library': 'Biblioteca',
     '/personal/workout-builder': 'Montar treino',

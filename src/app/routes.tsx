@@ -95,6 +95,10 @@ const NotificationsPage = lazyPage(() =>
   import('../pages/personal/NotificationsPage').then((m) => ({ default: m.NotificationsPage }))
 );
 
+const PushPreferencesPage = lazyPage(() =>
+  import('../pages/personal/PushPreferencesPage').then((m) => ({ default: m.PushPreferencesPage }))
+);
+
 const NutritionPage = lazyPage(() =>
   import('../pages/personal/NutritionPage').then((m) => ({ default: m.NutritionPage }))
 );
@@ -330,6 +334,10 @@ export const router =
         {
           path: 'notifications',
           element: <NotificationsPage />,
+        },
+        {
+          path: 'push-preferences',
+          element: <PushPreferencesPage />,
         },
         {
           path: 'students',

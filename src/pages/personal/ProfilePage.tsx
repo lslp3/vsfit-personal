@@ -15,6 +15,7 @@ import {
   Award,
   Loader2,
   Upload,
+  Bell,
 } from 'lucide-react';
 
 import { Header } from '../../components/ui/Header';
@@ -481,6 +482,15 @@ export function ProfilePage() {
             {error}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={() => navigate('/personal/push-preferences')}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.06] text-[13px] font-black text-white active:scale-95"
+        >
+          <Bell className="h-4 w-4" />
+          PREFERÊNCIAS DE NOTIFICAÇÕES
+        </button>
 
         <div className="grid grid-cols-2 gap-3">
           <button
