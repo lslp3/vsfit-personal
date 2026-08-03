@@ -5,9 +5,14 @@ import { useAuthStore } from '../store/authStore';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { supabase } from '../lib/supabase';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export function App() {
   const { isLoading, initialize } = useAuthStore();
+
+  // Sprint 12 — Push Notifications: registro de dispositivo (permissão +
+  // token FCM) em plataforma nativa; no-op na web/Preview.
+  usePushNotifications();
 
   useEffect(() => {
     const hash = window.location.hash;
