@@ -752,7 +752,7 @@ export function ChatPage() {
                       </p>
 
                       <span className="shrink-0 text-[10px] text-zinc-500">
-                        {timeAgo(conv.lastMessageAt)}
+                        {conv.lastMessageAt ? timeAgo(conv.lastMessageAt) : ''}
                       </span>
                     </div>
 
@@ -761,7 +761,7 @@ export function ChatPage() {
                     </p>
 
                     <p className="mt-1 truncate text-sm text-zinc-400">
-                      {conv.lastMessage}
+                      {conv.lastMessage || 'Sem mensagens ainda'}
                     </p>
                   </div>
 

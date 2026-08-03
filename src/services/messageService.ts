@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Message } from '../types/database';
 import type { Conversation } from '../types/message';
+import { getStudentsByTrainer } from './studentService';
 
 export interface MessagePage {
   messages: Message[];
@@ -87,7 +88,7 @@ export async function getConversations(
   const limit = options?.limit ?? DEFAULT_CONVERSATION_SCAN_LIMIT;
   const offset = options?.offset ?? 0;
 
-  const [messagesResult, countResult] = await Promise.all([
+  const [messagesResult, countResult, studentsResult] = await Promise.all([
     supabase
       .from('messages')
       .select(`id, student_id, sender_role, content, created_at, read, students(name, avatar_url)`)
@@ -98,6 +99,10 @@ export async function getConversations(
       .from('messages')
       .select('id', { count: 'exact', head: true })
       .eq('trainer_id', trainerId),
+    // Hotfix Sprint 10.1: lista de conversas passa a incluir TODOS os alunos
+    // vinculados ao Personal (mesmo sem mensagens). Falha aqui não quebra as
+    // conversas existentes.
+    getStudentsByTrainer(trainerId).catch(() => []),
   ]);
 
   const { data, error } = messagesResult;
@@ -136,11 +141,33 @@ export async function getConversations(
     }
   }
 
+  const sortedConversations = Object.values(conversations).sort(
+    (a: Conversation, b: Conversation) =>
+      new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+  );
+
+  // Hotfix Sprint 10.1: alunos SEM conversa entram como conversa vazia,
+  // apensados ao FIM da lista (evita NaN no sort com lastMessageAt vazio).
+  const students = studentsResult || [];
+  const studentsWithConversation = new Set(
+    sortedConversations.map((item) => item.studentId)
+  );
+
+  students.forEach((student) => {
+    if (!student?.id || studentsWithConversation.has(student.id)) return;
+
+    sortedConversations.push({
+      studentId: student.id,
+      studentName: student.name || student.email || 'Aluno',
+      lastMessage: '',
+      lastMessageAt: '',
+      unread: 0,
+      avatarUrl: student.avatar_url || null,
+    });
+  });
+
   return {
-    conversations: Object.values(conversations).sort(
-      (a: Conversation, b: Conversation) =>
-        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-    ),
+    conversations: sortedConversations,
     hasMore: (count ?? 0) > offset + limit,
   };
 }
