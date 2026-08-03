@@ -3,6 +3,7 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
 import { supabase } from '../lib/supabase';
+import { updateToken as persistUpdateToken, upsertToken as persistUpsertToken, removeAllTokens } from '../services/pushService';
 
 /**
  * Sprint 12 — Push Notifications (ETAPA 2/3): ciclo de vida do token FCM.
@@ -11,11 +12,9 @@ import { supabase } from '../lib/supabase';
  * - A cada login (INITIAL_SESSION/SIGNED_IN): solicita permissão e registra
  *   o dispositivo; o token FCM fica disponível via estado.
  * - Atualização automática de token: listener 'registration' do plugin
- *   (dispara em refresh) atualiza o estado.
- * - Logout (SIGNED_OUT): limpa o token local.
- *
- * A PERSISTÊNCIA do token no Supabase (upsert) e a remoção no logout são
- * responsabilidade da ETAPA 3 (pushService) — o hook apenas expõe o token.
+ *   (dispara em refresh) — persistido via pushService.updateToken/upsert.
+ * - Logout (SIGNED_OUT): limpa o token local e remove todos os tokens do
+ *   usuário no Supabase (best-effort).
  */
 export function usePushNotifications() {
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -23,11 +22,13 @@ export function usePushNotifications() {
   const [error, setError] = useState<string | null>(null);
 
   const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
 
   useEffect(() => {
     if (!isNative) return;
 
     let active = true;
+    let previousToken: string | null = null;
     let registrationListener: PluginListenerHandle | null = null;
     let registrationErrorListener: PluginListenerHandle | null = null;
 
@@ -61,14 +62,32 @@ export function usePushNotifications() {
 
       if (event === 'SIGNED_OUT') {
         setToken(null);
+        previousToken = null;
+        // Remove todos os tokens do usuário no Supabase (best-effort).
+        void removeAllTokens().catch(() => {});
       }
     });
 
     // Token FCM (inclui refresh automático do Firebase).
     PushNotifications.addListener('registration', (registration) => {
-      if (active) {
-        setToken(registration.value);
+      if (!active) return;
+
+      const nextToken = registration.value;
+      setToken(nextToken);
+
+      // Persistência: refresh troca a linha antiga pela nova (evita
+      // duplicatas); primeiro token faz upsert. Tudo por pushService.
+      if (previousToken && previousToken !== nextToken) {
+        void persistUpdateToken(previousToken, nextToken).catch((e) =>
+          console.warn('[usePushNotifications] update token error:', e)
+        );
+      } else {
+        void persistUpsertToken(nextToken, platform).catch((e) =>
+          console.warn('[usePushNotifications] upsert token error:', e)
+        );
       }
+
+      previousToken = nextToken;
     }).then((handle) => {
       registrationListener = handle;
     });
@@ -88,7 +107,7 @@ export function usePushNotifications() {
       registrationListener?.remove();
       registrationErrorListener?.remove();
     };
-  }, [isNative]);
+  }, [isNative, platform]);
 
   return {
     permissionGranted,
