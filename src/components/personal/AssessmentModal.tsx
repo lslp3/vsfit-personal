@@ -178,10 +178,21 @@ export function AssessmentModal({
 
       onSaved();
     } catch (saveError) {
+      const message =
+        (saveError as { message?: string } | null)?.message ??
+        (saveError as { error?: { message?: string } } | null)
+          ?.error?.message ??
+        (saveError as { details?: string } | null)?.details ??
+        'Erro ao salvar avaliação.';
+
+      const code = (
+        saveError as { code?: string } | null
+      )?.code;
+
       setError(
-        saveError instanceof Error
-          ? saveError.message
-          : 'Erro ao salvar avaliação.'
+        code
+          ? `Erro ao salvar avaliação.\nCódigo: ${code}\nMensagem: ${message}`
+          : message
       );
     } finally {
       setSaving(false);

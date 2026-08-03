@@ -444,7 +444,7 @@ export async function saveStudentMetric(
     calf_cm: input.calf_cm ?? null,
   };
 
-  const { data, error } = metricId
+  const result = metricId
     ? await supabase
         .from('student_metrics')
         .update(payload)
@@ -457,10 +457,24 @@ export async function saveStudentMetric(
         .select('*')
         .single();
 
+  const { data, error, status, statusText } = result;
+
   if (error) {
     console.error(
       '[ProgressService] saveStudentMetric error:',
       error
+    );
+    console.error(
+      '[ProgressService] saveStudentMetric error JSON:',
+      JSON.stringify(error, null, 2)
+    );
+    console.error(
+      '[ProgressService] saveStudentMetric response meta:',
+      {
+        data,
+        status,
+        statusText,
+      }
     );
 
     throw error;
