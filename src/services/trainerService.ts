@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { pushSystemNotification } from './pushTrigger';
+
 import type {
   TrainerProfile,
 } from '../types/database';
@@ -283,6 +285,15 @@ async function createCrefNotification({
       error
     );
   }
+
+  // Sprint 12 — ETAPA 5: push de notificação administrativa (CREF) para o
+  // personal (best-effort; envio centralizado na Edge Function).
+  void pushSystemNotification({
+    user: trainerId,
+    title,
+    body: message,
+    type,
+  });
 }
 
 export async function approveCref(

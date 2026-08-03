@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Payment } from '../types/database';
 import type { CreatePaymentData } from '../types/payment';
+import { pushPaymentApproved } from './pushTrigger';
 
 export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
 
@@ -296,6 +297,10 @@ export async function markPaymentAsPaid(id: string) {
     .eq('id', id);
 
   if (error) throw error;
+
+  // Sprint 12 — ETAPA 5: push de pagamento aprovado para o aluno
+  // (best-effort; envio centralizado na Edge Function).
+  void pushPaymentApproved(id);
 }
 
 export async function deletePayment(id: string) {

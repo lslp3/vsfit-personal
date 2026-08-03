@@ -1,11 +1,24 @@
 /**
- * Sprint 12 — ETAPA 4 — Edge Function de envio de Push Notifications (FCM).
+ * Sprint 12 — ETAPA 4/5 — Edge Function de envio de Push Notifications (FCM).
  *
  * Infraestrutura REUTILIZÁVEL: recebe um destinatário e uma mensagem e entrega
  * a todos os dispositivos do usuário. Best-effort — nunca interrompe o fluxo
  * do sistema se o push falhar.
  *
- * Request (POST, autenticado via JWT Bearer):
+ * AUTORIZAÇÃO (endurecida na ETAPA 5):
+ *   - Contexto de USUÁRIO (Bearer = JWT de sessão): valida a relação
+ *     remetente → destinatário. Permitido quando:
+ *       • remetente == destinatário (auto-notificação);
+ *       • remetente é admin (user_profiles.role = 'admin');
+ *       • remetente e destinatário são um par treinador ↔ aluno vinculado
+ *         (students.trainer_id / students.auth_user_id).
+ *     Qualquer outro envio é rejeitado com 403 (sem envio arbitrário).
+ *   - Contexto de SERVIÇO (Bearer = SERVICE_ROLE_KEY): chamada interna
+ *     confiável (outra Edge Function/webhook) — autorizado para qualquer
+ *     user_id (usado por eventos sem ator de usuário, ex.: webhook de
+ *     pagamento).
+ *
+ * Request (POST):
  * {
  *   user_id: string,              // auth uid do DESTINATÁRIO
  *   title: string,
@@ -32,7 +45,10 @@
  */
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2";
 
 import { sendToTokens } from "./push.ts";
 
@@ -52,6 +68,40 @@ function jsonResponse(body: unknown, status = 200) {
       "Content-Type": "application/json",
     },
   });
+}
+
+/**
+ * Autorização por relação (contexto de usuário autenticado):
+ * - mesmo usuário (auto-notificação);
+ * - admin (user_profiles.role = 'admin');
+ * - par treinador ↔ aluno vinculado (qualquer direção).
+ */
+async function canSendTo(
+  supabaseAdmin: SupabaseClient,
+  callerId: string,
+  recipientId: string,
+): Promise<boolean> {
+  if (!callerId || !recipientId) return false;
+
+  if (callerId === recipientId) return true;
+
+  const { data: profile } = await supabaseAdmin
+    .from("user_profiles")
+    .select("role")
+    .eq("id", callerId)
+    .maybeSingle();
+
+  if (profile?.role === "admin") return true;
+
+  const { count } = await supabaseAdmin
+    .from("students")
+    .select("id", { count: "exact", head: true })
+    .or(
+      `and(trainer_id.eq.${callerId},auth_user_id.eq.${recipientId}),` +
+        `and(trainer_id.eq.${recipientId},auth_user_id.eq.${callerId})`,
+    );
+
+  return (count ?? 0) > 0;
 }
 
 serve(async (req) => {
@@ -77,20 +127,6 @@ serve(async (req) => {
       },
     });
 
-    // Valida JWT do chamador (usuário autenticado).
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return jsonResponse({ ok: false, error: "Usuário não autenticado." }, 401);
-    }
-
-    const accessToken = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.getUser(accessToken);
-
-    if (userError || !userData.user) {
-      return jsonResponse({ ok: false, error: "Sessão inválida." }, 401);
-    }
-
     const body = await req.json();
     const user_id = body?.user_id;
     const title = body?.title;
@@ -107,6 +143,40 @@ serve(async (req) => {
       return jsonResponse({ ok: false, error: "body é obrigatório." }, 400);
     }
 
+    // ── AUTORIZAÇÃO ────────────────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return jsonResponse({ ok: false, error: "Usuário não autenticado." }, 401);
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    if (accessToken !== serviceRoleKey) {
+      // Contexto de usuário: valida JWT + relação remetente → destinatário.
+      const { data: userData, error: userError } =
+        await supabaseAdmin.auth.getUser(accessToken);
+
+      if (userError || !userData.user) {
+        return jsonResponse({ ok: false, error: "Sessão inválida." }, 401);
+      }
+
+      const allowed = await canSendTo(
+        supabaseAdmin,
+        userData.user.id,
+        user_id,
+      );
+
+      if (!allowed) {
+        return jsonResponse(
+          { ok: false, error: "Não autorizado a enviar para este usuário." },
+          403,
+        );
+      }
+    }
+    // Bearer === SERVICE_ROLE_KEY: contexto de serviço confiável (webhook,
+    // outra edge function) — prossegue sem vínculo de usuário.
+
+    // ── ENVIO ─────────────────────────────────────────────────────────────
     // Payload FCM exige valores string — converte tudo.
     const dataPayload: Record<string, string> = {};
     if (data && typeof data === "object") {

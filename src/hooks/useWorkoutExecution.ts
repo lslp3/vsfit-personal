@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { supabase } from '../lib/supabase';
 import * as studentService from '../services/studentService';
+import { pushWorkoutCompleted } from '../services/pushTrigger';
 import {
   formatWorkoutPlanDate,
   isWorkoutPlanExpired,
@@ -243,6 +244,16 @@ async function notifyTrainer({
         error
       );
     }
+
+    // Sprint 12 — ETAPA 5: push de treino concluído para o personal
+    // (best-effort; envio centralizado na Edge Function).
+    void pushWorkoutCompleted({
+      user: userId,
+      title: `${studentName} finalizou o treino`,
+      body: `${studentName} finalizou "${plan.name}" com ${total} exercício${total === 1 ? '' : 's'} em ${minutes} min.`,
+      trainerId: userId,
+      studentId: student.id,
+    });
   } catch (error) {
     console.warn(
       '[useWorkoutExecution] notification exception:',

@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Message, MessageInsert } from '../types/database';
 import type { Conversation } from '../types/message';
 import { getStudentsByTrainer } from './studentService';
+import { pushNewMessage } from './pushTrigger';
 
 export interface MessagePage {
   messages: Message[];
@@ -64,6 +65,11 @@ export async function sendMessage(data: MessageInsert) {
     .select()
     .single();
   if (error) throw error;
+
+  // Sprint 12 — ETAPA 5: push de nova mensagem para o destinatário
+  // (best-effort; toda a lógica de envio fica na Edge Function).
+  void pushNewMessage(msg as Message);
+
   return msg as Message;
 }
 

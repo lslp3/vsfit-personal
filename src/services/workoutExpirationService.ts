@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { pushPlanExpired } from './pushTrigger';
 
 import type {
   CompleteWorkoutPlan,
@@ -293,6 +294,16 @@ export async function notifyTrainerAboutExpiredPlan({
 
       return false;
     }
+
+    // Sprint 12 — ETAPA 5: push de plano vencido para o personal
+    // (best-effort; envio centralizado na Edge Function).
+    void pushPlanExpired({
+      user: trainerUserId,
+      title,
+      body: message,
+      trainerId: trainerUserId,
+      studentId: resolvedStudent?.id || '',
+    });
 
     return true;
   } catch (error) {
