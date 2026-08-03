@@ -55,10 +55,17 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - **Não realizar alterações nesta Sprint, exceto HOTFIX** — preservando esta
   entrega como fechada.
 
-## Sprint 11 — (PRÓXIMA — ainda não iniciada)
+## Sprint 11 — Hardening + Fundação V2
 
-- Status: 📋 Planejada
-- Observação: a Sprint 11 ainda NÃO foi iniciada. Aguardando definição do escopo.
+- Status: 🔄 **Em andamento**
+- Branch: `test/sprint-11-hardening`
+- Origem: `test/sprint-10-comunicacao` (5d1ad50)
+- Escopo: E1 RLS operacional (SQL manual), E2 higienização, E3 quality gate TS,
+  E4 segurança/sessão, E5 nutrition, E6 desktop responsivo (análise).
+- **Nenhuma alteração de banco executada pelo agente** — SQL manual entregue
+  em arquivo para aplicação pelo usuário.
+- **Não altera funcionalidades congeladas da Sprint 10.1** (ajustes viram HOTFIX).
+- Validação: `tsc --noEmit` + `npm run build` antes de cada commit.
 
 ---
 
