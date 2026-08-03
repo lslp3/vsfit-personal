@@ -16,6 +16,7 @@ const config: CapacitorConfig = {
       backgroundColor: '#050505',
       androidSplashResourceName: 'splash',
     },
+    PushNotifications: {},
   },
 };
 

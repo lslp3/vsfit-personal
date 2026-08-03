@@ -17,3 +17,5 @@ supabase/.temp/
 .vercel
 .env*
 *.apk
+# Sprint 12 — FCM: arquivo de config do Firebase (segredo, nunca versionar)
+android/app/google-services.json

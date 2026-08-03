@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Sprint 12 — Push Notifications (FCM): aplica o plugin do Google Services
+// SOMENTE se o google-services.json existir (segredo injetado no CI via
+// GOOGLE_SERVICES_JSON). Sem o arquivo, o build continua funcionando sem FCM.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 android {
     namespace = "com.vsfit.personal"
     compileSdk = rootProject.ext.compileSdkVersion
