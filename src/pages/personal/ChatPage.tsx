@@ -4,8 +4,6 @@ import {
   Send,
   Loader2,
   ArrowLeft,
-  Check,
-  CheckCheck,
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
@@ -20,12 +18,12 @@ import { CHAT_MEDIA_ACCEPT } from '../../services/chatMediaService';
 import { useChatMedia } from '../../hooks/useChatMedia';
 import type { Message } from '../../types/database';
 import type { Conversation } from '../../types/message';
-import { cn } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
 import { getPresenceUsers, formatLastSeen } from '../../lib/chatPresence';
 import { AvatarWithStatus } from '../../components/chat/AvatarWithStatus';
 import { AttachmentButton } from '../../components/chat/AttachmentButton';
 import { MediaAttachmentPreview } from '../../components/chat/MediaAttachmentPreview';
+import { MessageBubble } from '../../components/chat/MessageBubble';
 
 export function ChatPage() {
   const { trainerProfile } = useAuthStore();
@@ -628,80 +626,18 @@ export function ChatPage() {
                   <p className="text-sm text-zinc-500">Nenhuma mensagem ainda</p>
                 </div>
               ) : (
-                messages.map((msg) => {
-                  const isPersonal = msg.sender_role === 'personal';
-
-                  const avatarSrc = isPersonal
-                    ? trainerProfile?.avatar_url || null
-                    : selectedStudentAvatar;
-
-                  const avatarName = isPersonal
-                    ? trainerProfile?.name || 'Personal'
-                    : selectedStudentName;
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        'flex items-end gap-2',
-                        isPersonal ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      {!isPersonal && (
-                        <AvatarWithStatus
-                          src={avatarSrc}
-                          name={avatarName}
-                          online={selectedStudentOnline}
-                          size="sm"
-                          accent
-                        />
-                      )}
-
-                      <div
-                        className={cn(
-                          'max-w-[74%] rounded-2xl px-4 py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.25)]',
-                          isPersonal
-                            ? 'rounded-br-md bg-[#ff2a32] text-white'
-                            : 'rounded-bl-md border border-white/10 bg-white/[0.08] text-white'
-                        )}
-                      >
-                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                          {msg.content}
-                        </p>
-
-                        <div
-                          className={cn(
-                            'mt-1 flex items-center gap-1',
-                            isPersonal ? 'justify-end' : 'justify-start'
-                          )}
-                        >
-                          <span className="text-[10px] opacity-60">
-                            {new Date(msg.created_at).toLocaleTimeString('pt-BR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-
-                          {isPersonal &&
-                            (msg.read ? (
-                              <CheckCheck className="h-3.5 w-3.5 text-blue-300" />
-                            ) : (
-                              <Check className="h-3.5 w-3.5 text-white/60" />
-                            ))}
-                        </div>
-                      </div>
-
-                      {isPersonal && (
-                        <AvatarWithStatus
-                          src={avatarSrc}
-                          name={avatarName}
-                          online
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                  );
-                })
+                messages.map((msg) => (
+                  <MessageBubble
+                    key={msg.id}
+                    msg={msg}
+                    isOwn={msg.sender_role === 'personal'}
+                    avatarSrc={msg.sender_role === 'personal' ? selectedStudentAvatar : trainerProfile?.avatar_url || null}
+                    avatarName={msg.sender_role === 'personal' ? selectedStudentName : trainerProfile?.name || 'Personal'}
+                    avatarOnline={msg.sender_role === 'personal' ? selectedStudentOnline : undefined}
+                    ownAvatarSrc={msg.sender_role === 'personal' ? trainerProfile?.avatar_url || null : selectedStudentAvatar}
+                    ownAvatarName={msg.sender_role === 'personal' ? trainerProfile?.name || 'Personal' : selectedStudentName}
+                  />
+                ))
               )}
 
               <div ref={messagesEndRef} />

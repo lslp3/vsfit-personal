@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   AlertCircle,
   ArrowLeft,
-  Check,
-  CheckCheck,
   ChevronUp,
   Loader2,
   MessageSquare,
@@ -28,6 +25,7 @@ import {
 import { AvatarWithStatus } from '../../components/chat/AvatarWithStatus';
 import { AttachmentButton } from '../../components/chat/AttachmentButton';
 import { MediaAttachmentPreview } from '../../components/chat/MediaAttachmentPreview';
+import { MessageBubble } from '../../components/chat/MessageBubble';
 
 export function StudentChatPage() {
   const navigate = useNavigate();
@@ -622,79 +620,19 @@ export function StudentChatPage() {
                 </p>
               </div>
             ) : (
-              messages.map((msg) => {
-                const isStudent = msg.sender_role === 'student';
-
-                const avatarSrc = isStudent ? studentAvatarUrl : trainerAvatarUrl;
-                const avatarName = isStudent ? studentName : trainerName;
-
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      'flex items-end gap-2',
-                      isStudent ? 'justify-end' : 'justify-start'
-                    )}
-                  >
-                    {!isStudent && (
-                      <AvatarWithStatus
-                        src={avatarSrc}
-                        name={avatarName}
-                        online={trainerOnline}
-                        size="sm"
-                        accent
-                      />
-                    )}
-
-                    <div
-                      className={cn(
-                        'max-w-[74%] rounded-2xl px-4 py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.25)]',
-                        isStudent
-                          ? 'rounded-br-md bg-[#ff2a32] text-white'
-                          : 'rounded-bl-md border border-white/10 bg-white/[0.08] text-white'
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {msg.content}
-                      </p>
-
-                      <div
-                        className={cn(
-                          'mt-1 flex items-center gap-1',
-                          isStudent ? 'justify-end' : 'justify-start'
-                        )}
-                      >
-                        <span className="text-[10px] opacity-60">
-                          {new Date(msg.created_at).toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-
-                        {isStudent &&
-                          (msg.read ? (
-                            <CheckCheck className="h-3.5 w-3.5 text-blue-300" />
-                          ) : (
-                            <Check className="h-3.5 w-3.5 text-white/60" />
-                          ))}
-                      </div>
-                    </div>
-
-                    {isStudent && (
-                      <AvatarWithStatus
-                        src={avatarSrc}
-                        name={avatarName}
-                        online
-                        size="sm"
-                        showStatus={false}
-                      />
-                    )}
-                  </motion.div>
-                );
-              })
+              messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  msg={msg}
+                  isOwn={msg.sender_role === 'student'}
+                  avatarSrc={msg.sender_role === 'student' ? studentAvatarUrl : trainerAvatarUrl}
+                  avatarName={msg.sender_role === 'student' ? studentName : trainerName}
+                  avatarOnline={msg.sender_role === 'student' ? undefined : trainerOnline}
+                  ownAvatarSrc={msg.sender_role === 'student' ? studentAvatarUrl : trainerAvatarUrl}
+                  ownAvatarName={msg.sender_role === 'student' ? studentName : trainerName}
+                  animate
+                />
+              ))
             )}
 
             <div ref={messagesEndRef} />

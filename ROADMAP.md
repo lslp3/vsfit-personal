@@ -89,8 +89,8 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 ## Sprint 13 — Chat Media 🟢🔄 (EM ANDAMENTO)
 
 - Status: 🟢 **ETAPA 1 (Infraestrutura) concluída** · 🟢 **ETAPA 2 (Upload)
-  concluída** — 🔄 **ETAPA 3 (Preview) pendente**
-- Branch: `teste` (trabalho da Etapa 1/2 não-commitado / a definir)
+  concluída** · 🟢 **ETAPA 3 (Preview) concluída e validada tecnicamente**
+- Branch: `sprint-13-chat-media` (commit `5a5c913` — ETAPAS 1/2 + docs)
 - Escopo: mídia no chat — imagens, vídeos, áudios, documentos (PDF, DOC, etc.),
   via Supabase Storage (bucket `chat-files`), upload/download/preview/cache,
   políticas de storage, RLS e novas colunas em `messages`.
@@ -107,10 +107,22 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
   - Rollback de upload em caso de falha.
   - Integração com Personal Chat e Student Chat.
   - Build e TypeScript validados.
-- Pendência — **ETAPA 3 → Preview e visualização de mídia**:
-  renderização de imagens; player de vídeo; player de áudio;
-  visualização/download de documentos; signed URLs; cache de mídia; melhoria do
-  componente de mensagem.
+- Entregas registradas (ETAPA 3 — Preview):
+  - `MessageBubble` reutilizável criado (unifica Personal Chat e Student Chat).
+  - Removida duplicação entre Personal Chat e Student Chat.
+  - Preview de imagens implementado (thumbnail, loading, erro, zoom).
+  - Preview de vídeos implementado (player HTML5).
+  - Preview de áudios implementado (player compacto).
+  - Preview de documentos implementado (card + abrir/baixar).
+  - Signed URLs utilizadas para arquivos privados (sem URL pública).
+  - Cache de URLs implementado (por mensagem).
+  - Estados de loading e erro adicionados.
+  - Fundo neutro escuro aplicado nas mídias conforme decisão UX.
+  - Testes: ✅ TypeScript sem erros · ✅ Build PWA concluído.
+- Pendências — validação manual (próxima etapa):
+  - ⬜ Teste manual em dispositivo real: Personal enviando mídia; Aluno enviando
+    mídia; todos os tipos de arquivo.
+  - ⬜ Validar comportamento de download de documentos no APK/WebView.
 
 ## Sprint 14 — Financeiro do Personal (PLANEJADA)
 

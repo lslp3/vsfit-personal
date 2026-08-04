@@ -1,15 +1,19 @@
 # Sprint 13 — Chat Media (VSFit PERSONAL)
 
-Documento de auditoria técnica + plano de implementação. Branch sugerida:
-`test/sprint-13-chat-media` (repo lslp3/vsfit-personal).
+Documento de auditoria técnica + plano de implementação. Branch: `sprint-13-chat-media`
+(repo lslp3/vsfit-personal).
 
 Status: 🟢 **ETAPA 1 (Infraestrutura) CONCLUÍDA** · 🟢 **ETAPA 2 (Upload)
-CONCLUÍDA** — 🔄 **ETAPA 3 (Preview) pendente**.
+CONCLUÍDA** · 🟢 **ETAPA 3 (Preview) CONCLUÍDA e validada tecnicamente**.
 
 > Este documento começou como auditoria técnica + plano de implementação. Após
-> a conclusão da ETAPA 1 e da ETAPA 2, o status foi atualizado para refletir as
-> entregas realizadas. A ETAPA 3 (Preview e visualização de mídia) permanece
-> pendente e está detalhada no ROADMAP/CHECKLIST.
+> a conclusão da ETAPA 1 e da ETAPA 2 (commit `5a5c913`), o status foi
+> atualizado para refletir as entregas realizadas. A ETAPA 3 (Preview e
+> visualização de mídia) foi implementada (MessageBubble reutilizável, previews
+> de imagem/vídeo/áudio/documento, signed URLs com cache) e validada via
+> `tsc --noEmit` + build PWA. Pendências restantes: teste manual em dispositivo
+> real (Personal e Aluno, todos os tipos de arquivo) e validação do download de
+> documentos no APK/WebView.
 
 ---
 

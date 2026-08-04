@@ -10,8 +10,8 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
 ## Sprint 13 — Chat Media 🟢🔄 (ATUAL)
 
 - Status: 🟢 **ETAPA 1 (Infraestrutura) concluída** · 🟢 **ETAPA 2 (Upload)
-  concluída** — 🔄 **ETAPA 3 (Preview) pendente**
-- Branch: `teste` (trabalho ETAPA 1/2 não-commitado / a definir)
+  concluída** · 🟢 **ETAPA 3 (Preview) concluída e validada tecnicamente**
+- Branch: `sprint-13-chat-media` (commit `5a5c913` — ETAPAS 1/2 + docs)
 - Escopo: mídia no chat (imagens, vídeos, áudios, documentos) via Supabase
   Storage (`chat-files`); upload/download/preview/cache; storage policies + RLS;
   novas colunas em `messages`.
@@ -26,14 +26,22 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
   - [x] Rollback de upload em caso de falha
   - [x] Integração com Personal Chat e Student Chat
   - [x] Build e TypeScript validados
-- Deliverables pendentes — **ETAPA 3 → Preview e visualização de mídia**:
-  - [ ] Renderização de imagens
-  - [ ] Player de vídeo
-  - [ ] Player de áudio
-  - [ ] Visualização/download de documentos
-  - [ ] Signed URLs
-  - [ ] Cache de mídia
-  - [ ] Melhoria do componente de mensagem
+- Entregas concluídas (ETAPA 3 — Preview):
+  - [x] `MessageBubble` reutilizável criado
+  - [x] Removida duplicação entre Personal Chat e Student Chat
+  - [x] Preview de imagens implementado
+  - [x] Preview de vídeos implementado
+  - [x] Preview de áudios implementado
+  - [x] Preview de documentos implementado
+  - [x] Signed URLs utilizadas para arquivos privados
+  - [x] Cache de URLs implementado
+  - [x] Estados de loading e erro adicionados
+  - [x] Fundo neutro escuro aplicado nas mídias (decisão UX)
+  - [x] Testes: TypeScript sem erros · Build PWA concluído
+- Pendências — validação manual (próxima etapa):
+  - [ ] Teste manual em dispositivo real: Personal enviando mídia; Aluno
+    enviando mídia; todos os tipos de arquivo
+  - [ ] Validar comportamento de download de documentos no APK/WebView
 
 ---
 
@@ -70,7 +78,7 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
 
 ## Sequência oficial futura
 
-- Sprint 13 → **Chat Media** (🟢 ETAPA 1+2 concluídas; 🔄 ETAPA 3 pendente)
+- Sprint 13 → **Chat Media** (🟢 ETAPA 1+2+3 concluídas tecnicamente; ⬜ validação manual pendente)
 - Sprint 14 → **Financeiro do Personal**
 - Sprint 15 → **Advanced Analytics & Dashboard**
 - Sprint 16 → **Desktop Version**
