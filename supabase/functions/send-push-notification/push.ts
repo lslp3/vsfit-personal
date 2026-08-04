@@ -87,14 +87,28 @@ function base64UrlEncode(input: Uint8Array | string): string {
 }
 
 function parsePrivateKey(pem: string): ArrayBuffer {
-  // Google usa PKCS8 ("BEGIN PRIVATE KEY"); aceita também o marcador PKCS1
-  // ao remover para não quebrar o parse, mas o WebCrypto só importa PKCS8.
-  const begin = pem.includes(PEM_PKCS1_BEGIN) ? PEM_PKCS1_BEGIN : PEM_PKCS8_BEGIN;
-  const end = pem.includes(PEM_PKCS1_BEGIN) ? PEM_PKCS1_END : PEM_PKCS8_END;
+  // Normaliza o PEM vindo do secret FIREBASE_SERVICE_ACCOUNT:
+  // aceita quebras REAIS e/ou LITERAIS ("\n", "\\n" — secret duplamente
+  // escapado), remove os marcadores PEM (PKCS8 e PKCS1) e todo espaço.
+  const normalized = pem
+    .replace(/\\+n/g, "\n") // \n, \\n, \\\n -> newline real
+    .replace(/\\+r/g, "") // \r, \\r -> nada
+    .replace(/\r/g, "")
+    .replaceAll(PEM_PKCS8_BEGIN, "")
+    .replaceAll(PEM_PKCS8_END, "")
+    .replaceAll(PEM_PKCS1_BEGIN, "")
+    .replaceAll(PEM_PKCS1_END, "")
+    .replace(/\s+/g, "");
 
-  const base64 = pem.replaceAll(begin, "").replaceAll(end, "").replace(/\s+/g, "");
+  let binary: string;
+  try {
+    binary = atob(normalized);
+  } catch {
+    throw new Error(
+      "private_key não é Base64 válido — verifique os marcadores PEM e quebras \\n no secret.",
+    );
+  }
 
-  const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
