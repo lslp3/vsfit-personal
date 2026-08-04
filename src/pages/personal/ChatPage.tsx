@@ -10,14 +10,6 @@ import {
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-// TEMPORÁRIO — diagnóstico do file picker (não commitar).
-import {
-  diagChatInit,
-  diagChatMount,
-  diagChatUnmount,
-} from '../../utils/diagChat';
-import { DiagPanel } from '../../components/chat/DiagPanel';
-
 import { Header } from '../../components/ui/Header';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -90,19 +82,6 @@ export function ChatPage() {
       setCaption('');
     }
   }, [routeStudentId, clearMedia, setCaption]);
-
-  // TEMPORÁRIO: refletir mount/unmount + estado logo após o seletor. Não commitar.
-  useEffect(() => {
-    diagChatInit(undefined);
-    const inst = diagChatMount(
-      'ChatPage',
-      '| route=',
-      routeStudentId ?? '(lista)',
-      '| caption=',
-      JSON.stringify(caption)
-    );
-    return () => diagChatUnmount('ChatPage', inst);
-  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -621,9 +600,6 @@ export function ChatPage() {
       <div className="min-h-screen bg-[#050505] text-white">
         <Header title="Chat" />
 
-        {/* TEMPORÁRIO: painel de diagnóstico in-app (loading/reload). */}
-        <DiagPanel />
-
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
         </div>
@@ -642,9 +618,6 @@ export function ChatPage() {
           overscrollBehavior: 'none',
         }}
       >
-        {/* TEMPORÁRIO: painel de diagnóstico in-app (conversa aberta). */}
-        <DiagPanel />
-
         <div className="shrink-0 border-b border-white/10 bg-[#080808] px-3 py-3">
           <div className="mx-auto flex max-w-lg items-center gap-3">
             <button
@@ -785,9 +758,6 @@ export function ChatPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <Header title="Chat" />
-
-      {/* TEMPORÁRIO: painel de diagnóstico in-app (não commitar na entrega). */}
-      <DiagPanel />
 
       <div className="mx-auto max-w-lg space-y-3 px-4 pb-32 pt-4">
         {conversations.length === 0 ? (

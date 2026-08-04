@@ -3,9 +3,6 @@ import { Paperclip, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { openChatFilePicker } from '../../utils/chatFilePicker';
 
-// TEMPORÁRIO — diagnóstico do file picker (não commitar na entrega).
-import { diagChatLog } from '../../utils/diagChat';
-
 interface AttachmentButtonProps {
   /** Mantida por compatibilidade (ChatPage/StudentChatPage ainda passam);
    *  o seletor agora é GLOBAL via openChatFilePicker() — não há input local. */
@@ -39,16 +36,9 @@ export function AttachmentButton({
   accept: _accept,
 }: AttachmentButtonProps) {
   function handleClick() {
-    diagChatLog(
-      'attachButtonClick',
-      '| disabled=', Boolean(disabled),
-      '| hasFile=', Boolean(hasFile)
-    );
-
     if (disabled) return;
 
     if (hasFile) {
-      diagChatLog('attachButtonClick REMOVE');
       onRemoveFile?.();
       return;
     }

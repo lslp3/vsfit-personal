@@ -15,13 +15,6 @@ function getFileExtension(name: string): string {
   return idx >= 0 ? name.slice(idx + 1).toLowerCase() : '';
 }
 
-// TEMPORÁRIO — diagnóstico do file picker (não commitar).
-import {
-  diagChatLog,
-  diagChatMount,
-  diagChatUnmount,
-} from '../utils/diagChat';
-
 /**
  * Sprint 13 — Chat Media (ETAPA 2: Upload).
  *
@@ -58,12 +51,6 @@ export function useChatMedia() {
   // objectURL criada/gerenciada por ESTE hook (adotada do store no mount).
   const objectUrlRef = useRef<string | null>(null);
 
-  // TEMPORÁRIO: refletir mount/unmount do hook. Não commitar.
-  useEffect(() => {
-    const inst = diagChatMount('useChatMedia');
-    return () => diagChatUnmount('useChatMedia', inst);
-  }, []);
-
   /**
    * Ao montar (inclusive após um remount no MESMO documento): adota a
    * objectURL do store (ainda válida) para revogação futura, ou recria o
@@ -99,27 +86,15 @@ export function useChatMedia() {
       resetMedia();
 
       if (!file) {
-        diagChatLog('selectFile(null) — campo cancelado');
         return;
       }
 
       const validation = validateChatMediaFile(file);
 
       if (!validation.valid) {
-        diagChatLog('selectFile INVALID', '| name=', file.name, '| type=', file.type, '| err=', validation.error);
         setValidationError(validation.error || 'Arquivo de mídia inválido.');
         return;
       }
-
-      diagChatLog(
-        'selectFile VALID',
-        '| name=',
-        file.name,
-        '| size=',
-        file.size,
-        '| type=',
-        file.type
-      );
 
       // Preview local (objectURL) antes do envio — a exibição de mensagens
       // salvas usa signed URL (getSignedChatMediaUrl) na ETAPA 3.
@@ -130,7 +105,6 @@ export function useChatMedia() {
       setMime(file.type);
       setMediaSize(file.size);
       setExtension(getFileExtension(file.name));
-      diagChatLog('preview set | previewUrl=', objectUrl);
     },
     [
       revokeObjectUrl,
