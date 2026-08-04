@@ -10,6 +10,13 @@ import {
 
 import { useNavigate, useParams } from 'react-router-dom';
 
+// TEMPORÁRIO — diagnóstico do file picker (não commitar).
+import {
+  diagChatInit,
+  diagChatMount,
+  diagChatUnmount,
+} from '../../utils/diagChat';
+
 import { Header } from '../../components/ui/Header';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -67,6 +74,19 @@ export function ChatPage() {
   // Viver na rota (não só em useState) faz o estado sobreviver a um reload
   // do WebView/Capacitor — ao reiniciar, o app reabre a conversa do aluno.
   const selectedStudentId = routeStudentId || null;
+
+  // TEMPORÁRIO: refletir mount/unmount + estado logo após o seletor. Não commitar.
+  useEffect(() => {
+    diagChatInit(undefined);
+    const inst = diagChatMount(
+      'ChatPage',
+      '| route=',
+      routeStudentId ?? '(lista)',
+      '| caption=',
+      JSON.stringify(text)
+    );
+    return () => diagChatUnmount('ChatPage', inst);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 

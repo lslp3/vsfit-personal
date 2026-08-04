@@ -9,6 +9,13 @@ import {
 import { sendMessage } from '../services/messageService';
 import type { Message, MessageInsert } from '../types/database';
 
+// TEMPORÁRIO — diagnóstico do file picker (não commitar).
+import {
+  diagChatLog,
+  diagChatMount,
+  diagChatUnmount,
+} from '../utils/diagChat';
+
 /**
  * Sprint 13 — Chat Media (ETAPA 2: Upload).
  *
@@ -31,6 +38,12 @@ export function useChatMedia() {
 
   const objectUrlRef = useRef<string | null>(null);
 
+  // TEMPORÁRIO: refletir mount/unmount do hook. Não commitar.
+  useEffect(() => {
+    const inst = diagChatMount('useChatMedia');
+    return () => diagChatUnmount('useChatMedia', inst);
+  }, []);
+
   /** Libera a objectURL local (evita vazamento de memória). */
   const releaseObjectUrl = useCallback(() => {
     if (objectUrlRef.current) {
@@ -47,14 +60,28 @@ export function useChatMedia() {
       setPreviewUrl(null);
       setValidationError(null);
 
-      if (!file) return;
+      if (!file) {
+        diagChatLog('selectFile(null) — campo cancelado');
+        return;
+      }
 
       const validation = validateChatMediaFile(file);
 
       if (!validation.valid) {
+        diagChatLog('selectFile INVALID', '| name=', file.name, '| type=', file.type, '| err=', validation.error);
         setValidationError(validation.error || 'Arquivo de mídia inválido.');
         return;
       }
+
+      diagChatLog(
+        'selectFile VALID',
+        '| name=',
+        file.name,
+        '| size=',
+        file.size,
+        '| type=',
+        file.type
+      );
 
       setSelectedFile(file);
       // Preview local (objectURL) antes do envio — a exibição de mensagens
@@ -62,6 +89,7 @@ export function useChatMedia() {
       const objectUrl = URL.createObjectURL(file);
       objectUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
+      diagChatLog('preview set | previewUrl=', objectUrl);
     },
     [releaseObjectUrl]
   );
