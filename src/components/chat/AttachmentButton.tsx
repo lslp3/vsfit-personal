@@ -2,6 +2,8 @@ import { useId, useRef, type MouseEvent } from 'react';
 import { Paperclip, X } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
+// TEMPORÁRIO — diagnóstico do file picker (não commitar na entrega).
+import { diagChatLog } from '../../utils/diagChat';
 
 interface AttachmentButtonProps {
   onFileSelected: (file: File | null) => void;
@@ -40,9 +42,21 @@ export function AttachmentButton({
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleLabelClick(event: MouseEvent<HTMLLabelElement>) {
+    // TEMP (diag): entrada do clique no label.
+    diagChatLog(
+      'attachLabelClick',
+      '| disabled=', Boolean(disabled),
+      '| hasFile=', Boolean(hasFile)
+    );
+
     // Modo desabilitado ou "remover": não deve abrir o seletor.
     if (disabled || hasFile) {
       event.preventDefault();
+      diagChatLog(
+        'attachLabelClick PREVENTED',
+        '| disabled=', Boolean(disabled),
+        '| hasFile=', Boolean(hasFile)
+      );
 
       if (hasFile) {
         onRemoveFile?.();
@@ -54,6 +68,7 @@ export function AttachmentButton({
     // Permite re-selecionar o mesmo arquivo após uma seleção anterior.
     if (inputRef.current) {
       inputRef.current.value = '';
+      diagChatLog('attachLabelClick resetValue');
     }
 
     // SEM preventDefault: o <label htmlFor="..."> aciona o <input type="file">
@@ -68,8 +83,23 @@ export function AttachmentButton({
         type="file"
         accept={accept}
         className="hidden"
+        onClick={() => {
+          // TEMP (diag): o clique chega ao <input> (label→input nativo).
+          diagChatLog('attachInputClick', '| id=', inputId);
+        }}
         onChange={(event) => {
           const file = event.target.files?.[0] || null;
+          // TEMP (diag): entrada do onChange + quantidade/nome + chamada.
+          diagChatLog(
+            'attachChange',
+            '| filesLen=', event.target.files?.length ?? 0,
+            '| fileName=', file?.name ?? '(null)',
+            '| value=', event.target.value
+          );
+          diagChatLog(
+            'attachOnFileSelected',
+            '| call onFileSelected file=', file?.name ?? 'null'
+          );
           onFileSelected(file);
         }}
       />
