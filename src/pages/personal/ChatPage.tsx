@@ -606,6 +606,9 @@ export function ChatPage() {
       <div className="min-h-screen bg-[#050505] text-white">
         <Header title="Chat" />
 
+        {/* TEMPORÁRIO: painel de diagnóstico in-app (loading/reload). */}
+        <DiagPanel />
+
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
         </div>
@@ -624,6 +627,9 @@ export function ChatPage() {
           overscrollBehavior: 'none',
         }}
       >
+        {/* TEMPORÁRIO: painel de diagnóstico in-app (conversa aberta). */}
+        <DiagPanel />
+
         <div className="shrink-0 border-b border-white/10 bg-[#080808] px-3 py-3">
           <div className="mx-auto flex max-w-lg items-center gap-3">
             <button

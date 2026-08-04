@@ -71,7 +71,7 @@ export function DiagPanel() {
         onClick={() => setOpen(true)}
         aria-label="Diagnóstico"
         title="Diagnóstico [CHAT-DIAG]"
-        className="fixed bottom-4 left-4 z-[999999] flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/30 opacity-40 hover:opacity-100"
+        className="fixed bottom-4 left-4 z-[999999] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/80 opacity-90 hover:opacity-100 hover:bg-white/20 active:scale-95"
       >
         <Bug className="h-4 w-4" />
       </button>
