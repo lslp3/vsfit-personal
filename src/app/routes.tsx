@@ -372,6 +372,10 @@ export const router =
           element: <ChatPage />,
         },
         {
+          path: 'chat/:studentId',
+          element: <ChatPage />,
+        },
+        {
           path: 'signup-links',
           element: <SignupLinksPage />,
         },

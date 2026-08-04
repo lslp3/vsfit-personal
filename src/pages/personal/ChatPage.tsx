@@ -8,6 +8,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
+import { useNavigate, useParams } from 'react-router-dom';
+
 import { Header } from '../../components/ui/Header';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -28,6 +30,9 @@ import { MessageBubble } from '../../components/chat/MessageBubble';
 export function ChatPage() {
   const { trainerProfile } = useAuthStore();
 
+  const navigate = useNavigate();
+  const { studentId: routeStudentId } = useParams();
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -37,7 +42,6 @@ export function ChatPage() {
   const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
   const [conversationOffset, setConversationOffset] = useState(0);
 
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState('');
   const [selectedStudentAvatar, setSelectedStudentAvatar] = useState<string | null>(null);
 
@@ -58,6 +62,11 @@ export function ChatPage() {
   const [onlineStudents, setOnlineStudents] = useState<Set<string>>(new Set());
   const [studentLastSeen, setStudentLastSeen] = useState<Record<string, string>>({});
   const [studentUnreadCounts, setStudentUnreadCounts] = useState<Record<string, number>>({});
+
+  // Conversa aberta derivada da rota (/personal/chat/:studentId).
+  // Viver na rota (não só em useState) faz o estado sobreviver a um reload
+  // do WebView/Capacitor — ao reiniciar, o app reabre a conversa do aluno.
+  const selectedStudentId = routeStudentId || null;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -340,72 +349,99 @@ export function ChatPage() {
     };
   }, [trainerProfile?.id, selectedStudentId]);
 
+  // Abre/restaura a conversa identificada pela rota (:studentId).
+  // Cobre o mount inicial (rota /personal/chat/:id) e a troca via click —
+  // inclusive após um reload do WebView/Capacitor, quando o estado local
+  // foi perdido mas a rota mantém o aluno.
+  useEffect(() => {
+    if (!trainerProfile?.id) return;
+
+    if (!routeStudentId) {
+      setMessages([]);
+      setHasMoreMessages(false);
+      return;
+    }
+
+    const trainerId = trainerProfile.id;
+    const studentId = routeStudentId;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { messages: data, hasMore } = await messageService.getMessages(
+          trainerId,
+          studentId
+        );
+
+        if (cancelled) return;
+
+        setMessages(data);
+        setHasMoreMessages(hasMore);
+
+        await messageService.markMessagesAsRead(trainerId, studentId);
+
+        if (cancelled) return;
+
+        setStudentUnreadCounts((prev) => ({
+          ...prev,
+          [studentId]: 0,
+        }));
+
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.studentId === studentId
+              ? { ...conversation, unread: 0 }
+              : conversation
+          )
+        );
+      } catch (error) {
+        console.error('[ChatPage] load conversation error:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trainerProfile?.id, routeStudentId]);
+
+  // Nome/avatar da conversa aberta: resolvidos da lista de conversas quando
+  // ela é carregada (relevante após reload — não há estado local p/ header).
+  useEffect(() => {
+    if (!routeStudentId) return;
+
+    const conversation = conversations.find(
+      (item) => item.studentId === routeStudentId
+    );
+
+    if (conversation) {
+      setSelectedStudentName(conversation.studentName);
+      setSelectedStudentAvatar(conversation.avatarUrl || null);
+    }
+  }, [conversations, routeStudentId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  async function openConversation(
+  function openConversation(
     studentId: string,
     studentName: string,
     avatarUrl?: string | null
   ) {
     if (!trainerProfile?.id) return;
 
-    const trainerId = trainerProfile.id;
-
-    setSelectedStudentId(studentId);
+    // Estado da conversa aberta passa a viver na ROTA (/personal/chat/:id):
+    // fix WebView/Capacitor — um reload não apaga mais a conversa aberta.
     setSelectedStudentName(studentName);
     setSelectedStudentAvatar(avatarUrl || null);
-
-    try {
-      const { messages: data, hasMore } = await messageService.getMessages(
-        trainerId,
-        studentId
-      );
-
-      setMessages(data);
-      setHasMoreMessages(hasMore);
-
-      await messageService.markMessagesAsRead(trainerId, studentId);
-
-      setStudentUnreadCounts((prev) => ({
-        ...prev,
-        [studentId]: 0,
-      }));
-
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.studentId === studentId
-            ? { ...conversation, unread: 0 }
-            : conversation
-        )
-      );
-    } catch (error) {
-      console.error('[ChatPage] openConversation error:', error);
-    }
+    navigate(`/personal/chat/${studentId}`);
   }
 
   function goBack() {
-    setSelectedStudentId(null);
     setSelectedStudentName('');
     setSelectedStudentAvatar(null);
-    setMessages([]);
-    setHasMoreMessages(false);
-
-    if (trainerProfile?.id) {
-      const trainerId = trainerProfile.id;
-
-      messageService
-        .getConversations(trainerId)
-        .then((page) => {
-          setConversations(page.conversations);
-          setHasMoreConversations(page.hasMore);
-          setConversationOffset(0);
-        })
-        .catch(() => {});
-
-      loadStudentUnreadCounts(trainerId);
-    }
+    // Volta para a lista de conversas pela rota (estado derivado vira null).
+    navigate('/personal/chat');
   }
 
   async function handleSend() {
