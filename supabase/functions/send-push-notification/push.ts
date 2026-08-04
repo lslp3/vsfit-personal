@@ -100,6 +100,41 @@ function parsePrivateKey(pem: string): ArrayBuffer {
     .replaceAll(PEM_PKCS1_END, "")
     .replace(/\s+/g, "");
 
+  // ── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ──────────
+  const maskKey = (value: string) =>
+    value.length <= 40
+      ? `${value.slice(0, 10)}...${value.slice(-10)}`
+      : `${value.slice(0, 20)}...${value.slice(-20)}`;
+
+  const hasPemMarkers =
+    pem.includes(PEM_PKCS8_BEGIN) || pem.includes(PEM_PKCS1_BEGIN);
+  const hasEndMarkers =
+    pem.includes(PEM_PKCS8_END) || pem.includes(PEM_PKCS1_END);
+
+  console.error(
+    "[send-push][diag] private_key: " +
+      `length=${pem.length}, ` +
+      `BEGIN=${hasPemMarkers}, ` +
+      `END=${hasEndMarkers}, ` +
+      `literalBackslashN=${pem.includes("\\n")}, ` +
+      `realNewline=${pem.includes("\n")}, ` +
+      `masked=${maskKey(pem)}`,
+  );
+
+  const validBase64 = /^[A-Za-z0-9+/=]*$/.test(normalized);
+  const firstInvalid = [...normalized].find(
+    (char) => !/[A-Za-z0-9+/=]/.test(char),
+  );
+
+  console.error(
+    "[send-push][diag] atob input: " +
+      `length=${normalized.length}, ` +
+      `removedChars=${pem.length - normalized.length}, ` +
+      `validBase64=${validBase64}` +
+      (validBase64 ? "" : `, primeiroCaractereInvalido=${JSON.stringify(firstInvalid)}`),
+  );
+  // ── FIM DIAGNÓSTICO TEMPORÁRIO ─────────────────────────────────────────
+
   let binary: string;
   try {
     binary = atob(normalized);
