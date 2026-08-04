@@ -16,6 +16,8 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import * as studentService from '../../services/studentService';
 import { getMessages, sendMessage } from '../../services/messageService';
+import { CHAT_MEDIA_ACCEPT } from '../../services/chatMediaService';
+import { useChatMedia } from '../../hooks/useChatMedia';
 import { getPresenceUsers, formatLastSeen } from '../../lib/chatPresence';
 import {
   getStudentName,
@@ -24,6 +26,8 @@ import {
   getTrainerAvatarUrl,
 } from '../../lib/studentIdentity';
 import { AvatarWithStatus } from '../../components/chat/AvatarWithStatus';
+import { AttachmentButton } from '../../components/chat/AttachmentButton';
+import { MediaAttachmentPreview } from '../../components/chat/MediaAttachmentPreview';
 
 export function StudentChatPage() {
   const navigate = useNavigate();
@@ -40,6 +44,16 @@ export function StudentChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+
+  const {
+    selectedFile,
+    previewUrl,
+    validationError,
+    uploading,
+    selectFile,
+    clear: clearMedia,
+    sendMedia,
+  } = useChatMedia();
 
   const [trainerOnline, setTrainerOnline] = useState(false);
   const [trainerLastSeen, setTrainerLastSeen] = useState<string | null>(null);
@@ -435,18 +449,30 @@ export function StudentChatPage() {
   async function handleSend() {
     const text = newMessage.trim();
 
-    if (!text || !studentId || !authUserId || !trainer || sending) return;
+    // Sprint 13 — ETAPA 2: sem conteúdo textual, envia a mídia selecionada.
+    if ((!text && !selectedFile) || !studentId || !authUserId || !trainer || sending) return;
 
     setSending(true);
 
     try {
-      const msg = await sendMessage({
-        trainer_id: trainer.id,
-        student_id: studentId,
-        sender_role: 'student',
-        sender_id: authUserId,
-        content: text,
-      });
+      const msg = selectedFile
+        ? await sendMedia({
+            trainerId: trainer.id,
+            studentId,
+            senderRole: 'student',
+            senderId: authUserId,
+            content: text,
+          })
+        : await sendMessage({
+            trainer_id: trainer.id,
+            student_id: studentId,
+            sender_role: 'student',
+            sender_id: authUserId,
+            content: text,
+          });
+
+      // sendMedia retorna null (e define validationError) em caso de falha de upload.
+      if (!msg) return;
 
       setMessages((prev) => {
         if (prev.some((item) => item.id === msg.id)) return prev;
@@ -676,29 +702,59 @@ export function StudentChatPage() {
         </div>
 
         <div className="shrink-0 bg-[#050505] pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
-          <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-2">
-            <textarea
-              ref={inputRef}
-              value={newMessage}
-              onChange={(event) => setNewMessage(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Mensagem"
-              rows={1}
-              className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
-            />
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2">
+            {(selectedFile || validationError) && (
+              <div className="mb-2">
+                {selectedFile && (
+                  <MediaAttachmentPreview
+                    fileName={selectedFile.name}
+                    fileSize={selectedFile.size}
+                    mime={selectedFile.type}
+                    previewUrl={previewUrl}
+                    onRemove={clearMedia}
+                  />
+                )}
 
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!newMessage.trim() || sending}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ff2a32] text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {sending ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </button>
+                {validationError && (
+                  <p className="px-1 pb-1 text-xs text-red-400">{validationError}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <AttachmentButton
+                onFileSelected={selectFile}
+                hasFile={!!selectedFile}
+                onRemoveFile={clearMedia}
+                disabled={sending || uploading}
+                accept={CHAT_MEDIA_ACCEPT}
+              />
+
+              <textarea
+                ref={inputRef}
+                value={newMessage}
+                onChange={(event) => setNewMessage(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Mensagem"
+                rows={1}
+                className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+              />
+
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={
+                  (!newMessage.trim() && !selectedFile) || sending || uploading
+                }
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ff2a32] text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sending || uploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

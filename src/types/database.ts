@@ -336,6 +336,9 @@ export interface Message {
   payload?: unknown | null;
   event?: string | null;
   extension?: string | null;
+  /** Sprint 13 — Chat Media (ETAPA 2): metadados do arquivo enviado. */
+  media_size?: number | null;
+  mime?: string | null;
   binary_payload?: unknown | null;
   private?: boolean | null;
   updated_at?: string | null;
@@ -347,6 +350,7 @@ export interface Message {
  * messageService.sendMessage. Campos de mídia preparados para a 10.2.
  */
 export interface MessageInsert {
+  id?: string;
   trainer_id: string;
   student_id: string;
   sender_role: 'personal' | 'student';
@@ -357,6 +361,9 @@ export interface MessageInsert {
   payload?: unknown | null;
   event?: string | null;
   extension?: string | null;
+  /** Sprint 13 — Chat Media (ETAPA 2): metadados do arquivo enviado. */
+  media_size?: number | null;
+  mime?: string | null;
   binary_payload?: unknown | null;
   private?: boolean | null;
 }

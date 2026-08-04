@@ -3,10 +3,11 @@
 Documento de acompanhamento da Sprint. Branch de trabalho:
 `test/sprint-12-push` (repo lslp3/vsfit-personal).
 
-Status: **VALIDAÇÃO FINAL (ETAPA 8) CONCLUÍDA** — Sprint **AGUARDANDO TESTES
-REAIS**. Implementação completa, porém a Sprint NÃO é considerada encerrada
-até a validação em dispositivo (Firebase + APK). Ajustes após isso viram
-HOTFIX.
+Status: ✅ **CONCLUÍDA E VALIDADA EM DISPOSITIVO REAL — PRONTA PARA PRODUÇÃO**.
+Validação completa em Android (registro do token FCM, envio pela Edge Function,
+app aberto, em segundo plano e fechado, atualização do token, fluxo ponta a
+ponta). Ajustes futuros serão tratados como HOTFIX, preservando esta entrega
+como fechada.
 
 ## Objetivo
 
@@ -33,10 +34,10 @@ negócio conectados e preferências por usuário.
 | 5 | Eventos (mensagem, treino, pagamento, plano, sistema) + autorização | ✅ concluída |
 | 6 | Recebimento foreground/background/terminated + deep link | ✅ concluída |
 | 7 | Tela de preferências + gate central na Edge Function | ✅ concluída |
-| 8 | Validação estática + revisão + preparação p/ testes reais | ✅ concluída (validação; testes reais pendentes) |
+| 8 | Validação estática + revisão + preparação p/ testes reais | ✅ concluída |
 
-**A Sprint NÃO está encerrada** — falta a validação real em dispositivo
-(Firebase configurado + APK + testes).
+**Sprint ENCERRADA** — validação real em dispositivo concluída e aprovada
+(Firebase configurado + APK + testes ponta a ponta).
 
 ## Arquitetura
 
@@ -78,38 +79,42 @@ Cliente → Supabase (evento de negócio) → send-push-notification (service_ro
   background/terminated, tipos, imports, código morto, memory leaks (corrigido
   o cleanup de listeners no usePushReceiver), listeners duplicados, erros.
 
-## Testes reais (checklist — a executar por você, após configurar Firebase)
+## Testes reais (validados em dispositivo — ETAPA 8 concluída)
 
-- [ ] Login (solicita permissão + registra token)
-- [ ] Logout (remove tokens do usuário)
-- [ ] Registro do token (upsert em push_tokens)
-- [ ] Atualização do token (refresh → update, sem duplicatas)
-- [ ] Recebimento de push (mensagem, treino concluído, pagamento aprovado,
+- [x] Login (solicita permissão + registra token)
+- [x] Logout (remove tokens do usuário)
+- [x] Registro do token (upsert em push_tokens)
+- [x] Atualização do token (refresh → update, sem duplicatas)
+- [x] Recebimento de push (mensagem, treino concluído, pagamento aprovado,
       plano vencendo)
-- [ ] Foreground (banner interno; sem notificação duplicada do sistema)
-- [ ] Background (bandeja do Android; toque navega)
-- [ ] App fechado (terminated; toque abre e navega)
-- [ ] Deep link (chat, notificações, preferências)
-- [ ] Preferências ligadas (push chega)
-- [ ] Preferências desligadas (push bloqueado; notificação no banco continua)
-- [ ] Remoção de token inválido (FCM retorna token-not-registered)
-- [ ] Múltiplos dispositivos (envio para todos os tokens do usuário)
+- [x] Foreground (banner interno; sem notificação duplicada do sistema)
+- [x] Background (bandeja do Android; toque navega)
+- [x] App fechado (terminated; toque abre e navega)
+- [x] Deep link (chat, notificações, preferências)
+- [x] Preferências ligadas (push chega)
+- [x] Preferências desligadas (push bloqueado; notificação no banco continua)
+- [x] Remoção de token inválido (FCM retorna token-not-registered)
+- [x] Múltiplos dispositivos (envio para todos os tokens do usuário)
 
-## Firebase (configuração pendente — NÃO executada)
+## Firebase (configurado e validado)
 
-Quando a Sprint terminar (orientação do usuário, passo a passo):
-
-- Criar projeto Firebase
-- Baixar google-services.json (aplicativo com.vsfit.personal)
-- Gerar Service Account (envio)
-- Configurar secret FIREBASE_SERVICE_ACCOUNT (Supabase)
-- Configurar secret GOOGLE_SERVICES_JSON (GitHub Actions)
-- Deploy da Edge Function `send-push-notification`
-- Aplicar `supabase/sprint12_manual_migrations.sql` (push_tokens + push_preferences)
-- Gerar APK
-- Testes reais
+- Projeto Firebase criado
+- google-services.json aplicado (aplicativo com.vsfit.personal)
+- Service Account gerada (envio)
+- Secret FIREBASE_SERVICE_ACCOUNT (Supabase) configurado
+- Secret GOOGLE_SERVICES_JSON (GitHub Actions) configurado — corrigido para
+  Base64 (o valor estava em JSON bruto e o `base64 -d` falhava com
+  "base64: invalid input"; correção 100% no Secret, sem mudança de workflow)
+- Edge Function `send-push-notification` deployada
+- `supabase/sprint12_manual_migrations.sql` aplicado (push_tokens + push_preferences)
+- APK gerado e instalado
+- Testes reais concluídos
 
 ## Fechamento
 
-A Sprint 12 será fechada oficialmente só APÓS a validação completa (testes
-reais). Até lá, permanece como "aguardando validação final".
+✅ **Sprint 12 Concluída**
+✅ **Validada em dispositivo real (Android)**
+✅ **Pronta para Produção**
+
+Nenhuma alteração funcional adicional será feita nesta Sprint; ajustes futuros
+serão tratados como HOTFIX em branch própria.

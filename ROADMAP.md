@@ -70,18 +70,70 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - E3 (quality gate TS), E5 (nutrition) e E6 (desktop responsivo) não
   implementados nesta Sprint — registrados como candidatos a sprints futuras.
 
-## Sprint 12 — Push Notifications (AGUARDANDO VALIDAÇÃO FINAL)
+## Sprint 12 — Push Notifications
 
-- Status: 🔄 **Em andamento** — implementação concluída, pronta para testes reais.
+- Status: ✅ **Concluída**
+- Validação: **Validada em dispositivo real (Android)**
+- **Pronta para Produção**
 - Branch: `test/sprint-12-push`
 - Origem: `test/sprint-11-hardening` (7309a03)
-- Escopo entregue (ETAPAS 1–8): push Android via Supabase + FCM + Capacitor —
-  registro/refresh/remoção de token, Edge Function de envio (service_role),
-  eventos de negócio (mensagem, treino, pagamento, plano, sistema),
-  foreground/background/terminated, deep link + banner, preferências de push.
-- **Aguardando teste real em dispositivo** (Firebase + google-services.json +
-  Service Account + deploy da Edge Function + aplicar SQL manual + APK).
-- Sprint NÃO encerrada até validação completa.
+- Escopo entregue (ETAPAS 1–8): Firebase Cloud Messaging configurado, Edge
+  Function `send-push-notification` funcionando, GitHub Actions gerando APK
+  corretamente (Secret `GOOGLE_SERVICES_JSON` corrigido — Base64), registro
+  automático do token FCM, armazenamento correto em `push_tokens`, envio e
+  recebimento funcionando, validação completa em dispositivo Android.
+- **Não realizar alterações nesta Sprint, exceto HOTFIX** — entrega fechada.
+
+---
+
+## Sprint 13 — Chat Media 🟢🔄 (EM ANDAMENTO)
+
+- Status: 🟢 **ETAPA 1 (Infraestrutura) concluída** · 🟢 **ETAPA 2 (Upload)
+  concluída** — 🔄 **ETAPA 3 (Preview) pendente**
+- Branch: `teste` (trabalho da Etapa 1/2 não-commitado / a definir)
+- Escopo: mídia no chat — imagens, vídeos, áudios, documentos (PDF, DOC, etc.),
+  via Supabase Storage (bucket `chat-files`), upload/download/preview/cache,
+  políticas de storage, RLS e novas colunas em `messages`.
+- Requer: migration de colunas de mídia + criação/confirmação do bucket
+  `chat-files` + políticas de storage (aplicação manual no Supabase).
+- Entregas registradas (ETAPA 1 + 2):
+  - Bucket privado `chat-files` configurado.
+  - Policies Storage aplicadas.
+  - Campos de mídia adicionados na tabela `messages`.
+  - Upload de imagens, vídeos, áudios e documentos implementado.
+  - Validação de MIME e tamanho.
+  - Geração de path seguro:
+    `chat-files/{trainer_id}/{student_id}/{message_id}/{arquivo}`
+  - Rollback de upload em caso de falha.
+  - Integração com Personal Chat e Student Chat.
+  - Build e TypeScript validados.
+- Pendência — **ETAPA 3 → Preview e visualização de mídia**:
+  renderização de imagens; player de vídeo; player de áudio;
+  visualização/download de documentos; signed URLs; cache de mídia; melhoria do
+  componente de mensagem.
+
+## Sprint 14 — Financeiro do Personal (PLANEJADA)
+
+- Status: 📋 **Planejada**
+- Objetivo: auditar e evoluir toda a parte financeira do Personal Trainer.
+- Abranger: auditoria das tabelas financeiras existentes; fluxo atual de
+  cobrança; integração Mercado Pago; pagamentos PIX dos alunos; status de
+  pagamento; histórico financeiro; dashboard financeiro; melhorias necessárias
+  para produção.
+
+## Sprint 15 — Advanced Analytics & Dashboard (PLANEJADA)
+
+- Status: 📋 **Planejada**
+- Escopo: analytics avançado e dashboard para o Personal.
+
+## Sprint 16 — Desktop Version (PLANEJADA)
+
+- Status: 📋 **Planejada**
+- Escopo: versão desktop (responsividade ampliada / app desktop).
+
+## AI para Personal (POSTERGADA)
+
+- Status: ⏸️ **Postergada para versão futura, após o Sprint 16.**
 
 ---
 

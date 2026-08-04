@@ -16,12 +16,16 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import * as messageService from '../../services/messageService';
+import { CHAT_MEDIA_ACCEPT } from '../../services/chatMediaService';
+import { useChatMedia } from '../../hooks/useChatMedia';
 import type { Message } from '../../types/database';
 import type { Conversation } from '../../types/message';
 import { cn } from '../../lib/utils';
 import { timeAgo } from '../../lib/formatters';
 import { getPresenceUsers, formatLastSeen } from '../../lib/chatPresence';
 import { AvatarWithStatus } from '../../components/chat/AvatarWithStatus';
+import { AttachmentButton } from '../../components/chat/AttachmentButton';
+import { MediaAttachmentPreview } from '../../components/chat/MediaAttachmentPreview';
 
 export function ChatPage() {
   const { trainerProfile } = useAuthStore();
@@ -42,6 +46,16 @@ export function ChatPage() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+
+  const {
+    selectedFile,
+    previewUrl,
+    validationError,
+    uploading,
+    selectFile,
+    clear: clearMedia,
+    sendMedia,
+  } = useChatMedia();
 
   const [onlineStudents, setOnlineStudents] = useState<Set<string>>(new Set());
   const [studentLastSeen, setStudentLastSeen] = useState<Record<string, string>>({});
@@ -397,22 +411,37 @@ export function ChatPage() {
   }
 
   async function handleSend() {
-    if (!trainerProfile?.id || !selectedStudentId || !text.trim()) return;
+    if (!trainerProfile?.id || !selectedStudentId) return;
+
+    // Sprint 13 — ETAPA 2: sem conteúdo textual, envia a mídia selecionada.
+    const content = text.trim();
+
+    if (!content && !selectedFile) return;
 
     const trainerId = trainerProfile.id;
     const studentId = selectedStudentId;
-    const content = text.trim();
 
     setSending(true);
 
     try {
-      const msg = await messageService.sendMessage({
-        trainer_id: trainerId,
-        student_id: studentId,
-        sender_role: 'personal',
-        sender_id: trainerId,
-        content,
-      });
+      const msg = selectedFile
+        ? await sendMedia({
+            trainerId,
+            studentId,
+            senderRole: 'personal',
+            senderId: trainerId,
+            content,
+          })
+        : await messageService.sendMessage({
+            trainer_id: trainerId,
+            student_id: studentId,
+            sender_role: 'personal',
+            sender_id: trainerId,
+            content,
+          });
+
+      // sendMedia retorna null (e define validationError) em caso de falha de upload.
+      if (!msg) return;
 
       setMessages((prev) => {
         if (prev.some((item) => item.id === msg.id)) return prev;
@@ -680,28 +709,58 @@ export function ChatPage() {
           </div>
 
           <div className="shrink-0 bg-[#050505] pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
-            <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-2">
-              <textarea
-                className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
-                placeholder="Mensagem"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-              />
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2">
+              {(selectedFile || validationError) && (
+                <div className="mb-2">
+                  {selectedFile && (
+                    <MediaAttachmentPreview
+                      fileName={selectedFile.name}
+                      fileSize={selectedFile.size}
+                      mime={selectedFile.type}
+                      previewUrl={previewUrl}
+                      onRemove={clearMedia}
+                    />
+                  )}
 
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!text.trim() || sending}
-                className="shrink-0 rounded-full bg-[#ff2a32] p-3 text-white transition-all active:scale-90 disabled:opacity-40"
-              >
-                {sending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </button>
+                  {validationError && (
+                    <p className="px-1 pb-1 text-xs text-red-400">{validationError}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-end gap-2">
+                <AttachmentButton
+                  onFileSelected={selectFile}
+                  hasFile={!!selectedFile}
+                  onRemoveFile={clearMedia}
+                  disabled={sending || uploading}
+                  accept={CHAT_MEDIA_ACCEPT}
+                />
+
+                <textarea
+                  className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+                  placeholder="Mensagem"
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={
+                    (!text.trim() && !selectedFile) || sending || uploading
+                  }
+                  className="shrink-0 rounded-full bg-[#ff2a32] p-3 text-white transition-all active:scale-90 disabled:opacity-40"
+                >
+                  {sending || uploading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
