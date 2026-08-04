@@ -8,7 +8,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { useChatMediaUrl, formatMediaSize } from '../../hooks/useChatMediaUrl';
+import {
+  useChatMediaDownloadUrl,
+  useChatMediaUrl,
+  formatMediaSize,
+} from '../../hooks/useChatMediaUrl';
 import type { Message } from '../../types/database';
 
 /**
@@ -28,6 +32,14 @@ export function MessageDocument({ msg }: { msg: Message }) {
   const extension = (msg.extension || msg.media_url?.split('.').pop() || 'file').toLowerCase();
   const fileName = getDocumentName(msg, extension);
   const size = formatMediaSize(msg.media_size);
+
+  // URL de DOWNLOAD gerada pelo SDK (createSignedUrl com { download }),
+  // preservando o token JWT — NÃO concatenar "?download=" manualmente.
+  const {
+    url: downloadUrl,
+    loading: downloadLoading,
+    retry: retryDownload,
+  } = useChatMediaDownloadUrl(msg.id, msg.media_url, fileName);
 
   if (loading) {
     return (
@@ -86,12 +98,18 @@ export function MessageDocument({ msg }: { msg: Message }) {
           Abrir
         </a>
         <a
-          href={`${url}?download=${encodeURIComponent(fileName)}`}
-          download={fileName}
+          href={downloadUrl ?? undefined}
+          onClick={(e) => {
+            if (!downloadUrl) {
+              e.preventDefault();
+              if (!downloadLoading) retryDownload();
+            }
+          }}
+          aria-disabled={!downloadUrl}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#ff2a32]/15 px-3 py-2 text-[11px] font-bold text-[#ff2a32] transition-all active:scale-95"
         >
           <Download className="h-3.5 w-3.5" />
-          Baixar
+          {downloadLoading ? 'Preparando…' : 'Baixar'}
         </a>
       </div>
     </div>

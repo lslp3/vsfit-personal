@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { getSignedChatMediaUrl } from '../services/chatMediaService';
+import {
+  getChatMediaDownloadUrl,
+  getSignedChatMediaUrl,
+} from '../services/chatMediaService';
 
 /**
  * Sprint 13 — Chat Media (ETAPA 3: Preview).
@@ -25,6 +28,14 @@ const signedUrlCache = new Map<string, string>();
 export function clearChatMediaUrlCache(): void {
   signedUrlCache.clear();
 }
+
+/** Cache em memória das signed URLs de DOWNLOAD (mesma mensagem reutiliza). */
+export function clearChatMediaDownloadUrlCache(): void {
+  downloadSignedUrlCache.clear();
+}
+
+/** Signed URL de download gerada por getChatMediaDownloadUrl. */
+const downloadSignedUrlCache = new Map<string, string>();
 
 interface useChatMediaUrlResult {
   url: string | null;
@@ -88,6 +99,76 @@ export function useChatMediaUrl(
   }, [key, mediaUrl, attempt]);
 
   // Memo dos campos retornados (estável enquanto state não muda).
+  return useMemo(
+    () => ({ ...state, retry }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.url, state.loading, state.error, retry]
+  );
+}
+
+/**
+ * Resolve a signed URL de DOWNLOAD (Content-Disposition: attachment) para
+ * mídia privada do chat. Usa `createSignedUrl(path, { download })` via
+ * getChatMediaDownloadUrl — o SDK monta a query corretamente, preservando o
+ * token JWT (sem a quebra "?download=" manual que gerava InvalidJWT).
+ * Preview/"Abrir" continuam usando `useChatMediaUrl`, sem download.
+ */
+export function useChatMediaDownloadUrl(
+  messageId: string,
+  mediaUrl: string | null,
+  downloadName: string
+): useChatMediaUrlResult {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<{
+    url: string | null;
+    loading: boolean;
+    error: string | null;
+  }>(() => {
+    if (!mediaUrl) return { url: null, loading: false, error: null };
+    const cached = downloadSignedUrlCache.get(messageId);
+    return { url: cached ?? null, loading: !cached, error: null };
+  });
+
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
+
+  const key = `${messageId}#download`;
+
+  useEffect(() => {
+    if (!mediaUrl) return;
+
+    const cached = downloadSignedUrlCache.get(key);
+    if (cached) {
+      setState({ url: cached, loading: false, error: null });
+      return;
+    }
+
+    let active = true;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    getChatMediaDownloadUrl(mediaUrl, downloadName)
+      .then((signedUrl) => {
+        if (!active) return;
+        downloadSignedUrlCache.set(key, signedUrl);
+        setState({ url: signedUrl, loading: false, error: null });
+      })
+      .catch((err) => {
+        if (!active) return;
+        console.error('[useChatMediaUrl] download signed url error:', err);
+        setState({
+          url: null,
+          loading: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : 'Falha ao gerar link de download.',
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [key, mediaUrl, downloadName, attempt]);
+
   return useMemo(
     () => ({ ...state, retry }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

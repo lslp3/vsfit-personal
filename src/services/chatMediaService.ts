@@ -258,3 +258,27 @@ export async function getSignedChatMediaUrl(
 
   return data.signedUrl;
 }
+
+/**
+ * Gera uma signed URL de DOWNLOAD (Content-Disposition: attachment) para
+ * arquivo privado do chat. Usa o parâmetro `download` do SDK, que monta a
+ * query corretamente (&download=<nome>) preservando o token JWT íntegro.
+ * NÃO concatenar "?download=" manualmente sobre a signed URL — isso quebra
+ * o JWT e gera InvalidJWT / Invalid Compact JWS.
+ */
+export async function getChatMediaDownloadUrl(
+  path: string,
+  downloadName: string,
+  expiresInSeconds = 3600
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(CHAT_FILES_BUCKET)
+    .createSignedUrl(path, expiresInSeconds, { download: downloadName });
+
+  if (error || !data?.signedUrl) {
+    console.error('[ChatMediaService] download signedUrl error:', error);
+    throw new Error(error?.message || 'Falha ao gerar link de download.');
+  }
+
+  return data.signedUrl;
+}
