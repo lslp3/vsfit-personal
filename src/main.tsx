@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+import { GlobalChatFileInput } from './components/chat/GlobalChatFileInput';
 import { reloadForStaleChunk } from './utils/chunkReload';
 import './index.css';
 
@@ -16,6 +17,7 @@ window.addEventListener('unhandledrejection', (event) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <GlobalChatFileInput />
     <App />
   </StrictMode>
 );
