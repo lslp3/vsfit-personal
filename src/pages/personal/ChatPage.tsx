@@ -16,6 +16,7 @@ import {
   diagChatMount,
   diagChatUnmount,
 } from '../../utils/diagChat';
+import { DiagPanel } from '../../components/chat/DiagPanel';
 
 import { Header } from '../../components/ui/Header';
 import { Card } from '../../components/ui/Card';
@@ -763,6 +764,9 @@ export function ChatPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <Header title="Chat" />
+
+      {/* TEMPORÁRIO: painel de diagnóstico in-app (não commitar na entrega). */}
+      <DiagPanel />
 
       <div className="mx-auto max-w-lg space-y-3 px-4 pb-32 pt-4">
         {conversations.length === 0 ? (

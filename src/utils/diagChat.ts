@@ -1,20 +1,40 @@
 /**
- * TEMPORÁRIO — Diagnóstico do retorno do file picker no Capacitor.
- * Esses logs provam se o WebView recarrega a página (novo documento) ou se
- * apenas o componente React remonta. NÃO COMMITAR — remover ao final.
+ * TEMPORÁRIO — Diagnóstico in-app do retorno do file picker no Capacitor.
+ * Captura os eventos [CHAT-DIAG] e PERSISTE num buffer (localStorage), com
+ * leitura/limpeza exposta em window. Usado apenas para investigar se o WebView
+ * recarrega (novo documento) ou se há remount do React. NÃO COMMITAR na
+ * entrega final — remover antes de fechar a Sprint 13.
  *
- * DISCRIMINADORES:
- * - window.__VSDIAG_DOC.id  : muda quando o WebView recarrega (novo documento);
- *                             permanece se for apenas remount do React.
- * - performance.timeOrigin  : muda a cada navegação/reload completo da página.
- * - contador localInstance  : module-scoped → zera em reload (volta a 1);
- *                             vai subindo se for só remount (mesmo documento).
+ * DISCRIMINADORES por evento:
+ * - localInstance : contador module-scoped. Zera (volta a 1) num reload de
+ *                   página; sobe (2,3,...) em remount React do mesmo documento.
+ * - docId         : UUID da janela (window.__VSDIAG_DOC.id). Novo docId num
+ *                   evento = novo documento = WebView recarregou.
+ * - timeOrigin    : performance.timeOrigin. Muda a cada reload completo.
+ * - msSinceDocLoad: performance.now() — pequeno logo após um reload.
  *
- * Prefixo de todos os logs: [CHAT-DIAG]  → filtro fácil no logcat.
+ * localStorage SOBREVIVE ao reload do WebView (mesmo origin), então o buffer
+ * mostra eventos ANTES e DEPOIS da recriação — permitindo comparar os
+ * marcadores e fechar o cenário.
  */
 
+const LS_KEY = '__VSDIAG_LOG';
+const LS_CAP = 300;
+
+export interface DiagEntry {
+  ts: number; // epoch ms
+  iso: string; // ISO timestamp (legível no aparelho)
+  ev: string; // evento
+  tag?: string; // ChatPage | useChatMedia | capacitor | window
+  localInstance?: number;
+  docId?: string;
+  timeOrigin?: number;
+  msSinceDocLoad?: number;
+  detail?: string;
+}
+
 type DiagWindow = Window & {
-  __VSDIAG_DOC?: { id: string; firstTimeOrigin: number; docInstance: number };
+  __VSDIAG_DOC?: { id: string; firstTimeOrigin?: number; docInstance: number };
 };
 
 let localInstance = 0;
@@ -32,88 +52,119 @@ export function diagChatSession() {
   return w.__VSDIAG_DOC;
 }
 
+function readLogs(): DiagEntry[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as DiagEntry[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function push(ev: string, fields: Partial<DiagEntry> = {}) {
+  const sess = diagChatSession();
+  const entry: DiagEntry = {
+    ts: Date.now(),
+    iso: new Date().toISOString(),
+    ev,
+    docId: sess.id,
+    timeOrigin: performance.timeOrigin,
+    msSinceDocLoad: Math.round(performance.now()),
+    ...fields,
+  };
+
+  const arr = readLogs();
+  arr.push(entry);
+  if (arr.length > LS_CAP) {
+    // Mantém só os últimos LS_CAP eventos.
+    arr.splice(0, arr.length - LS_CAP);
+  }
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  } catch {
+    /* quota cheia: ignora (não deve derrubar o app) */
+  }
+
+  // Mantém o console.log como redundância (caso o logcat esteja legível).
+  console.log('[CHAT-DIAG]', ev, JSON.stringify(fields));
+}
+
 export function diagChatMount(tag: string, ...extra: unknown[]) {
   localInstance += 1;
   const sess = diagChatSession();
   sess.docInstance += 1;
-  console.log(
-    '[CHAT-DIAG] MOUNT',
+  push('MOUNT', {
     tag,
-    '| localInstance=',
     localInstance,
-    '| docId=',
-    sess.id,
-    '| docInstance=',
-    sess.docInstance,
-    '| timeOrigin=',
-    performance.timeOrigin,
-    '| msSinceDocLoad=',
-    Math.round(performance.now()),
-    ...extra
-  );
+    detail: extra.join(' '),
+  });
   return localInstance;
 }
 
 export function diagChatUnmount(tag: string, localInstanceAtMount: number) {
-  console.log('[CHAT-DIAG] UNMOUNT', tag, '| localInstance=', localInstanceAtMount);
+  push('UNMOUNT', { tag, localInstance: localInstanceAtMount });
 }
 
 export function diagChatLog(tag: string, ...args: unknown[]) {
-  console.log('[CHAT-DIAG]', tag, '| docId=', diagChatSession().id, ...args);
+  push('LOG', { tag, detail: args.join(' ') });
 }
 
-/** Registra ouvintes globais UMA vez (appStateChange, pageshow, ...). */
-export function diagChatInit(eventScope: unknown) {
+export function diagChatInit(_eventScope?: unknown) {
+  // Expõe leitura/limpeza para o painel in-app (via window).
+  const w = window as unknown as {
+    __diagChatDump: () => DiagEntry[];
+    __diagChatClear: () => void;
+  };
+  w.__diagChatDump = () =>
+    readLogs()
+      .slice()
+      .reverse(); // mais recentes primeiro
+  w.__diagChatClear = () => {
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {
+      /* noop */
+    }
+  };
+
   if (listenersHooked) return;
   listenersHooked = true;
 
-  const log = (label: string, ...extra: unknown[]) => {
-    const sess = diagChatSession();
-    console.log(
-      '[CHAT-DIAG][EVENT]',
-      label,
-      '| docId=',
-      sess.id,
-      '| timeOrigin=',
-      performance.timeOrigin,
-      '| ms=',
-      Math.round(performance.now()),
-      ...extra
-    );
-  };
+  push('APP_READY', { tag: 'window' });
 
-  log('listeners-registered (fresh doc load)');
-
-  window.addEventListener('pageshow', (e) => log('pageshow persisted=' + e.persisted));
-  window.addEventListener('pagehide', () => log('pagehide'));
+  window.addEventListener('pageshow', (ev) =>
+    push('pageshow', { tag: 'window', detail: 'persisted=' + ev.persisted })
+  );
+  window.addEventListener('pagehide', () => push('pagehide', { tag: 'window' }));
   window.addEventListener('visibilitychange', () =>
-    log('visibilitychange=' + document.visibilityState)
+    push('visibilitychange', { tag: 'window', detail: document.visibilityState })
   );
 
-  // appStateChange só existe em plataforma nativa (Capacitor). Em web, vira NO-OP.
+  // appStateChange só existe em plataforma nativa (Capacitor).
   try {
-    // Evita import estático para não inflar chunk; ~/prefixo de identificação no log envolve eventScope.
-    void eventScope;
-    // @capacitor/core carregado dinamicamente abaixo.
     import('@capacitor/core')
       .then(({ Capacitor }) => {
         if (!Capacitor.isNativePlatform()) {
-          log('capacitor=web (appStateChange indisponível)');
+          push('capacitor=web (appStateChange indisponível)', { tag: 'capacitor' });
           return;
         }
-        log('capacitor=listening appStateChange');
-        // Cast p/ contornar overload de tipagem do @capacitor/core (código descartável).
+        push('capacitor=listening appStateChange', { tag: 'capacitor' });
         (Capacitor as unknown as {
           addListener: (
             eventName: string,
             cb: (s: { isActive: boolean }) => void
           ) => unknown;
         }).addListener('appStateChange', (s: { isActive: boolean }) => {
-          log('capacitor appStateChange isActive=' + s.isActive);
+          push('appStateChange', {
+            tag: 'capacitor',
+            detail: 'isActive=' + s.isActive,
+          });
         });
       })
-      .catch((err) => log('capacitor-import-fail', String(err)));
+      .catch((err) => push('capacitor-import-fail', { tag: 'capacitor', detail: String(err) }));
   } catch (err) {
-    log('capacitor-init-fail', String(err));
+    push('capacitor-init-fail', { tag: 'capacitor', detail: String(err) });
   }
 }
