@@ -29,76 +29,17 @@ interface ServiceAccount {
 }
 
 const OAUTH_TOKEN_URL = "https://oauth2.googleapis.com" + "/token";
-const FCM_PROJECTS_URL = "https://fcm.googleapis.com" + "/v1/projects";
-const FCM_SEND_URL = FCM_PROJECTS_URL + "/{project_id}/messages:send";
-
+const FCM_SEND_URL =
+  "https://fcm.googleapis.com" + "/v1/projects/{project_id}/messages:send";
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 
-// Marcadores PEM construídos por concatenação (evita tratamento especial).
+// Marcadores PEM (PKCS#8 e PKCS#1) — construídos por concatenação.
 const PEM_PKCS8_BEGIN = "-----BEGIN " + "PRIVATE KEY-----";
 const PEM_PKCS8_END = "-----END " + "PRIVATE KEY-----";
 const PEM_PKCS1_BEGIN = "-----BEGIN " + "RSA PRIVATE KEY-----";
 const PEM_PKCS1_END = "-----END " + "RSA PRIVATE KEY-----";
 
 let cachedServiceAccount: ServiceAccount | null = null;
-
-/**
- * Diagnóstico temporário: localiza a posição exata do caractere extra no
- * base64 da private_key e prova, via decodificação + ASN.1, se o conteúdo
- * (sem padding) já é um PKCS#8 válido. NÃO altera o comportamento.
- */
-function diagnosePrivateKeyLength(normalized: string): string {
-  const trailingEquals = normalized.match(/=+$/)?.[0]?.length ?? 0;
-  const content =
-    trailingEquals > 0 ? normalized.slice(0, -trailingEquals) : normalized;
-  const firstPadIndex = normalized.length - trailingEquals; // 0-based
-
-  let contentDecodable = false;
-  let decodedBytes = 0;
-  let asnDeclared = -1;
-
-  if (content.length % 4 === 0) {
-    try {
-      const bin = atob(content);
-      decodedBytes = bin.length;
-      contentDecodable = true;
-
-      // DER: SEQUENCE (0x30) + comprimento (short/long form).
-      if (bin.charCodeAt(0) === 0x30 && bin.length >= 2) {
-        const l1 = bin.charCodeAt(1);
-        if ((l1 & 0x80) === 0) {
-          asnDeclared = l1;
-        } else {
-          const n = l1 & 0x7f;
-          if (bin.length >= 2 + n) {
-            let len = 0;
-            for (let i = 0; i < n; i++) len = (len << 8) | bin.charCodeAt(2 + i);
-            asnDeclared = len;
-          }
-        }
-      }
-    } catch {
-      contentDecodable = false;
-    }
-  }
-
-  const before = normalized.slice(Math.max(0, firstPadIndex - 20), firstPadIndex);
-  const after = normalized.slice(firstPadIndex, firstPadIndex + 20);
-
-  return (
-    `PKCS#8 diag: ` +
-    `contentLen=${content.length}, ` +
-    `contentMod4=${content.length % 4}, ` +
-    `contentDecodable=${contentDecodable}, ` +
-    `decodedBytes=${decodedBytes}, ` +
-    `asn1DeclaredLen=${asnDeclared}, ` +
-    `expectedRsa2048Pkcs8Bytes≈1218, ` +
-    `extraCharIndex=${firstPadIndex}, ` +
-    `extraChar=${JSON.stringify(normalized[firstPadIndex])}, ` +
-    `before20=${JSON.stringify(before)}, ` +
-    `after20=${JSON.stringify(after)}`
-  );
-}
 
 function getServiceAccount(): ServiceAccount {
   if (cachedServiceAccount) return cachedServiceAccount;
@@ -108,21 +49,9 @@ function getServiceAccount(): ServiceAccount {
     throw new Error("FIREBASE_SERVICE_ACCOUNT não configurada.");
   }
 
-  let parsed: ServiceAccount;
-  try {
-    parsed = JSON.parse(raw) as ServiceAccount;
-  } catch {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT não é um JSON válido.");
-  }
-
-  if (!parsed.project_id) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT sem project_id.");
-  }
-  if (!parsed.client_email) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT sem client_email.");
-  }
-  if (!parsed.private_key) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT sem private_key.");
+  const parsed = JSON.parse(raw) as ServiceAccount;
+  if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT inválida (faltam campos-chave).");
   }
 
   cachedServiceAccount = parsed;
@@ -144,79 +73,21 @@ function base64UrlEncode(input: Uint8Array | string): string {
     .replace(/=+$/, "");
 }
 
+/**
+ * Converte o PEM da private_key em bytes DER (PKCS#8).
+ * Remove apenas marcadores, \r e quebras de linha — NÃO remove ou corrige
+ * caracteres Base64. Se o Base64 for inválido, atob() lança o erro real.
+ */
 function parsePrivateKey(pem: string): ArrayBuffer {
-  // Normaliza o PEM vindo do secret FIREBASE_SERVICE_ACCOUNT:
-  // aceita quebras REAIS e/ou LITERAIS ("\n", "\\n" — secret duplamente
-  // escapado), remove os marcadores PEM (PKCS8 e PKCS1) e todo espaço.
-  const normalized = pem
-    .replace(/\\+n/g, "\n") // \n, \\n, \\\n -> newline real
-    .replace(/\\+r/g, "") // \r, \\r -> nada
+  const body = pem
     .replace(/\r/g, "")
     .replaceAll(PEM_PKCS8_BEGIN, "")
     .replaceAll(PEM_PKCS8_END, "")
     .replaceAll(PEM_PKCS1_BEGIN, "")
     .replaceAll(PEM_PKCS1_END, "")
-    .replace(/\s+/g, "");
+    .replace(/\n/g, "");
 
-  // ── DIAGNÓSTICO TEMPORÁRIO (remover após identificar a causa) ──────────
-  const maskKey = (value: string) =>
-    value.length <= 40
-      ? `${value.slice(0, 10)}...${value.slice(-10)}`
-      : `${value.slice(0, 20)}...${value.slice(-20)}`;
-
-  const hasPemMarkers =
-    pem.includes(PEM_PKCS8_BEGIN) || pem.includes(PEM_PKCS1_BEGIN);
-  const hasEndMarkers =
-    pem.includes(PEM_PKCS8_END) || pem.includes(PEM_PKCS1_END);
-
-  console.error(
-    "[send-push][diag] private_key: " +
-      `length=${pem.length}, ` +
-      `BEGIN=${hasPemMarkers}, ` +
-      `END=${hasEndMarkers}, ` +
-      `literalBackslashN=${pem.includes("\\n")}, ` +
-      `realNewline=${pem.includes("\n")}, ` +
-      `masked=${maskKey(pem)}`,
-  );
-
-  const validBase64 = /^[A-Za-z0-9+/=]*$/.test(normalized);
-  const firstInvalid = [...normalized].find(
-    (char) => !/[A-Za-z0-9+/=]/.test(char),
-  );
-
-  console.error(
-    "[send-push][diag] atob input: " +
-      `length=${normalized.length}, ` +
-      `removedChars=${pem.length - normalized.length}, ` +
-      `validBase64=${validBase64}` +
-      (validBase64 ? "" : `, primeiroCaractereInvalido=${JSON.stringify(firstInvalid)}`),
-  );
-
-  // Diagnóstico do comprimento/padding (len % 4, '=' no final, cauda).
-  const trailingEquals = normalized.match(/=+$/)?.[0]?.length ?? 0;
-  const totalEquals = (normalized.match(/=/g) ?? []).length;
-  console.error(
-    "[send-push][diag] base64 length: " +
-      `lengthMod4=${normalized.length % 4}, ` +
-      `trailingEquals=${trailingEquals}, ` +
-      `hasMiddleEquals=${totalEquals > trailingEquals}, ` +
-      `last10=${JSON.stringify(normalized.slice(-10))}`,
-  );
-
-  // Diagnóstico ESTENDIDO: localiza a posição exata do caractere extra e
-  // prova via decodificação + ASN.1 se o conteúdo já é um PKCS#8 válido.
-  console.error("[send-push][diag] " + diagnosePrivateKeyLength(normalized));
-  // ── FIM DIAGNÓSTICO TEMPORÁRIO ─────────────────────────────────────────
-
-  let binary: string;
-  try {
-    binary = atob(normalized);
-  } catch {
-    throw new Error(
-      "private_key não é Base64 válido — verifique os marcadores PEM e quebras \\n no secret.",
-    );
-  }
-
+  const binary = atob(body);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
@@ -230,21 +101,14 @@ let cachedSigningKey: CryptoKey | null = null;
 async function getSigningKey(serviceAccount: ServiceAccount): Promise<CryptoKey> {
   if (cachedSigningKey) return cachedSigningKey;
 
-  try {
-    const der = parsePrivateKey(serviceAccount.private_key);
-
-    cachedSigningKey = await crypto.subtle.importKey(
-      "pkcs8",
-      der,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-  } catch (error) {
-    throw new Error(
-      `Falha ao importar private_key: ${(error as Error).message}`,
-    );
-  }
+  const der = parsePrivateKey(serviceAccount.private_key);
+  cachedSigningKey = await crypto.subtle.importKey(
+    "pkcs8",
+    der,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
 
   return cachedSigningKey;
 }
@@ -293,7 +157,6 @@ async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
 
   if (!response.ok) {
     const bodyText = await safeBodyText(response);
-    // Loga status + erro OAuth (ex.: invalid_grant) — NUNCA a assertion.
     console.error(
       `[send-push] OAuth access_token falhou — HTTP ${response.status}: ${bodyText}`,
     );
@@ -305,7 +168,6 @@ async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
   const payload = await response.json().catch(() => null);
   const accessToken = payload?.access_token;
   if (!accessToken) {
-    console.error("[send-push] OAuth2 resposta sem access_token.");
     throw new Error("Resposta OAuth2 sem access_token.");
   }
 
@@ -318,7 +180,6 @@ async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
   return accessToken;
 }
 
-/** Lê o corpo da resposta como texto seguro (não lança). */
 async function safeBodyText(response: Response): Promise<string> {
   try {
     const text = await response.text();
@@ -329,7 +190,6 @@ async function safeBodyText(response: Response): Promise<string> {
   }
 }
 
-/** Extrai { status, message } do erro FCM (seguro; sem token/secrets). */
 async function extractFcmError(response: Response): Promise<{
   status: string;
   message: string;
@@ -396,8 +256,6 @@ export async function sendToTokens(
     return result;
   }
 
-  console.info(`[send-push] Enviando para ${tokens.length} dispositivo(s) no projeto ${projectId}.`);
-
   for (const token of tokens) {
     try {
       const response = await fetch(sendUrl, {
@@ -424,7 +282,6 @@ export async function sendToTokens(
       result.failed += 1;
 
       const errorInfo = await extractFcmError(response);
-      // Loga de forma SEGURA o erro retornado pelo FCM (sem token/secret).
       console.warn(
         `[send-push] FCM rejeitou envio — HTTP ${response.status}` +
           (errorInfo.status ? `, status=${errorInfo.status}` : "") +
@@ -435,7 +292,6 @@ export async function sendToTokens(
         result.removed += 1;
         try {
           await onInvalidToken(token);
-          console.warn("[send-push] Token inválido removido do banco (best-effort).");
         } catch {
           // cleanup best-effort
         }
