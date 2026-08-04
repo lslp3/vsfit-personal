@@ -8,6 +8,12 @@ import {
 } from '../services/chatMediaService';
 import { sendMessage } from '../services/messageService';
 import type { Message, MessageInsert } from '../types/database';
+import { useChatMediaStore } from '../store/chatMediaStore';
+
+function getFileExtension(name: string): string {
+  const idx = name.lastIndexOf('.');
+  return idx >= 0 ? name.slice(idx + 1).toLowerCase() : '';
+}
 
 // TEMPORÁRIO — diagnóstico do file picker (não commitar).
 import {
@@ -31,11 +37,25 @@ import {
  *   const { selectedFile, previewUrl, validationError, uploading, selectFile, clear, sendMedia } = useChatMedia();
  */
 export function useChatMedia() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  // Estado de mídia vive no store module-singleton (Correção A) para
+  // sobreviver ao remount do ChatPage pelo fluxo de auth (isLoading).
+  const selectedFile = useChatMediaStore((s) => s.selectedFile);
+  const previewUrl = useChatMediaStore((s) => s.previewUrl);
+  const validationError = useChatMediaStore((s) => s.validationError);
+  const caption = useChatMediaStore((s) => s.caption);
+  const setCaption = useChatMediaStore((s) => s.setCaption);
+  const setSelectedFile = useChatMediaStore((s) => s.setSelectedFile);
+  const setPreviewUrl = useChatMediaStore((s) => s.setPreviewUrl);
+  const setMime = useChatMediaStore((s) => s.setMime);
+  const setMediaSize = useChatMediaStore((s) => s.setMediaSize);
+  const setExtension = useChatMediaStore((s) => s.setExtension);
+  const setValidationError = useChatMediaStore((s) => s.setValidationError);
+  const resetMedia = useChatMediaStore((s) => s.resetMedia);
+
+  // Transiente (não precisa sobreviver a remount): estado de envio.
   const [uploading, setUploading] = useState(false);
 
+  // objectURL criada/gerenciada por ESTE hook (adotada do store no mount).
   const objectUrlRef = useRef<string | null>(null);
 
   // TEMPORÁRIO: refletir mount/unmount do hook. Não commitar.
@@ -44,21 +64,39 @@ export function useChatMedia() {
     return () => diagChatUnmount('useChatMedia', inst);
   }, []);
 
-  /** Libera a objectURL local (evita vazamento de memória). */
-  const releaseObjectUrl = useCallback(() => {
+  /**
+   * Ao montar (inclusive após um remount no MESMO documento): adota a
+   * objectURL do store (ainda válida) para revogação futura, ou recria o
+   * preview se o File existir e a URL tiver sumido.
+   */
+  useEffect(() => {
+    const state = useChatMediaStore.getState();
+    if (state.selectedFile && !state.previewUrl) {
+      const url = URL.createObjectURL(state.selectedFile);
+      objectUrlRef.current = url;
+      state.setPreviewUrl(url);
+    } else if (state.previewUrl) {
+      objectUrlRef.current = state.previewUrl;
+    }
+  }, []);
+
+  /** Revoga a objectURL pendente (a deste hook e/ou a do store). */
+  const revokeObjectUrl = useCallback(() => {
+    const stored = useChatMediaStore.getState().previewUrl;
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
+    }
+    if (stored) {
+      URL.revokeObjectURL(stored);
     }
   }, []);
 
   /** Seleciona e valida o arquivo escolhido; gera preview local. */
   const selectFile = useCallback(
     (file: File | null) => {
-      releaseObjectUrl();
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setValidationError(null);
+      revokeObjectUrl();
+      resetMedia();
 
       if (!file) {
         diagChatLog('selectFile(null) — campo cancelado');
@@ -83,27 +121,38 @@ export function useChatMedia() {
         file.type
       );
 
-      setSelectedFile(file);
       // Preview local (objectURL) antes do envio — a exibição de mensagens
       // salvas usa signed URL (getSignedChatMediaUrl) na ETAPA 3.
       const objectUrl = URL.createObjectURL(file);
       objectUrlRef.current = objectUrl;
+      setSelectedFile(file);
       setPreviewUrl(objectUrl);
+      setMime(file.type);
+      setMediaSize(file.size);
+      setExtension(getFileExtension(file.name));
       diagChatLog('preview set | previewUrl=', objectUrl);
     },
-    [releaseObjectUrl]
+    [
+      revokeObjectUrl,
+      resetMedia,
+      setSelectedFile,
+      setPreviewUrl,
+      setMime,
+      setMediaSize,
+      setExtension,
+      setValidationError,
+    ]
   );
 
   /** Limpa seleção, preview e erros. */
   const clear = useCallback(() => {
-    releaseObjectUrl();
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setValidationError(null);
-  }, [releaseObjectUrl]);
+    revokeObjectUrl();
+    resetMedia();
+  }, [revokeObjectUrl, resetMedia]);
 
-  /** Cleanup ao desmontar (revoga objectURL pendente). */
-  useEffect(() => releaseObjectUrl, [releaseObjectUrl]);
+  // Sem revoke no unmount (INTENCIONAL): o hook pode ser desmontado/remontado
+  // pelo fluxo de auth no mesmo documento; revogar aqui mataria o preview.
+  // A objectURL é revogada apenas em novo selectFile e em clear (envio).
 
   /**
    * Upload + persistência da mídia selecionada.
@@ -118,7 +167,8 @@ export function useChatMedia() {
       /** Legenda opcional junto da mídia; se vazia, usa o nome do arquivo. */
       content?: string;
     }): Promise<Message | null> => {
-      if (!selectedFile) return null;
+      const file = useChatMediaStore.getState().selectedFile;
+      if (!file) return null;
 
       setUploading(true);
       setValidationError(null);
@@ -129,7 +179,7 @@ export function useChatMedia() {
         const upload = await uploadChatMedia({
           trainerId: params.trainerId,
           studentId: params.studentId,
-          file: selectedFile,
+          file,
           messageId,
         });
 
@@ -139,7 +189,7 @@ export function useChatMedia() {
           student_id: params.studentId,
           sender_role: params.senderRole,
           sender_id: params.senderId,
-          content: params.content?.trim() || selectedFile.name,
+          content: params.content?.trim() || file.name,
           type: upload.type,
           media_url: upload.media_url,
           media_size: upload.media_size,
@@ -166,13 +216,15 @@ export function useChatMedia() {
         setUploading(false);
       }
     },
-    [selectedFile, clear]
+    [clear, setValidationError]
   );
 
   return {
     selectedFile,
     previewUrl,
     validationError,
+    caption,
+    setCaption,
     uploading,
     selectFile,
     clear,

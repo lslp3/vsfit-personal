@@ -53,7 +53,6 @@ export function ChatPage() {
   const [selectedStudentName, setSelectedStudentName] = useState('');
   const [selectedStudentAvatar, setSelectedStudentAvatar] = useState<string | null>(null);
 
-  const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -61,6 +60,8 @@ export function ChatPage() {
     selectedFile,
     previewUrl,
     validationError,
+    caption,
+    setCaption,
     uploading,
     selectFile,
     clear: clearMedia,
@@ -76,6 +77,20 @@ export function ChatPage() {
   // do WebView/Capacitor — ao reiniciar, o app reabre a conversa do aluno.
   const selectedStudentId = routeStudentId || null;
 
+  // Ao trocar de conversa (mesmo ChatPage, rota diferente), limpa o anexo e a
+  // legenda pendentes do store (Correção A). Não roda no primeiro mount, para
+  // preservar o anexo num remount de auth (mesma rota, novo componente).
+  const lastStudentIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = lastStudentIdRef.current;
+    const next = routeStudentId ?? null;
+    lastStudentIdRef.current = next;
+    if (prev !== null && prev !== next) {
+      clearMedia();
+      setCaption('');
+    }
+  }, [routeStudentId, clearMedia, setCaption]);
+
   // TEMPORÁRIO: refletir mount/unmount + estado logo após o seletor. Não commitar.
   useEffect(() => {
     diagChatInit(undefined);
@@ -84,7 +99,7 @@ export function ChatPage() {
       '| route=',
       routeStudentId ?? '(lista)',
       '| caption=',
-      JSON.stringify(text)
+      JSON.stringify(caption)
     );
     return () => diagChatUnmount('ChatPage', inst);
   }, []);
@@ -469,7 +484,7 @@ export function ChatPage() {
     if (!trainerProfile?.id || !selectedStudentId) return;
 
     // Sprint 13 — ETAPA 2: sem conteúdo textual, envia a mídia selecionada.
-    const content = text.trim();
+    const content = caption.trim();
 
     if (!content && !selectedFile) return;
 
@@ -503,7 +518,7 @@ export function ChatPage() {
         return [...prev, msg];
       });
 
-      setText('');
+      setCaption('');
 
       messageService
         .getConversations(trainerId)
@@ -739,8 +754,8 @@ export function ChatPage() {
                 <textarea
                   className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
                   placeholder="Mensagem"
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
+                  value={caption}
+                  onChange={(event) => setCaption(event.target.value)}
                   onKeyDown={handleKeyDown}
                   rows={1}
                 />
@@ -749,7 +764,7 @@ export function ChatPage() {
                   type="button"
                   onClick={handleSend}
                   disabled={
-                    (!text.trim() && !selectedFile) || sending || uploading
+                    (!caption.trim() && !selectedFile) || sending || uploading
                   }
                   className="shrink-0 rounded-full bg-[#ff2a32] p-3 text-white transition-all active:scale-90 disabled:opacity-40"
                 >
