@@ -266,6 +266,10 @@ export async function sendToTokens(
 
   for (const token of tokens) {
     try {
+      console.log("FCM_TOKEN_LENGTH", token?.length);
+      console.log("FCM_TOKEN_FIRST_20", token?.slice(0, 20));
+      console.log("FCM_TOKEN_HAS_COLON", token?.includes(":"));
+      console.log("FCM_TOKEN_IS_EMPTY", !token);
       const response = await fetch(sendUrl, {
         method: "POST",
         headers: {
