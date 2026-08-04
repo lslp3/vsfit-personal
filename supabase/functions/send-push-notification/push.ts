@@ -133,6 +133,17 @@ function parsePrivateKey(pem: string): ArrayBuffer {
       `validBase64=${validBase64}` +
       (validBase64 ? "" : `, primeiroCaractereInvalido=${JSON.stringify(firstInvalid)}`),
   );
+
+  // Diagnóstico do comprimento/padding (len % 4, '=' no final, cauda).
+  const trailingEquals = normalized.match(/=+$/)?.[0]?.length ?? 0;
+  const totalEquals = (normalized.match(/=/g) ?? []).length;
+  console.error(
+    "[send-push][diag] base64 length: " +
+      `lengthMod4=${normalized.length % 4}, ` +
+      `trailingEquals=${trailingEquals}, ` +
+      `hasMiddleEquals=${totalEquals > trailingEquals}, ` +
+      `last10=${JSON.stringify(normalized.slice(-10))}`,
+  );
   // ── FIM DIAGNÓSTICO TEMPORÁRIO ─────────────────────────────────────────
 
   let binary: string;
