@@ -42,6 +42,64 @@ const PEM_PKCS1_END = "-----END " + "RSA PRIVATE KEY-----";
 
 let cachedServiceAccount: ServiceAccount | null = null;
 
+/**
+ * Diagnóstico temporário: localiza a posição exata do caractere extra no
+ * base64 da private_key e prova, via decodificação + ASN.1, se o conteúdo
+ * (sem padding) já é um PKCS#8 válido. NÃO altera o comportamento.
+ */
+function diagnosePrivateKeyLength(normalized: string): string {
+  const trailingEquals = normalized.match(/=+$/)?.[0]?.length ?? 0;
+  const content =
+    trailingEquals > 0 ? normalized.slice(0, -trailingEquals) : normalized;
+  const firstPadIndex = normalized.length - trailingEquals; // 0-based
+
+  let contentDecodable = false;
+  let decodedBytes = 0;
+  let asnDeclared = -1;
+
+  if (content.length % 4 === 0) {
+    try {
+      const bin = atob(content);
+      decodedBytes = bin.length;
+      contentDecodable = true;
+
+      // DER: SEQUENCE (0x30) + comprimento (short/long form).
+      if (bin.charCodeAt(0) === 0x30 && bin.length >= 2) {
+        const l1 = bin.charCodeAt(1);
+        if ((l1 & 0x80) === 0) {
+          asnDeclared = l1;
+        } else {
+          const n = l1 & 0x7f;
+          if (bin.length >= 2 + n) {
+            let len = 0;
+            for (let i = 0; i < n; i++) len = (len << 8) | bin.charCodeAt(2 + i);
+            asnDeclared = len;
+          }
+        }
+      }
+    } catch {
+      contentDecodable = false;
+    }
+  }
+
+  const before = normalized.slice(Math.max(0, firstPadIndex - 20), firstPadIndex);
+  const after = normalized.slice(firstPadIndex, firstPadIndex + 20);
+
+  return (
+    `PKCS#8 diag: ` +
+    `contentLen=${content.length}, ` +
+    `contentMod4=${content.length % 4}, ` +
+    `contentDecodable=${contentDecodable}, ` +
+    `decodedBytes=${decodedBytes}, ` +
+    `asn1DeclaredLen=${asnDeclared}, ` +
+    `expectedRsa2048Pkcs8Bytes≈1218, ` +
+    `extraCharIndex=${firstPadIndex}, ` +
+    `extraChar=${JSON.stringify(normalized[firstPadIndex])}, ` +
+    `before20=${JSON.stringify(before)}, ` +
+    `after20=${JSON.stringify(after)}`
+  );
+}
+
 function getServiceAccount(): ServiceAccount {
   if (cachedServiceAccount) return cachedServiceAccount;
 
@@ -144,6 +202,10 @@ function parsePrivateKey(pem: string): ArrayBuffer {
       `hasMiddleEquals=${totalEquals > trailingEquals}, ` +
       `last10=${JSON.stringify(normalized.slice(-10))}`,
   );
+
+  // Diagnóstico ESTENDIDO: localiza a posição exata do caractere extra e
+  // prova via decodificação + ASN.1 se o conteúdo já é um PKCS#8 válido.
+  console.error("[send-push][diag] " + diagnosePrivateKeyLength(normalized));
   // ── FIM DIAGNÓSTICO TEMPORÁRIO ─────────────────────────────────────────
 
   let binary: string;
