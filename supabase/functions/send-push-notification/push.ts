@@ -87,6 +87,14 @@ function parsePrivateKey(pem: string): ArrayBuffer {
     .replaceAll(PEM_PKCS1_END, "")
     .replace(/\n/g, "");
 
+  console.error("BODY_LENGTH", body.length);
+  console.error("BODY_FIRST_50", JSON.stringify(body.slice(0, 50)));
+  console.error("BODY_LAST_50", JSON.stringify(body.slice(-50)));
+  console.error("HAS_BEGIN", body.includes("BEGIN"));
+  console.error("HAS_END", body.includes("END"));
+  console.error("HAS_NEWLINE", body.includes("\n"));
+  console.error("HAS_CR", body.includes("\r"));
+
   const binary = atob(body);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
