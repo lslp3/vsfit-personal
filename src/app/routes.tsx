@@ -11,9 +11,6 @@ import { useAuthStore } from '../store/authStore';
 
 import { reloadForStaleChunk } from '../utils/chunkReload';
 
-// Rota TEMPORÁRIA de dev (Sprint 14 Fase 2) — remover antes da entrega final.
-import { AnalyticsPreviewDev } from '../dev/AnalyticsPreviewDev';
-
 function lazyPage<T extends ComponentType<any>>(
   loader: () => Promise<{ default: T }>
 ) {
@@ -272,19 +269,9 @@ function AuthAwareLandingPage() {
 }
 
 /**
- * Rota raiz com atalho TEMPORÁRIO de dev (Sprint 14 Fase 2):
- * `/?preview=analytics` renderiza o preview de analytics diretamente,
- * sem depender de shell/guarda/auth. Remover antes da entrega final.
+ * Rota raiz: landing autenticada (ou login) conforme o estado de auth.
  */
 function RootRoute() {
-  const location = useLocation();
-  const wantsAnalyticsPreview =
-    new URLSearchParams(location.search).get('preview') === 'analytics';
-
-  if (wantsAnalyticsPreview) {
-    return <AnalyticsPreviewDev />;
-  }
-
   return <AuthAwareLandingPage />;
 }
 
@@ -541,11 +528,6 @@ export const router =
     {
       path: '/signup/:slug',
       element: <SignupPublicPage />,
-    },
-
-    {
-      path: '/dev/analytics-preview',
-      element: <AnalyticsPreviewDev />,
     },
 
     {

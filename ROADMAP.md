@@ -124,7 +124,32 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
     mídia; todos os tipos de arquivo.
   - ⬜ Validar comportamento de download de documentos no APK/WebView.
 
-## Sprint 14 — Financeiro do Personal (PLANEJADA)
+## Sprint 14 — Analytics Dashboard do Personal
+
+- Status: ✅ **Concluída e homologada no Preview**
+- **Aprovada para integração futura**
+- **Congelada** — não realizar alterações, exceto HOTFIX.
+- Branch: `sprint-14-analytics-dashboard`
+- Origem: `sprint-13-chat-media`
+- Commits: `971ab97`, `2bc3ed0`, `f74717d`, `2b8cf68`, `d69a8ee`, `17a8f1b`,
+  `2b00741`, `53dee0f`, + encerramento (ETAPA FINAL)
+- Escopo: camada centralizada de analytics (`analyticsService` +
+  `useTrainerAnalytics` + `types/analytics.ts`); componentes de dashboard
+  (`MetricCard`, `RevenueChart`, `WorkoutTrendChart`, `StudentStatusChart`,
+  `AdherenceChart`, `VolumeProgressChart`, `RiskStudentsCard`, `InsightsCard`);
+  `AnalyticsPage` com filtros de período (Hoje/7d/30d/90d/Ano/Personalizado),
+  tendências atual × anterior (▲/▼/estável com %), KPIs com indicadores
+  visuais e seção de Insights derivados de dados reais; rota
+  `/personal/analytics` + item Analytics no menu lateral do Personal.
+- Infraestrutura temporária de preview (`src/dev`, rota
+  `/dev/analytics-preview`, atalho `/?preview=analytics`) removida na ETAPA
+  FINAL — nenhuma referência restante.
+- Garantias: sem migrations, sem alteração de RLS, sem mudanças em Chat Media,
+  Progress, Reports ou Financial.
+- **Não realizar alterações nesta Sprint, exceto HOTFIX** — preservando esta
+  entrega como fechada. Detalhes em `SPRINT-14.md`.
+
+## Sprint 15 — Financeiro do Personal (PLANEJADA)
 
 - Status: 📋 **Planejada**
 - Objetivo: auditar e evoluir toda a parte financeira do Personal Trainer.
@@ -132,11 +157,8 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
   cobrança; integração Mercado Pago; pagamentos PIX dos alunos; status de
   pagamento; histórico financeiro; dashboard financeiro; melhorias necessárias
   para produção.
-
-## Sprint 15 — Advanced Analytics & Dashboard (PLANEJADA)
-
-- Status: 📋 **Planejada**
-- Escopo: analytics avançado e dashboard para o Personal.
+- Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
+  renumerada após o Analytics ser antecipado e executado como Sprint 14.
 
 ## Sprint 16 — Desktop Version (PLANEJADA)
 
