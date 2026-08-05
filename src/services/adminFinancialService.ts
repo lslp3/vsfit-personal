@@ -1,4 +1,20 @@
 import { supabase } from '../lib/supabase';
+
+import {
+  fetchAllRows,
+  getPaymentDate,
+  getPaymentEnvironment,
+  getTimestamp,
+  isApprovedStatus,
+  isFailedStatus,
+  isPendingStatus,
+  isRefundedStatus,
+  isSameMonth,
+  normalizePlan,
+  normalizeStatus,
+  MONTH_LABELS,
+} from '../lib/adminFinance';
+
 import type {
   AdminPlanSlug,
 } from './adminSubscriptionService';
@@ -127,199 +143,6 @@ const PAYMENT_COLUMNS = `
   updated_at
 `;
 
-const MONTH_LABELS = [
-  'Jan',
-  'Fev',
-  'Mar',
-  'Abr',
-  'Mai',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Set',
-  'Out',
-  'Nov',
-  'Dez',
-];
-
-function normalizePlan(
-  value: unknown
-): AdminPlanSlug {
-  const normalized =
-    String(value || 'free')
-      .trim()
-      .toLowerCase();
-
-  if (normalized === 'premium') {
-    return 'premium';
-  }
-
-  if (normalized === 'pro') {
-    return 'pro';
-  }
-
-  return 'free';
-}
-
-function normalizeStatus(
-  value: unknown
-) {
-  return String(value || 'pending')
-    .trim()
-    .toLowerCase();
-}
-
-function getEnvironment(
-  liveMode: boolean | null
-): AdminFinancialEnvironment {
-  if (liveMode === true) {
-    return 'production';
-  }
-
-  if (liveMode === false) {
-    return 'test';
-  }
-
-  return 'unknown';
-}
-
-function isApproved(
-  status: string
-) {
-  return status === 'approved';
-}
-
-function isPending(
-  status: string
-) {
-  return [
-    'pending',
-    'authorized',
-    'in_process',
-    'in_mediation',
-  ].includes(status);
-}
-
-function isFailed(
-  status: string
-) {
-  return [
-    'rejected',
-    'cancelled',
-    'canceled',
-    'failed',
-    'charged_back',
-  ].includes(status);
-}
-
-function isRefunded(
-  status: string
-) {
-  return [
-    'refunded',
-    'partially_refunded',
-  ].includes(status);
-}
-
-function getPaymentDate(
-  payment: AdminFinancialPayment
-) {
-  return (
-    payment.date_approved ||
-    payment.date_updated ||
-    payment.date_created ||
-    payment.created_at
-  );
-}
-
-function isSameMonth(
-  value: string | null,
-  reference: Date
-) {
-  if (!value) {
-    return false;
-  }
-
-  const date = new Date(value);
-
-  if (
-    Number.isNaN(date.getTime())
-  ) {
-    return false;
-  }
-
-  return (
-    date.getFullYear() ===
-      reference.getFullYear() &&
-    date.getMonth() ===
-      reference.getMonth()
-  );
-}
-
-function getTimestamp(
-  value: string | null
-) {
-  if (!value) {
-    return 0;
-  }
-
-  const timestamp =
-    new Date(value).getTime();
-
-  return Number.isNaN(timestamp)
-    ? 0
-    : timestamp;
-}
-
-async function fetchAllPlatformPayments() {
-  const pageSize = 1000;
-  const rows: any[] = [];
-
-  let from = 0;
-
-  while (true) {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from(
-        'platform_subscription_payments'
-      )
-      .select(PAYMENT_COLUMNS)
-      .order('created_at', {
-        ascending: false,
-      })
-      .range(
-        from,
-        from + pageSize - 1
-      );
-
-    if (error) {
-      console.error(
-        '[AdminFinancialService] payments:',
-        error
-      );
-
-      throw error;
-    }
-
-    const page =
-      data || [];
-
-    rows.push(...page);
-
-    if (
-      page.length < pageSize
-    ) {
-      break;
-    }
-
-    from += pageSize;
-  }
-
-  return rows;
-}
-
 function buildMonthlyRevenue(
   payments: AdminFinancialPayment[],
   numberOfMonths = 6
@@ -364,7 +187,7 @@ function buildMonthlyRevenue(
     if (
       payment.environment !==
         'production' ||
-      !isApproved(payment.status)
+      !isApprovedStatus(payment.status)
     ) {
       continue;
     }
@@ -441,7 +264,13 @@ Promise<AdminFinancialData> {
 
     activePaidSubscriptionsResult,
   ] = await Promise.all([
-    fetchAllPlatformPayments(),
+    fetchAllRows(
+      'platform_subscription_payments',
+      PAYMENT_COLUMNS,
+      'created_at',
+      false,
+      'AdminFinancialService'
+    ),
 
     supabase
       .from('trainer_profiles')
@@ -741,7 +570,7 @@ Promise<AdminFinancialData> {
           live_mode: liveMode,
 
           environment:
-            getEnvironment(
+            getPaymentEnvironment(
               liveMode
             ),
 
@@ -776,7 +605,7 @@ Promise<AdminFinancialData> {
   const approvedProduction =
     productionPayments.filter(
       (payment) =>
-        isApproved(payment.status)
+        isApprovedStatus(payment.status)
     );
 
   const now = new Date();
@@ -860,19 +689,19 @@ Promise<AdminFinancialData> {
     pendingProductionPayments:
       productionPayments.filter(
         (payment) =>
-          isPending(payment.status)
+          isPendingStatus(payment.status)
       ).length,
 
     failedProductionPayments:
       productionPayments.filter(
         (payment) =>
-          isFailed(payment.status)
+          isFailedStatus(payment.status)
       ).length,
 
     refundedProductionPayments:
       productionPayments.filter(
         (payment) =>
-          isRefunded(payment.status)
+          isRefundedStatus(payment.status)
       ).length,
 
     testTransactions:

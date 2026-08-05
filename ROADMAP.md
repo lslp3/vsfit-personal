@@ -149,14 +149,31 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - **Não realizar alterações nesta Sprint, exceto HOTFIX** — preservando esta
   entrega como fechada. Detalhes em `SPRINT-14.md`.
 
-## Sprint 15 — Financeiro do Personal (PLANEJADA)
+## Sprint 15 — Financeiro do Personal 🟢 (FASE 1 CONCLUÍDA)
 
-- Status: 📋 **Planejada**
-- Objetivo: auditar e evoluir toda a parte financeira do Personal Trainer.
-- Abranger: auditoria das tabelas financeiras existentes; fluxo atual de
-  cobrança; integração Mercado Pago; pagamentos PIX dos alunos; status de
-  pagamento; histórico financeiro; dashboard financeiro; melhorias necessárias
-  para produção.
+- Status: 🟢 **Fase 1 concluída — refatoração e padronização do financeiro.**
+  Aguardando homologação no Preview antes da Fase 2.
+- **Congelada para novas alterações até homologação da Fase 1.**
+- Branch: `test/sprint-15-financeiro`
+- Origem: `sprint-14-analytics-dashboard` (Sprint 14 finalizada)
+- **Fase 1 — Refatoração e Padronização (concluída):**
+  - Camada reutilizável criada em `src/lib/adminFinance.ts`: `fetchAllRows`
+    (paginação parametrizada), `normalizePlan`/`normalizeStatus`,
+    `isApprovedStatus`/`isPendingStatus`/`isFailedStatus`/`isRefundedStatus`/
+    `isActiveSubscriptionStatus`, `getPaymentDate`/`getPaymentEnvironment`/
+    `getTimestamp`/`getMonthKey`/`getValidDate`/`isCurrentMonth`/`isSameMonth`,
+    `MONTH_LABELS`, `getPlanLabel`/`getPlanClass`, tipos `AdminPlanSlug` e
+    `AdminFinancialEnvironment`.
+  - Duplicação eliminada nos 4 serviços admin (`adminFinancialService`,
+    `adminSubscriptionService`, `adminDashboardService`, `adminReportsService`)
+    — helpers locais removidos em favor da camada, sem alteração de regras de
+    negócio, UX, telas, layout, gráficos, APIs, banco, RLS, Mercado Pago ou PIX.
+  - Código morto removido da camada e dos serviços (helpers sem consumidores).
+  - `npx tsc --noEmit` ✅ exit 0 · `npm run build` ✅ exit 0.
+- **Fase 2 (não iniciada — aguarda homologação):** auditoria e evolução da
+  parte financeira do Personal Trainer (tabelas financeiras, fluxo de cobrança,
+  integração Mercado Pago, PIX, status/histórico, dashboard financeiro,
+  melhorias para produção).
 - Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
   renumerada após o Analytics ser antecipado e executado como Sprint 14.
 

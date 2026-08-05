@@ -1,13 +1,31 @@
 import { supabase } from '../lib/supabase';
+
+import {
+  isActiveSubscriptionStatus,
+  isApprovedStatus,
+  isCurrentMonth,
+  isFailedStatus,
+  isPendingStatus,
+  isRefundedStatus,
+  normalizePlan,
+} from '../lib/adminFinance';
+
+import type {
+  AdminPlanSlug,
+} from '../lib/adminFinance';
+
+export type {
+  AdminPlanSlug,
+} from '../lib/adminFinance';
+
+export {
+  isActiveSubscriptionStatus,
+} from '../lib/adminFinance';
+
 import {
   getAllSubscriptionPlans,
   type SubscriptionPlanWithLimits,
 } from './subscriptionService';
-
-export type AdminPlanSlug =
-  | 'free'
-  | 'pro'
-  | 'premium';
 
 export type BillingEvidence =
   | 'free'
@@ -154,114 +172,6 @@ interface WebhookRow {
   processing_status: string | null;
   error_message: string | null;
   received_at: string | null;
-}
-
-function normalizePlan(
-  value: unknown
-): AdminPlanSlug {
-  const normalized = String(
-    value || 'free'
-  )
-    .trim()
-    .toLowerCase();
-
-  if (normalized === 'premium') {
-    return 'premium';
-  }
-
-  if (normalized === 'pro') {
-    return 'pro';
-  }
-
-  return 'free';
-}
-
-export function isActiveSubscriptionStatus(
-  status: string | null | undefined
-) {
-  const normalized = String(
-    status || ''
-  )
-    .trim()
-    .toLowerCase();
-
-  return [
-    'active',
-    'trialing',
-    'authorized',
-  ].includes(normalized);
-}
-
-export function isApprovedPlatformPayment(
-  status: string | null | undefined
-) {
-  return (
-    String(status || '')
-      .trim()
-      .toLowerCase() === 'approved'
-  );
-}
-
-export function isPendingPlatformPayment(
-  status: string | null | undefined
-) {
-  return [
-    'pending',
-    'in_process',
-    'in_mediation',
-    'authorized',
-  ].includes(
-    String(status || '')
-      .trim()
-      .toLowerCase()
-  );
-}
-
-export function isFailedPlatformPayment(
-  status: string | null | undefined
-) {
-  return [
-    'rejected',
-    'cancelled',
-    'canceled',
-    'failed',
-    'charged_back',
-  ].includes(
-    String(status || '')
-      .trim()
-      .toLowerCase()
-  );
-}
-
-export function isRefundedPlatformPayment(
-  status: string | null | undefined
-) {
-  return [
-    'refunded',
-    'partially_refunded',
-  ].includes(
-    String(status || '')
-      .trim()
-      .toLowerCase()
-  );
-}
-
-function isCurrentMonth(
-  date: string | null
-) {
-  if (!date) {
-    return false;
-  }
-
-  const value = new Date(date);
-  const now = new Date();
-
-  return (
-    value.getFullYear() ===
-      now.getFullYear() &&
-    value.getMonth() ===
-      now.getMonth()
-  );
 }
 
 function getBillingEvidence({
@@ -584,7 +494,7 @@ Promise<AdminSubscriptionsData> {
   for (const payment of payments) {
     if (
       !payment.trainer_id ||
-      !isApprovedPlatformPayment(
+      !isApprovedStatus(
         payment.status
       )
     ) {
@@ -868,7 +778,7 @@ Promise<AdminSubscriptionsData> {
 
   const approvedPayments =
     payments.filter((payment) =>
-      isApprovedPlatformPayment(
+      isApprovedStatus(
         payment.status
       )
     );
@@ -883,21 +793,21 @@ Promise<AdminSubscriptionsData> {
 
     pendingPayments:
       payments.filter((payment) =>
-        isPendingPlatformPayment(
+        isPendingStatus(
           payment.status
         )
       ).length,
 
     failedPayments:
       payments.filter((payment) =>
-        isFailedPlatformPayment(
+        isFailedStatus(
           payment.status
         )
       ).length,
 
     refundedPayments:
       payments.filter((payment) =>
-        isRefundedPlatformPayment(
+        isRefundedStatus(
           payment.status
         )
       ).length,

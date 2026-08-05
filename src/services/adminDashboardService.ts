@@ -1,4 +1,9 @@
-import { supabase } from '../lib/supabase';
+import {
+  fetchAllRows,
+  getTimestamp,
+  isActiveSubscriptionStatus,
+  normalizePlan,
+} from '../lib/adminFinance';
 
 import {
   getAdminFinancialData,
@@ -115,106 +120,6 @@ interface SubscriptionRow {
   updated_at: string | null;
 }
 
-function normalizePlan(
-  value: unknown
-): AdminPlanSlug {
-  const normalized =
-    String(value || 'free')
-      .trim()
-      .toLowerCase();
-
-  if (normalized === 'premium') {
-    return 'premium';
-  }
-
-  if (normalized === 'pro') {
-    return 'pro';
-  }
-
-  return 'free';
-}
-
-function isActiveSubscription(
-  status: unknown
-) {
-  return [
-    'active',
-    'trialing',
-    'authorized',
-  ].includes(
-    String(status || '')
-      .trim()
-      .toLowerCase()
-  );
-}
-
-function getTimestamp(
-  value: string | null
-) {
-  if (!value) {
-    return 0;
-  }
-
-  const timestamp =
-    new Date(value).getTime();
-
-  return Number.isNaN(timestamp)
-    ? 0
-    : timestamp;
-}
-
-async function fetchAllRows(
-  table: string,
-  columns: string,
-  orderColumn: string
-) {
-  const pageSize = 1000;
-
-  const rows: any[] = [];
-
-  let from = 0;
-
-  while (true) {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from(table)
-      .select(columns)
-      .order(orderColumn, {
-        ascending: false,
-      })
-      .range(
-        from,
-        from + pageSize - 1
-      );
-
-    if (error) {
-      console.error(
-        `[AdminDashboardService] ${table}:`,
-        error
-      );
-
-      throw error;
-    }
-
-    const page =
-      data || [];
-
-    rows.push(...page);
-
-    if (
-      page.length < pageSize
-    ) {
-      break;
-    }
-
-    from += pageSize;
-  }
-
-  return rows;
-}
-
 export async function getAdminDashboardData():
 Promise<AdminDashboardData> {
   const [
@@ -318,7 +223,7 @@ Promise<AdminDashboardData> {
   const activeSubscriptions =
     subscriptions.filter(
       (subscription) =>
-        isActiveSubscription(
+        isActiveSubscriptionStatus(
           subscription.status
         )
     );

@@ -1,9 +1,19 @@
-import { supabase } from '../lib/supabase';
+import {
+  fetchAllRows,
+  getMonthKey,
+  getValidDate,
+  isActiveSubscriptionStatus,
+  isApprovedStatus,
+  isCurrentMonth,
+  MONTH_LABELS,
+  normalizePlan,
+} from '../lib/adminFinance';
 
-export type ReportPlanSlug =
-  | 'free'
-  | 'pro'
-  | 'premium';
+import type {
+  AdminPlanSlug,
+} from '../lib/adminFinance';
+
+export type ReportPlanSlug = AdminPlanSlug;
 
 export interface AdminReportMonth {
   key: string;
@@ -154,54 +164,6 @@ interface PlatformPaymentRow {
   created_at: string | null;
 }
 
-const MONTH_LABELS = [
-  'Jan',
-  'Fev',
-  'Mar',
-  'Abr',
-  'Mai',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Set',
-  'Out',
-  'Nov',
-  'Dez',
-];
-
-function normalizePlan(
-  value: unknown
-): ReportPlanSlug {
-  const normalized =
-    String(value || 'free')
-      .trim()
-      .toLowerCase();
-
-  if (normalized === 'premium') {
-    return 'premium';
-  }
-
-  if (normalized === 'pro') {
-    return 'pro';
-  }
-
-  return 'free';
-}
-
-function isActiveSubscription(
-  status: unknown
-) {
-  return [
-    'active',
-    'trialing',
-    'authorized',
-  ].includes(
-    String(status || '')
-      .trim()
-      .toLowerCase()
-  );
-}
-
 function isCompletedWorkout(
   workout: WorkoutLogRow
 ) {
@@ -219,56 +181,9 @@ function isApprovedProductionPayment(
 ) {
   return (
     payment.live_mode === true &&
-    String(payment.status || '')
-      .trim()
-      .toLowerCase() ===
-      'approved'
-  );
-}
-
-function getMonthKey(
-  date: Date
-) {
-  return `${date.getFullYear()}-${String(
-    date.getMonth() + 1
-  ).padStart(2, '0')}`;
-}
-
-function getValidDate(
-  value: string | null
-) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  if (
-    Number.isNaN(date.getTime())
-  ) {
-    return null;
-  }
-
-  return date;
-}
-
-function isCurrentMonth(
-  value: string | null
-) {
-  const date =
-    getValidDate(value);
-
-  if (!date) {
-    return false;
-  }
-
-  const now = new Date();
-
-  return (
-    date.getFullYear() ===
-      now.getFullYear() &&
-    date.getMonth() ===
-      now.getMonth()
+    isApprovedStatus(
+      payment.status
+    )
   );
 }
 
@@ -317,58 +232,6 @@ function buildMonths(
   );
 }
 
-async function fetchAllRows(
-  table: string,
-  columns: string,
-  orderColumn = 'created_at'
-) {
-  const pageSize = 1000;
-
-  const rows: any[] = [];
-
-  let from = 0;
-
-  while (true) {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from(table)
-      .select(columns)
-      .order(orderColumn, {
-        ascending: true,
-      })
-      .range(
-        from,
-        from + pageSize - 1
-      );
-
-    if (error) {
-      console.error(
-        `[AdminReportsService] ${table}:`,
-        error
-      );
-
-      throw error;
-    }
-
-    const page =
-      data || [];
-
-    rows.push(...page);
-
-    if (
-      page.length < pageSize
-    ) {
-      break;
-    }
-
-    from += pageSize;
-  }
-
-  return rows;
-}
-
 export async function getAdminReportsData():
 Promise<AdminReportsData> {
   const [
@@ -388,7 +251,9 @@ Promise<AdminReportsData> {
         cref,
         cref_status,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
 
     fetchAllRows(
@@ -398,7 +263,9 @@ Promise<AdminReportsData> {
         trainer_id,
         status,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
 
     fetchAllRows(
@@ -409,7 +276,9 @@ Promise<AdminReportsData> {
         plan_slug,
         status,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
 
     fetchAllRows(
@@ -419,7 +288,9 @@ Promise<AdminReportsData> {
         trainer_id,
         status,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
 
     fetchAllRows(
@@ -431,7 +302,9 @@ Promise<AdminReportsData> {
         status,
         completed_at,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
 
     fetchAllRows(
@@ -444,7 +317,9 @@ Promise<AdminReportsData> {
         live_mode,
         date_approved,
         created_at
-      `
+      `,
+      'created_at',
+      true
     ),
   ]);
 
@@ -587,7 +462,7 @@ Promise<AdminReportsData> {
   const activeSubscriptions =
     subscriptions.filter(
       (subscription) =>
-        isActiveSubscription(
+        isActiveSubscriptionStatus(
           subscription.status
         )
     );
