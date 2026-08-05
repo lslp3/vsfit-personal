@@ -1852,6 +1852,41 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                             )
                           : 'Não definido'}
                       </p>
+
+                      {(payment.invoice_number ||
+                        payment.issue_date ||
+                        payment.reference_month) && (
+                        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                          {payment.invoice_number && (
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="h-3.5 w-3.5" />
+                              {payment.invoice_number}
+                            </span>
+                          )}
+
+                          {payment.issue_date && (
+                            <span>
+                              Emissão:{' '}
+                              {formatDate(
+                                payment.issue_date
+                              )}
+                            </span>
+                          )}
+
+                          {payment.reference_month && (
+                            <span>
+                              Competência:{' '}
+                              {payment.reference_month}
+                            </span>
+                          )}
+                        </p>
+                      )}
+
+                      {payment.notes && (
+                        <p className="mt-2 text-[11px] text-zinc-500">
+                          Obs.: {payment.notes}
+                        </p>
+                      )}
                     </article>
                   )
                 )}

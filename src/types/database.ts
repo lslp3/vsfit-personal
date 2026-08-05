@@ -312,6 +312,18 @@ export interface Payment {
   pix_key: string | null;
   pix_code: string | null;
   receipt_url: string | null;
+  /** Sprint 15 Fase 4 — Faturas: número da cobrança/fatura (ex. FAT-2026-0001). */
+  invoice_number?: string | null;
+  /** Sprint 15 Fase 4 — data de emissão da cobrança/fatura. */
+  issue_date?: string | null;
+  /** Sprint 15 Fase 4 — competência (mês de referência, ex.: 2026-08, formato YYYY-MM). */
+  reference_month?: string | null;
+  /** Sprint 15 Fase 4 — observações da cobrança/fatura. */
+  notes?: string | null;
+  /** Sprint 15 Fase 4 — metadados extras (jsonb). */
+  metadata?: unknown | null;
+  /** Sprint 15 Fase 4 — moeda (padrão BRL). */
+  currency?: string | null;
   created_at: string;
   updated_at: string;
 }

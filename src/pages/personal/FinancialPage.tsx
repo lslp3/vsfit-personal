@@ -14,6 +14,7 @@ import {
   X,
   KeyRound,
   Search,
+  FileText,
 } from 'lucide-react';
 
 import { Header } from '../../components/ui/Header';
@@ -594,6 +595,13 @@ export function FinancialPage() {
                               <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <Badge status={payment.status} />
 
+                                {payment.invoice_number && (
+                                  <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-400">
+                                    <FileText className="h-3 w-3" />
+                                    {payment.invoice_number}
+                                  </span>
+                                )}
+
                                 {payment.due_date && (
                                   <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-400">
                                     <Calendar className="h-3 w-3" />
@@ -605,6 +613,20 @@ export function FinancialPage() {
                                   Pix
                                 </span>
                               </div>
+
+                              {(payment.reference_month ||
+                                payment.issue_date) && (
+                                <p className="mt-2 text-[11px] text-zinc-500">
+                                  {payment.reference_month &&
+                                    `Competência: ${payment.reference_month}`}
+                                  {payment.reference_month &&
+                                    payment.issue_date && ' · '}
+                                  {payment.issue_date &&
+                                    `Emissão: ${formatDate(
+                                      payment.issue_date
+                                    )}`}
+                                </p>
+                              )}
 
                               {payment.description && (
                                 <p className="mt-2 truncate text-[12px] text-zinc-500">

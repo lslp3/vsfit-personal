@@ -5,6 +5,8 @@ export interface CreatePaymentData {
   due_date?: string;
   description?: string;
   method?: string;
+  /** Sprint 15 Fase 4 — observações da cobrança/fatura. */
+  notes?: string;
 }
 
 export interface PaymentSummary {

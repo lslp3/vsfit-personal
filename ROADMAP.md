@@ -182,21 +182,33 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
   - Sem alterações de layout, UX, design, funcionalidades novas, fluxo do
     Personal, PIX, Mercado Pago, Edge Functions, banco/migrations/RLS ou regras
     de negócio já homologadas.
-- **Fase 3 — Cobrança completa (planejamento técnico + auditoria):**
-  - Objetivo: adicionar controle financeiro individual por aluno, status de
-    cobrança e tratamento de cobranças vencidas para o Personal.
+- **Fase 3 — Cobrança completa (concluída — commit `3aba81f`, aguardando
+  homologação da E3 no Preview):**
+  - Regra pura em `src/lib/studentBilling.ts` (buildStudentBillingSummary +
+    getOverduePayments + getOverdueStudents — inadimplência derivada por
+    due_date, nunca pelo status 'overdue' que não é persistido).
+  - Perfil do aluno: resumo financeiro na aba Financeiro (situação, valor
+    pendente, próximo vencimento, último pagamento).
+  - Dashboard: card de alunos inadimplentes (corrigido — dependia de status
+    'overdue' nunca gravado e nunca aparecia).
+  - 26/26 cenários do script de verificação; tsc e build exit 0.
+- **Fase 4 — Faturas (Invoices) (planejamento técnico + auditoria):**
+  - Objetivo: gerenciamento formal de faturas vinculadas às cobranças dos
+    alunos — criação de faturas, status da fatura, histórico, vínculo com
+    aluno e pagamento, preparação para o financeiro do aluno.
   - Escopo previsto:
-    1. Perfil do aluno — status financeiro atual, próximo vencimento, último
-       pagamento, valor da mensalidade, histórico de pagamentos.
-    2. Cobranças vencidas — identificar alunos inadimplentes, mostrar dias em
-       atraso, mostrar valor pendente; ações futuras (enviar cobrança,
-       registrar pagamento, consultar histórico).
-    3. Preparação para a futura Central de Alunos Premium — indicadores
-       financeiros no card do aluno, status de pagamento, alertas de
-       vencimento.
-  - Fora do escopo: faturas completas (Sprint 15 Fase 4); financeiro do aluno
-    (Sprint 15 Fase 5); alteração geral da UX da lista de alunos; mudanças no
-    fluxo PIX/Mercado Pago sem necessidade.
+    1. Criação de faturas (formalização da cobrança em fatura).
+    2. Status da fatura (em aberto, paga, vencida, cancelada).
+    3. Histórico de faturas por aluno.
+    4. Vínculo com aluno e com o pagamento correspondente.
+    5. Preparação para a Fase 5 (tela financeira do aluno).
+  - Fora do escopo: tela financeira do aluno (Fase 5); automações de
+    cobrança; alterações no PIX/Mercado Pago sem necessidade; Central de
+    Alunos Premium (Sprint 16).
+  - Decisão pendente de homologação: nova tabela `invoices` (com migration
+    manual) vs. evolução do `payments` — ver relatório de auditoria.
+- **Fase 5 — Financeiro do aluno (planejada):**
+  - Fora do escopo das Fases 3 e 4; será aberta após a Fase 4.
 - Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
   renumerada após o Analytics ser antecipado e executado como Sprint 14.
 

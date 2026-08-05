@@ -22,6 +22,46 @@ type CreatePaymentWithPixData = CreatePaymentData & {
   method?: string | null;
 };
 
+/** Retorna "YYYY-MM" a partir de uma data (fallback: mês atual). */
+export function monthKey(date?: string | null): string {
+  const d = date ? new Date(date) : new Date();
+  if (Number.isNaN(d.getTime())) return monthKey(); // fallback se inválido
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+/** Gera o próximo invoice_number sequencial por trainer no mês (FAT-YYYYMM-XXXX). */
+async function nextInvoiceNumber(
+  trainerId: string,
+  refMonth: string
+): Promise<string> {
+  const prefix = `FAT-${refMonth.replace('-', '')}`;
+  let next = 1;
+
+  try {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('invoice_number')
+      .eq('trainer_id', trainerId)
+      .like('invoice_number', `${prefix}-%`);
+
+    if (!error && Array.isArray(data)) {
+      const seqs = (data as { invoice_number: string | null }[])
+        .filter((row) => row.invoice_number)
+        .map((row) => {
+          const num = Number(String(row.invoice_number).replace(`${prefix}-`, ''));
+          return Number.isFinite(num) ? num : 0;
+        });
+      next = (seqs.length ? Math.max(...seqs) : 0) + 1;
+    }
+  } catch (err) {
+    console.error('[PaymentService] generateInvoiceNumber error:', err);
+  }
+
+  return `${prefix}-${String(next).padStart(4, '0')}`;
+}
+
 function onlyNumbers(value: string) {
   return String(value || '').replace(/\D/g, '');
 }
@@ -261,6 +301,9 @@ export async function getPaymentsByStudent(studentId: string): Promise<Payment[]
 }
 
 export async function createPayment(trainerId: string, data: CreatePaymentWithPixData) {
+  const refMonth = monthKey(data.due_date || undefined);
+  const invoiceNumber = await nextInvoiceNumber(trainerId, refMonth);
+
   const { data: payment, error } = await supabase
     .from('payments')
     .insert({
@@ -270,10 +313,16 @@ export async function createPayment(trainerId: string, data: CreatePaymentWithPi
       amount: data.amount,
       due_date: data.due_date || null,
       description: data.description || null,
+      notes: data.notes || null,
       method: data.method || 'pix',
       pix_key: data.pix_key || null,
       pix_code: data.pix_code || null,
       status: 'pending',
+      // Sprint 15 Fase 4 — Faturas: preenchimento automático
+      invoice_number: invoiceNumber,
+      issue_date: new Date().toISOString().slice(0, 10),
+      reference_month: refMonth,
+      currency: 'BRL',
     })
     .select()
     .single();
