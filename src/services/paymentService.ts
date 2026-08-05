@@ -308,29 +308,3 @@ export async function deletePayment(id: string) {
 
   if (error) throw error;
 }
-
-export async function getPaymentSummary(trainerId: string) {
-  const payments = await getPaymentsByTrainer(trainerId);
-
-  return {
-    total: payments.reduce((sum, payment) => sum + payment.amount, 0),
-    paid: payments
-      .filter((payment) => payment.status === 'paid')
-      .reduce((sum, payment) => sum + payment.amount, 0),
-    pending: payments
-      .filter((payment) => payment.status === 'pending')
-      .reduce((sum, payment) => sum + payment.amount, 0),
-    overdue: payments
-      .filter((payment) => payment.status === 'overdue')
-      .reduce((sum, payment) => sum + payment.amount, 0),
-    cancellationRate: 0,
-  };
-}
-
-export function getStudentPhoneFromList(students: any[], studentId?: string | null) {
-  if (!studentId) return '';
-
-  const student = students.find((item) => item.id === studentId);
-
-  return onlyNumbers(student?.phone || '');
-}

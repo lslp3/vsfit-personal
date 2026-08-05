@@ -259,10 +259,6 @@ export async function createCheckoutSession(planSlug: 'pro' | 'premium') {
   }
 }
 
-export async function refreshSubscription(trainerId: string): Promise<Subscription | null> {
-  return await getCurrentSubscription(trainerId);
-}
-
 export async function canCreateStudent(
   trainerId: string,
   currentStudentCount: number

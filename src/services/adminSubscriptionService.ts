@@ -1,20 +1,19 @@
 import { supabase } from '../lib/supabase';
 
 import {
+  buildAdminFinancialSummary,
   isActiveSubscriptionStatus,
   isApprovedStatus,
-  isCurrentMonth,
-  isFailedStatus,
-  isPendingStatus,
-  isRefundedStatus,
   normalizePlan,
 } from '../lib/adminFinance';
 
 import type {
+  AdminFinancialSummary,
   AdminPlanSlug,
 } from '../lib/adminFinance';
 
 export type {
+  AdminFinancialSummary,
   AdminPlanSlug,
 } from '../lib/adminFinance';
 
@@ -121,20 +120,6 @@ export interface AdminSubscriptionSummary {
   withBillingPeriod: number;
   withConfirmedPayment: number;
   legacyPaid: number;
-}
-
-export interface AdminFinancialSummary {
-  totalPayments: number;
-
-  approvedPayments: number;
-  pendingPayments: number;
-  failedPayments: number;
-  refundedPayments: number;
-
-  totalConfirmedRevenue: number;
-  currentMonthConfirmedRevenue: number;
-
-  latestApprovedAt: string | null;
 }
 
 export interface AdminWebhookSummary {
@@ -776,70 +761,10 @@ Promise<AdminSubscriptionsData> {
       ).length,
   };
 
-  const approvedPayments =
-    payments.filter((payment) =>
-      isApprovedStatus(
-        payment.status
-      )
+  const financialSummary =
+    buildAdminFinancialSummary(
+      payments
     );
-
-  const financialSummary:
-    AdminFinancialSummary = {
-    totalPayments:
-      payments.length,
-
-    approvedPayments:
-      approvedPayments.length,
-
-    pendingPayments:
-      payments.filter((payment) =>
-        isPendingStatus(
-          payment.status
-        )
-      ).length,
-
-    failedPayments:
-      payments.filter((payment) =>
-        isFailedStatus(
-          payment.status
-        )
-      ).length,
-
-    refundedPayments:
-      payments.filter((payment) =>
-        isRefundedStatus(
-          payment.status
-        )
-      ).length,
-
-    totalConfirmedRevenue:
-      approvedPayments.reduce(
-        (total, payment) =>
-          total + payment.amount,
-        0
-      ),
-
-    currentMonthConfirmedRevenue:
-      approvedPayments
-        .filter((payment) =>
-          isCurrentMonth(
-            payment.date_approved ||
-            payment.created_at
-          )
-        )
-        .reduce(
-          (total, payment) =>
-            total + payment.amount,
-          0
-        ),
-
-    latestApprovedAt:
-      approvedPayments[0]
-        ?.date_approved ||
-      approvedPayments[0]
-        ?.created_at ||
-      null,
-  };
 
   const webhooks =
     (

@@ -149,14 +149,13 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - **Não realizar alterações nesta Sprint, exceto HOTFIX** — preservando esta
   entrega como fechada. Detalhes em `SPRINT-14.md`.
 
-## Sprint 15 — Financeiro do Personal 🟢 (FASE 1 CONCLUÍDA)
+## Sprint 15 — Financeiro do Personal 🟢🔄 (EM ANDAMENTO — FASE 2)
 
-- Status: 🟢 **Fase 1 concluída — refatoração e padronização do financeiro.**
-  Aguardando homologação no Preview antes da Fase 2.
-- **Congelada para novas alterações até homologação da Fase 1.**
+- Status: 🟢🔄 **Fase 1 concluída e homologada** (2026-08-05, "sem
+  regressões"). **Fase 2 em andamento.**
 - Branch: `test/sprint-15-financeiro`
 - Origem: `sprint-14-analytics-dashboard` (Sprint 14 finalizada)
-- **Fase 1 — Refatoração e Padronização (concluída):**
+- **Fase 1 — Refatoração e Padronização (concluída e homologada):**
   - Camada reutilizável criada em `src/lib/adminFinance.ts`: `fetchAllRows`
     (paginação parametrizada), `normalizePlan`/`normalizeStatus`,
     `isApprovedStatus`/`isPendingStatus`/`isFailedStatus`/`isRefundedStatus`/
@@ -164,27 +163,50 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
     `getTimestamp`/`getMonthKey`/`getValidDate`/`isCurrentMonth`/`isSameMonth`,
     `MONTH_LABELS`, `getPlanLabel`/`getPlanClass`, tipos `AdminPlanSlug` e
     `AdminFinancialEnvironment`.
-  - Duplicação eliminada nos 4 serviços admin (`adminFinancialService`,
+  - Duplicação eliminada nos **4 serviços administrativos** (`adminFinancialService`,
     `adminSubscriptionService`, `adminDashboardService`, `adminReportsService`)
     — helpers locais removidos em favor da camada, sem alteração de regras de
     negócio, UX, telas, layout, gráficos, APIs, banco, RLS, Mercado Pago ou PIX.
   - Código morto removido da camada e dos serviços (helpers sem consumidores).
   - `npx tsc --noEmit` ✅ exit 0 · `npm run build` ✅ exit 0.
-- **Fase 2 (não iniciada — aguarda homologação):** auditoria e evolução da
-  parte financeira do Personal Trainer (tabelas financeiras, fluxo de cobrança,
-  integração Mercado Pago, PIX, status/histórico, dashboard financeiro,
-  melhorias para produção).
+  - Commit único da Fase: `9bf91d0`.
+- **Fase 2 — Unificação e estabilização do resumo financeiro (em andamento):**
+  - Unificar definitivamente o `AdminFinancialSummary` com **uma única regra de
+    negócio** (produção + pagamentos aprovados) compartilhada entre Admin
+    Financial e Admin Subscriptions, eliminando a divergência de cálculo entre
+    as telas.
+  - Centralizar helpers duplicados restantes do módulo financeiro admin.
+  - Remover apenas código morto do módulo financeiro admin identificado na
+    auditoria.
+  - Sem alterações de layout, UX, design, funcionalidades novas, fluxo do
+    Personal, PIX, Mercado Pago, Edge Functions, banco/migrations/RLS ou regras
+    de negócio já homologadas.
 - Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
   renumerada após o Analytics ser antecipado e executado como Sprint 14.
 
-## Sprint 16 — Desktop Version (PLANEJADA)
+## Sprint 16 — Central de Alunos Premium (PLANEJADA)
 
 - Status: 📋 **Planejada**
-- Escopo: versão desktop (responsividade ampliada / app desktop).
+- Escopo mínimo previsto:
+  - Dashboard/resumo dos alunos.
+  - Cards Premium com indicadores rápidos.
+  - Ações rápidas no card.
+  - Filtros inteligentes.
+  - Busca avançada.
+  - Ordenação.
+  - Seleção múltipla.
+  - Indicadores visuais.
+  - Melhorias de performance para listas grandes.
+  - Skeletons, animações e UX Premium.
+
+## Sprint 17 — Desktop Version (PLANEJADA)
+
+- Status: 📋 **Planejada**
+- Escopo: versão desktop (Responsividade ampliada / app desktop).
 
 ## AI para Personal (POSTERGADA)
 
-- Status: ⏸️ **Postergada para versão futura, após o Sprint 16.**
+- Status: ⏸️ **Postergada para versão futura, após o Sprint 17.**
 
 ---
 

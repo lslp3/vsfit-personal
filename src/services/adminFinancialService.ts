@@ -1,15 +1,12 @@
 import { supabase } from '../lib/supabase';
 
 import {
+  buildAdminFinancialSummary,
   fetchAllRows,
   getPaymentDate,
   getPaymentEnvironment,
   getTimestamp,
   isApprovedStatus,
-  isFailedStatus,
-  isPendingStatus,
-  isRefundedStatus,
-  isSameMonth,
   normalizePlan,
   normalizeStatus,
   MONTH_LABELS,
@@ -19,10 +16,15 @@ import type {
   AdminPlanSlug,
 } from './adminSubscriptionService';
 
-export type AdminFinancialEnvironment =
-  | 'production'
-  | 'test'
-  | 'unknown';
+import type {
+  AdminFinancialEnvironment,
+  AdminFinancialSummary,
+} from '../lib/adminFinance';
+
+export type {
+  AdminFinancialEnvironment,
+  AdminFinancialSummary,
+} from '../lib/adminFinance';
 
 export interface AdminFinancialPayment {
   id: string;
@@ -67,27 +69,6 @@ export interface AdminMonthlyRevenuePoint {
   label: string;
   revenue: number;
   payments: number;
-}
-
-export interface AdminFinancialSummary {
-  totalConfirmedRevenue: number;
-  currentMonthRevenue: number;
-  previousMonthRevenue: number;
-  monthlyVariationPercent: number | null;
-
-  averageTicket: number;
-
-  totalTransactions: number;
-  productionTransactions: number;
-  approvedProductionPayments: number;
-  pendingProductionPayments: number;
-  failedProductionPayments: number;
-  refundedProductionPayments: number;
-
-  testTransactions: number;
-  unknownEnvironmentTransactions: number;
-
-  latestApprovedAt: string | null;
 }
 
 export interface AdminFinancialIntegrationSummary {
@@ -595,136 +576,10 @@ Promise<AdminFinancialData> {
       )
   );
 
-  const productionPayments =
-    payments.filter(
-      (payment) =>
-        payment.environment ===
-        'production'
+  const summary =
+    buildAdminFinancialSummary(
+      payments
     );
-
-  const approvedProduction =
-    productionPayments.filter(
-      (payment) =>
-        isApprovedStatus(payment.status)
-    );
-
-  const now = new Date();
-
-  const previousMonth =
-    new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      1
-    );
-
-  const totalConfirmedRevenue =
-    approvedProduction.reduce(
-      (total, payment) =>
-        total + payment.amount,
-      0
-    );
-
-  const currentMonthRevenue =
-    approvedProduction
-      .filter((payment) =>
-        isSameMonth(
-          getPaymentDate(payment),
-          now
-        )
-      )
-      .reduce(
-        (total, payment) =>
-          total + payment.amount,
-        0
-      );
-
-  const previousMonthRevenue =
-    approvedProduction
-      .filter((payment) =>
-        isSameMonth(
-          getPaymentDate(payment),
-          previousMonth
-        )
-      )
-      .reduce(
-        (total, payment) =>
-          total + payment.amount,
-        0
-      );
-
-  const monthlyVariationPercent =
-    previousMonthRevenue > 0
-      ? (
-          (
-            currentMonthRevenue -
-            previousMonthRevenue
-          ) /
-          previousMonthRevenue
-        ) * 100
-      : null;
-
-  const summary:
-    AdminFinancialSummary = {
-    totalConfirmedRevenue,
-
-    currentMonthRevenue,
-    previousMonthRevenue,
-    monthlyVariationPercent,
-
-    averageTicket:
-      approvedProduction.length > 0
-        ? totalConfirmedRevenue /
-          approvedProduction.length
-        : 0,
-
-    totalTransactions:
-      payments.length,
-
-    productionTransactions:
-      productionPayments.length,
-
-    approvedProductionPayments:
-      approvedProduction.length,
-
-    pendingProductionPayments:
-      productionPayments.filter(
-        (payment) =>
-          isPendingStatus(payment.status)
-      ).length,
-
-    failedProductionPayments:
-      productionPayments.filter(
-        (payment) =>
-          isFailedStatus(payment.status)
-      ).length,
-
-    refundedProductionPayments:
-      productionPayments.filter(
-        (payment) =>
-          isRefundedStatus(payment.status)
-      ).length,
-
-    testTransactions:
-      payments.filter(
-        (payment) =>
-          payment.environment ===
-          'test'
-      ).length,
-
-    unknownEnvironmentTransactions:
-      payments.filter(
-        (payment) =>
-          payment.environment ===
-          'unknown'
-      ).length,
-
-    latestApprovedAt:
-      approvedProduction[0]
-        ? getPaymentDate(
-            approvedProduction[0]
-          )
-        : null,
-  };
 
   const latestWebhook =
     latestWebhookResult.data?.[0];

@@ -66,13 +66,19 @@ AdminSubscriptionSummary = {
 
 const emptyFinancialSummary:
 AdminFinancialSummary = {
-  totalPayments: 0,
-  approvedPayments: 0,
-  pendingPayments: 0,
-  failedPayments: 0,
-  refundedPayments: 0,
   totalConfirmedRevenue: 0,
-  currentMonthConfirmedRevenue: 0,
+  currentMonthRevenue: 0,
+  previousMonthRevenue: 0,
+  monthlyVariationPercent: null,
+  averageTicket: 0,
+  totalTransactions: 0,
+  productionTransactions: 0,
+  approvedProductionPayments: 0,
+  pendingProductionPayments: 0,
+  failedProductionPayments: 0,
+  refundedProductionPayments: 0,
+  testTransactions: 0,
+  unknownEnvironmentTransactions: 0,
   latestApprovedAt: null,
 };
 
@@ -573,7 +579,7 @@ export function AdminSubscriptionsPage() {
             <p className="mt-4 text-xl font-black text-white md:text-2xl">
               {formatCurrency(
                 financialSummary
-                  .currentMonthConfirmedRevenue
+                  .currentMonthRevenue
               )}
             </p>
 
@@ -588,7 +594,7 @@ export function AdminSubscriptionsPage() {
             <p className="mt-4 text-2xl font-black text-white">
               {
                 financialSummary
-                  .approvedPayments
+                  .approvedProductionPayments
               }
             </p>
 
@@ -603,7 +609,7 @@ export function AdminSubscriptionsPage() {
             <p className="mt-4 text-2xl font-black text-white">
               {
                 financialSummary
-                  .pendingPayments
+                  .pendingProductionPayments
               }
             </p>
 
@@ -659,10 +665,10 @@ export function AdminSubscriptionsPage() {
                 <p className="mt-1 text-xs text-zinc-500">
                   {
                     financialSummary
-                      .totalPayments
+                      .totalTransactions
                   }{' '}
                   {financialSummary
-                    .totalPayments === 1
+                    .totalTransactions === 1
                     ? 'pagamento registrado'
                     : 'pagamentos registrados'}
                 </p>
@@ -672,7 +678,7 @@ export function AdminSubscriptionsPage() {
                   <strong className="text-red-300">
                     {
                       financialSummary
-                        .failedPayments
+                        .failedProductionPayments
                     }
                   </strong>
                 </p>
@@ -682,7 +688,7 @@ export function AdminSubscriptionsPage() {
                   <strong className="text-blue-300">
                     {
                       financialSummary
-                        .refundedPayments
+                        .refundedProductionPayments
                     }
                   </strong>
                 </p>

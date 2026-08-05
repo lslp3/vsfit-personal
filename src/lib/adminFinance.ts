@@ -335,3 +335,189 @@ export function getPlanClass(
 
   return 'border-zinc-400/20 bg-zinc-400/10 text-zinc-400';
 }
+
+/**
+ * Sprint 15 — Fase 2 — Resumo financeiro administrativo único.
+ *
+ * Antes, Admin Financial e Admin Subscriptions calculavam resumos
+ * financeiros com regras divergentes (o Financial filtrava por ambiente
+ * produção; o Subscriptions contava pagamentos aprovados de TODOS os
+ * ambientes). A regra única passa a ser:
+ *
+ *   produção + pagamentos aprovados
+ *
+ * compartilhada por AMBAS as telas, sem alterar layout/UX.
+ */
+export interface AdminFinancePaymentInput {
+  live_mode: boolean | null;
+  status: string;
+  amount: number;
+
+  date_approved?: string | null;
+  date_updated?: string | null;
+  date_created?: string | null;
+  created_at?: string | null;
+}
+
+export interface AdminFinancialSummary {
+  totalConfirmedRevenue: number;
+
+  currentMonthRevenue: number;
+  previousMonthRevenue: number;
+  monthlyVariationPercent: number | null;
+
+  averageTicket: number;
+
+  totalTransactions: number;
+  productionTransactions: number;
+  approvedProductionPayments: number;
+  pendingProductionPayments: number;
+  failedProductionPayments: number;
+  refundedProductionPayments: number;
+
+  testTransactions: number;
+  unknownEnvironmentTransactions: number;
+
+  latestApprovedAt: string | null;
+}
+
+export function buildAdminFinancialSummary(
+  payments: AdminFinancePaymentInput[]
+): AdminFinancialSummary {
+  const productionPayments =
+    payments.filter((payment) =>
+      getPaymentEnvironment(payment.live_mode) ===
+      'production'
+    );
+
+  const approvedProduction =
+    productionPayments.filter((payment) =>
+      isApprovedStatus(payment.status)
+    );
+
+  const now = new Date();
+
+  const previousMonth =
+    new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1
+    );
+
+  const totalConfirmedRevenue =
+    approvedProduction.reduce(
+      (total, payment) =>
+        total + payment.amount,
+      0
+    );
+
+  const currentMonthRevenue =
+    approvedProduction
+      .filter((payment) =>
+        isSameMonth(
+          getPaymentDate(payment),
+          now
+        )
+      )
+      .reduce(
+        (total, payment) =>
+          total + payment.amount,
+        0
+      );
+
+  const previousMonthRevenue =
+    approvedProduction
+      .filter((payment) =>
+        isSameMonth(
+          getPaymentDate(payment),
+          previousMonth
+        )
+      )
+      .reduce(
+        (total, payment) =>
+          total + payment.amount,
+        0
+      );
+
+  const monthlyVariationPercent =
+    previousMonthRevenue > 0
+      ? (
+          (
+            currentMonthRevenue -
+            previousMonthRevenue
+          ) /
+          previousMonthRevenue
+        ) * 100
+      : null;
+
+  const latestApproved =
+    approvedProduction
+      .map((payment) =>
+        getPaymentDate(payment)
+      )
+      .filter(
+        (value): value is string =>
+          Boolean(value)
+      )
+      .sort((first, second) =>
+        getTimestamp(second) -
+        getTimestamp(first)
+      )[0] || null;
+
+  return {
+    totalConfirmedRevenue,
+
+    currentMonthRevenue,
+    previousMonthRevenue,
+    monthlyVariationPercent,
+
+    averageTicket:
+      approvedProduction.length > 0
+        ? totalConfirmedRevenue /
+          approvedProduction.length
+        : 0,
+
+    totalTransactions:
+      payments.length,
+
+    productionTransactions:
+      productionPayments.length,
+
+    approvedProductionPayments:
+      approvedProduction.length,
+
+    pendingProductionPayments:
+      productionPayments.filter(
+        (payment) =>
+          isPendingStatus(payment.status)
+      ).length,
+
+    failedProductionPayments:
+      productionPayments.filter(
+        (payment) =>
+          isFailedStatus(payment.status)
+      ).length,
+
+    refundedProductionPayments:
+      productionPayments.filter(
+        (payment) =>
+          isRefundedStatus(payment.status)
+      ).length,
+
+    testTransactions:
+      payments.filter(
+        (payment) =>
+          getPaymentEnvironment(payment.live_mode) ===
+          'test'
+      ).length,
+
+    unknownEnvironmentTransactions:
+      payments.filter(
+        (payment) =>
+          getPaymentEnvironment(payment.live_mode) ===
+          'unknown'
+      ).length,
+
+    latestApprovedAt: latestApproved,
+  };
+}
