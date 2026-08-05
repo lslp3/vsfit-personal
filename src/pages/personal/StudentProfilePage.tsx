@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ElementType,
 } from 'react';
@@ -54,6 +55,11 @@ import {
   formatDateTime,
   formatPhone,
 } from '../../lib/formatters';
+
+import {
+  buildStudentBillingSummary,
+  type StudentBillingSummary,
+} from '../../lib/studentBilling';
 
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
@@ -414,6 +420,12 @@ export function StudentProfilePage() {
 
   const [payments, setPayments] =
     useState<Payment[]>([]);
+
+  const billingSummary: StudentBillingSummary =
+    useMemo(
+      () => buildStudentBillingSummary(payments),
+      [payments]
+    );
 
   const [messages, setMessages] =
     useState<Message[]>([]);
@@ -1704,6 +1716,98 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                 NOVO
               </button>
             </div>
+
+            <section
+              aria-label="Resumo financeiro"
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="col-span-2 rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase text-zinc-500">
+                    Situação financeira
+                  </p>
+
+                  <span
+                    className={cn(
+                      'rounded-full border px-2.5 py-0.5 text-xs font-medium',
+                      billingSummary.status ===
+                        'inadimplente'
+                        ? 'border-red-400/30 bg-red-400/10 text-red-400'
+                        : billingSummary.status ===
+                            'em_dia'
+                          ? 'border-green-400/30 bg-green-400/10 text-green-400'
+                          : 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
+                    )}
+                  >
+                    {billingSummary.status ===
+                      'inadimplente'
+                      ? 'Inadimplente'
+                      : billingSummary.status ===
+                          'em_dia'
+                        ? 'Em dia'
+                        : 'Sem cobranças'}
+                  </span>
+                </div>
+
+                {billingSummary.status ===
+                  'inadimplente' && (
+                  <p className="mt-2 text-sm text-red-400">
+                    {billingSummary.overdueDays}{' '}
+                    {billingSummary.overdueDays ===
+                    1
+                      ? 'dia em atraso'
+                      : 'dias em atraso'}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                <p className="text-[11px] font-black uppercase text-zinc-500">
+                  Valor pendente
+                </p>
+
+                <p className="mt-1 text-xl font-black">
+                  {formatCurrency(
+                    billingSummary.pendingAmount
+                  )}
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                <p className="text-[11px] font-black uppercase text-zinc-500">
+                  Próximo vencimento
+                </p>
+
+                <p className="mt-1 text-xl font-black">
+                  {billingSummary.nextDueDate
+                    ? formatDate(
+                        billingSummary.nextDueDate
+                      )
+                    : '—'}
+                </p>
+              </div>
+
+              <div className="col-span-2 rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                <p className="text-[11px] font-black uppercase text-zinc-500">
+                  Último pagamento
+                </p>
+
+                <p className="mt-1 text-xl font-black">
+                  {billingSummary.lastPaymentAmount !==
+                  null
+                    ? `${formatCurrency(
+                        billingSummary.lastPaymentAmount
+                      )}${
+                        billingSummary.lastPaymentDate
+                          ? ` · ${formatDate(
+                              billingSummary.lastPaymentDate
+                            )}`
+                          : ''
+                      }`
+                    : '—'}
+                </p>
+              </div>
+            </section>
 
             {payments.length === 0 ? (
               <EmptyState

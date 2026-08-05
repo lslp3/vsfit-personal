@@ -20,6 +20,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { supabase } from '../../lib/supabase';
 import { getGreeting, getInitials } from '../../lib/utils';
 import { formatCurrency } from '../../lib/formatters';
+import { getOverdueStudents } from '../../lib/studentBilling';
 import * as studentService from '../../services/studentService';
 import * as workoutService from '../../services/workoutService';
 import * as paymentService from '../../services/paymentService';
@@ -151,7 +152,8 @@ export function DashboardPage() {
     const publishedWorkouts = workouts.filter((workout) => workout.status === 'published');
 
     const pendingPayments = payments.filter((payment) => payment.status === 'pending');
-    const overduePayments = payments.filter((payment) => payment.status === 'overdue');
+
+    const overdueStudents = getOverdueStudents(payments);
 
     const paidPayments = payments.filter((payment) => payment.status === 'paid');
 
@@ -171,13 +173,16 @@ export function DashboardPage() {
       .reduce((sum, payment) => sum + payment.amount, 0);
 
     const pendingAmount = pendingPayments.reduce((sum, payment) => sum + payment.amount, 0);
-    const overdueAmount = overduePayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const overdueAmount = overdueStudents.reduce(
+      (sum, student) => sum + student.overdueAmount,
+      0
+    );
 
     return {
       activeStudents,
       publishedWorkouts,
       pendingPayments,
-      overduePayments,
+      overdueStudents,
       totalRevenue,
       monthRevenue,
       pendingAmount,
@@ -371,7 +376,7 @@ export function DashboardPage() {
             ))}
           </motion.div>
 
-          {(dashboardData.overduePayments.length > 0 ||
+          {(dashboardData.overdueStudents.length > 0 ||
             dashboardData.pendingPayments.length > 0 ||
             unreadMessages > 0) && (
             <motion.div variants={item} className="space-y-3">
@@ -401,17 +406,17 @@ export function DashboardPage() {
                 </Card>
               )}
 
-              {dashboardData.overduePayments.length > 0 && (
+              {dashboardData.overdueStudents.length > 0 && (
                 <Card className="border-red-500/25 bg-red-500/5 p-4">
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
 
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-black text-red-400">
-                        {dashboardData.overduePayments.length}{' '}
-                        {dashboardData.overduePayments.length === 1
-                          ? 'pagamento atrasado'
-                          : 'pagamentos atrasados'}
+                        {dashboardData.overdueStudents.length}{' '}
+                        {dashboardData.overdueStudents.length === 1
+                          ? 'aluno inadimplente'
+                          : 'alunos inadimplentes'}
                       </p>
 
                       <p className="text-xs font-medium text-red-400/70">
@@ -426,6 +431,32 @@ export function DashboardPage() {
                     >
                       Ver
                     </button>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {dashboardData.overdueStudents.map((student) => (
+                      <div
+                        key={student.studentId}
+                        className="flex items-center justify-between gap-3 rounded-xl bg-red-500/5 p-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-bold text-red-200">
+                            {student.studentName}
+                          </p>
+
+                          <p className="text-[11px] font-medium text-red-400/70">
+                            {student.daysOverdue}{' '}
+                            {student.daysOverdue === 1
+                              ? 'dia em atraso'
+                              : 'dias em atraso'}
+                          </p>
+                        </div>
+
+                        <p className="shrink-0 text-xs font-black text-red-400">
+                          {formatCurrency(student.overdueAmount)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </Card>
               )}

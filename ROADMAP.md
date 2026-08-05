@@ -152,7 +152,8 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 ## Sprint 15 — Financeiro do Personal 🟢🔄 (EM ANDAMENTO — FASE 2)
 
 - Status: 🟢🔄 **Fase 1 concluída e homologada** (2026-08-05, "sem
-  regressões"). **Fase 2 em andamento.**
+  regressões"). **Fase 2 concluída** (commit `57b2f01`, aguardando
+  homologação). **Fase 3 em planejamento (auditoria).**
 - Branch: `test/sprint-15-financeiro`
 - Origem: `sprint-14-analytics-dashboard` (Sprint 14 finalizada)
 - **Fase 1 — Refatoração e Padronização (concluída e homologada):**
@@ -181,6 +182,21 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
   - Sem alterações de layout, UX, design, funcionalidades novas, fluxo do
     Personal, PIX, Mercado Pago, Edge Functions, banco/migrations/RLS ou regras
     de negócio já homologadas.
+- **Fase 3 — Cobrança completa (planejamento técnico + auditoria):**
+  - Objetivo: adicionar controle financeiro individual por aluno, status de
+    cobrança e tratamento de cobranças vencidas para o Personal.
+  - Escopo previsto:
+    1. Perfil do aluno — status financeiro atual, próximo vencimento, último
+       pagamento, valor da mensalidade, histórico de pagamentos.
+    2. Cobranças vencidas — identificar alunos inadimplentes, mostrar dias em
+       atraso, mostrar valor pendente; ações futuras (enviar cobrança,
+       registrar pagamento, consultar histórico).
+    3. Preparação para a futura Central de Alunos Premium — indicadores
+       financeiros no card do aluno, status de pagamento, alertas de
+       vencimento.
+  - Fora do escopo: faturas completas (Sprint 15 Fase 4); financeiro do aluno
+    (Sprint 15 Fase 5); alteração geral da UX da lista de alunos; mudanças no
+    fluxo PIX/Mercado Pago sem necessidade.
 - Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
   renumerada após o Analytics ser antecipado e executado como Sprint 14.
 
