@@ -1,13 +1,14 @@
 /**
- * AnalyticsPage — tela de Analytics do Personal (Sprint 14, Fase 3).
+ * AnalyticsPage — painel analítico do Personal (Sprint 14, Fase 4).
  *
- * Consome exclusivamente a camada de analytics existente:
- *  - useTrainerAnalytics (fetch + buildTrainerAnalytics);
- *  - AnalyticsSummary (tipos);
+ * Consome exclusivamente a camada de analytics:
+ *  - useTrainerAnalytics (fetch + buildTrainerAnalytics) com período ativo;
+ *  - AnalyticsSummary / KpiTrend / AnalyticsInsight (tipos);
  *  - componentes puros de src/components/dashboard/.
  *
  * Nenhum cálculo de analytics é duplicado aqui: a página apenas mapeia o
- * AnalyticsSummary para as props dos componentes.
+ * AnalyticsSummary para as props dos componentes. Toda regra de negócio
+ * (janelas, tendências, insights) vive em analyticsService/useTrainerAnalytics.
  */
 import {
   Users,
@@ -19,8 +20,9 @@ import {
   Timer,
   BarChart3,
   RefreshCw,
+  CalendarRange,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useTrainerAnalytics } from '../../hooks/useTrainerAnalytics';
 import { Header } from '../../components/ui/Header';
@@ -32,41 +34,85 @@ import { StudentStatusChart } from '../../components/dashboard/StudentStatusChar
 import { AdherenceChart } from '../../components/dashboard/AdherenceChart';
 import { VolumeProgressChart } from '../../components/dashboard/VolumeProgressChart';
 import { RiskStudentsCard } from '../../components/dashboard/RiskStudentsCard';
+import { InsightsCard } from '../../components/dashboard/InsightsCard';
 import { formatCurrency } from '../../lib/formatters';
-import type { AnalyticsSummary } from '../../types/analytics';
+import { cn } from '../../lib/utils';
+import type {
+  AnalyticsPeriod,
+  AnalyticsSummary,
+  KpiTrend,
+  TrainerAnalyticsOptions,
+} from '../../types/analytics';
+
+const PERIOD_OPTIONS: { value: AnalyticsPeriod; label: string }[] = [
+  { value: 'today', label: 'Hoje' },
+  { value: '7d', label: '7 dias' },
+  { value: '30d', label: '30 dias' },
+  { value: '90d', label: '90 dias' },
+  { value: 'year', label: 'Ano' },
+  { value: 'custom', label: 'Personalizado' },
+];
 
 function formatVolume(value: number): string {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return String(Math.round(value));
 }
 
-function revenueTrend(summary: AnalyticsSummary): {
+/** Converte KpiTrend (camada analytics) em trend/label do MetricCard. */
+function toMetricTrend(trend: KpiTrend): {
   trend: 'positive' | 'negative' | 'neutral';
   label: string;
 } {
-  const { revenueCurrentMonth, revenuePreviousMonth } = summary;
-
-  if (revenuePreviousMonth <= 0) {
-    if (revenueCurrentMonth > 0) return { trend: 'positive', label: 'vs mês anterior' };
+  if (trend.percent === null) {
+    if (trend.direction === 'up') return { trend: 'positive', label: 'Sem base anterior' };
+    if (trend.direction === 'down') return { trend: 'negative', label: 'Sem base anterior' };
     return { trend: 'neutral', label: 'Sem variação' };
   }
+  if (trend.direction === 'up') return { trend: 'positive', label: `${trend.label} vs período anterior` };
+  if (trend.direction === 'down') return { trend: 'negative', label: `${trend.label} vs período anterior` };
+  return { trend: 'neutral', label: `${trend.label} vs período anterior` };
+}
 
-  const delta = ((revenueCurrentMonth - revenuePreviousMonth) / revenuePreviousMonth) * 100;
-  const formatted = `${Math.abs(delta) >= 1 ? Math.round(Math.abs(delta)) : Math.abs(delta).toFixed(1)}%`;
-
-  if (delta > 0) return { trend: 'positive', label: `+${formatted} vs mês anterior` };
-  if (delta < 0) return { trend: 'negative', label: `−${formatted} vs mês anterior` };
-  return { trend: 'neutral', label: 'Estável vs mês anterior' };
+function summaryKpis(summary: AnalyticsSummary) {
+  return {
+    revenue: toMetricTrend(summary.revenueTrend),
+    workouts: toMetricTrend(summary.workoutTrend),
+    frequency: toMetricTrend(summary.frequencyTrend),
+    newStudents: toMetricTrend(summary.newStudentsTrend),
+    volume: toMetricTrend(summary.volumeTrendKpi),
+  };
 }
 
 export function AnalyticsPage() {
-  const { summary, loading, error, refresh } = useTrainerAnalytics();
+  const [period, setPeriod] = useState<AnalyticsPeriod>('30d');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Período customizado: o usuário escolhe datas inclusivas; a camada espera
+  // `end` exclusivo, então o dia seguinte é enviado.
+  const options = useMemo<TrainerAnalyticsOptions>(() => {
+    if (period !== 'custom') return { period };
+    if (customStart && customEnd) {
+      const endExclusive = new Date(`${customEnd}T23:59:59`);
+      endExclusive.setDate(endExclusive.getDate() + 1);
+      return {
+        period: 'custom',
+        customRange: {
+          start: customStart,
+          end: endExclusive.toISOString().slice(0, 10),
+        },
+      };
+    }
+    // Intervalo incompleto: mantém a janela padrão até o usuário aplicar.
+    return { period: '30d' };
+  }, [period, customStart, customEnd]);
+
+  const { summary, loading, error, refresh } = useTrainerAnalytics(options);
 
   async function handleRefresh() {
     setRefreshing(true);
     refresh();
-    // Pequena pausa visual; o hook dispara a busca em seguida.
     setTimeout(() => setRefreshing(false), 600);
   }
 
@@ -119,7 +165,7 @@ export function AnalyticsPage() {
     );
   }
 
-  const revenue = revenueTrend(summary);
+  const kpis = summaryKpis(summary);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -140,47 +186,100 @@ export function AnalyticsPage() {
       />
 
       <div className="mx-auto max-w-lg space-y-5 px-4 pb-32 pt-5">
-        {/* KPIs */}
+        {/* Filtro global de período */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <CalendarRange className="h-4 w-4 shrink-0 text-vs-muted" />
+          {PERIOD_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setPeriod(option.value)}
+              className={cn(
+                'shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95',
+                period === option.value
+                  ? 'border-vs-primary bg-vs-primary text-white'
+                  : 'border-white/10 bg-white/[0.06] text-zinc-300'
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Intervalo personalizado */}
+        {period === 'custom' && (
+          <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <label className="flex-1">
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-vs-muted">
+                De
+              </span>
+              <input
+                type="date"
+                value={customStart}
+                max={customEnd || undefined}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-vs-primary"
+              />
+            </label>
+            <label className="flex-1">
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-vs-muted">
+                Até
+              </span>
+              <input
+                type="date"
+                value={customEnd}
+                min={customStart || undefined}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-vs-primary"
+              />
+            </label>
+          </div>
+        )}
+
+        {/* KPIs com tendência (período atual x anterior) */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MetricCard
             title="Alunos ativos"
             value={summary.activeStudents}
             description={`${summary.pausedStudents} pausados · ${summary.inactiveStudents} inativos`}
-            trend={summary.newStudentsPeriod > 0 ? 'positive' : 'neutral'}
-            trendLabel={`${summary.newStudentsPeriod} novos no período`}
+            trend={kpis.newStudents.trend}
+            trendLabel={`${summary.newStudentsInPeriod} novos no período`}
             icon={Users}
           />
 
           <MetricCard
-            title="Receita do mês"
-            value={formatCurrency(summary.revenueCurrentMonth)}
-            trend={revenue.trend}
-            trendLabel={revenue.label}
+            title="Receita no período"
+            value={formatCurrency(summary.revenueInPeriod)}
+            description={`Anterior: ${formatCurrency(summary.previousRevenueInPeriod)}`}
+            trend={kpis.revenue.trend}
+            trendLabel={kpis.revenue.label}
             icon={DollarSign}
           />
 
           <MetricCard
             title="Treinos concluídos"
-            value={summary.completedWorkouts}
-            description={`${summary.completionRate}% de conclusão`}
-            trend={summary.completedWorkouts > 0 ? 'positive' : 'neutral'}
-            trendLabel={`${summary.totalWorkouts} no total`}
+            value={summary.workoutsInPeriod}
+            description={`Anterior: ${summary.previousWorkoutsInPeriod}`}
+            trend={kpis.workouts.trend}
+            trendLabel={kpis.workouts.label}
             icon={Dumbbell}
           />
 
           <MetricCard
             title="Frequência semanal"
-            value={summary.weeklyFrequency.toFixed(1)}
-            description={`${summary.averageWorkoutsPerStudent.toFixed(1)} treinos/aluno`}
-            trend="neutral"
+            value={summary.weeklyFrequencyInPeriod.toFixed(1)}
+            description={`Anterior: ${summary.previousWeeklyFrequencyInPeriod.toFixed(1)}/semana`}
+            trend={kpis.frequency.trend}
+            trendLabel={kpis.frequency.label}
             icon={Timer}
           />
 
           <MetricCard
             title="Novos alunos"
-            value={summary.newStudentsPeriod}
-            description="Nos últimos 30 dias"
-            trend={summary.newStudentsPeriod > 0 ? 'positive' : 'neutral'}
+            value={summary.newStudentsInPeriod}
+            description={`Anterior: ${summary.previousNewStudentsInPeriod}`}
+            trend={kpis.newStudents.trend}
+            trendLabel={kpis.newStudents.label}
             icon={UserPlus}
           />
 
@@ -188,7 +287,8 @@ export function AnalyticsPage() {
             title="Volume total"
             value={`${formatVolume(summary.totalVolume)} kg`}
             description={`${formatVolume(summary.averageVolumePerWorkout)} kg/treino médio`}
-            trend={summary.totalVolume > 0 ? 'positive' : 'neutral'}
+            trend={kpis.volume.trend}
+            trendLabel={kpis.volume.label}
             icon={BarChart3}
           />
 
@@ -212,10 +312,18 @@ export function AnalyticsPage() {
           />
         </div>
 
-        {/* Séries: receita + treinos */}
+        {/* Séries por período: receita + treinos */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <RevenueChart data={summary.monthlyRevenueSeries} />
-          <WorkoutTrendChart data={summary.workoutSeries} />
+          <RevenueChart
+            data={summary.revenueSeries}
+            title="Receita"
+            subtitle={summary.periodLabel}
+          />
+          <WorkoutTrendChart
+            data={summary.workoutSeriesByPeriod}
+            title="Treinos concluídos"
+            subtitle={summary.periodLabel}
+          />
         </div>
 
         {/* Distribuição + aderência */}
@@ -228,13 +336,16 @@ export function AnalyticsPage() {
 
           <AdherenceChart
             data={summary.studentAdherence}
-            average={summary.weeklyFrequency}
+            average={summary.weeklyFrequencyInPeriod}
             ranking={summary.topActiveStudents}
           />
         </div>
 
         {/* Volume */}
         <VolumeProgressChart data={summary.volumeTrend} />
+
+        {/* Insights (Fase 4) */}
+        <InsightsCard insights={summary.insights} periodLabel={summary.periodLabel} />
 
         {/* Alunos em risco */}
         <RiskStudentsCard students={summary.studentsAtRisk} />

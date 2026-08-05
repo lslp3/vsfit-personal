@@ -25,3 +25,6 @@ export type { RiskStudentsCardProps } from './RiskStudentsCard';
 
 export { VolumeProgressChart } from './VolumeProgressChart';
 export type { VolumePoint, VolumeProgressChartProps } from './VolumeProgressChart';
+
+export { InsightsCard } from './InsightsCard';
+export type { InsightsCardProps } from './InsightsCard';

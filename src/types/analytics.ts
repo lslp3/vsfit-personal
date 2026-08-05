@@ -9,6 +9,45 @@ import type { Payment, Student, WorkoutLog } from './database';
 
 export type RiskLevel = 'high' | 'medium' | 'low';
 
+/** Período selecionável no painel (Fase 4). */
+export type AnalyticsPeriod =
+  | 'today'
+  | '7d'
+  | '30d'
+  | '90d'
+  | 'year'
+  | 'custom';
+
+/** Intervalo de datas (ISO, `end` exclusivo) usado nos cálculos por período. */
+export interface PeriodRange {
+  start: string;
+  end: string;
+}
+
+export type TrendDirection = 'up' | 'down' | 'flat';
+
+/**
+ * Comparação de tendência entre o período atual e o anterior.
+ * `percent` é null quando não existe base comparável (anterior == 0).
+ */
+export interface KpiTrend {
+  direction: TrendDirection;
+  /** Variação percentual vs período anterior (ex.: 12.4). */
+  percent: number | null;
+  /** Rótulo pronto para exibição (ex.: "+12,4%"). */
+  label: string;
+}
+
+export type InsightTone = 'positive' | 'negative' | 'warning' | 'info';
+
+/** Insight gerado pela camada analytics a partir de dados reais (Fase 4). */
+export interface AnalyticsInsight {
+  id: string;
+  tone: InsightTone;
+  title: string;
+  description: string;
+}
+
 /** Ponto de uma série mensal de receita (gráfico de barras/linha). */
 export interface RevenuePoint {
   month: string;
@@ -64,6 +103,16 @@ export interface StudentRisk {
  * gráficos sem novo fetch.
  */
 export interface AnalyticsSummary {
+  // Período selecionado (Fase 4)
+  /** Período ativo no painel. */
+  period: AnalyticsPeriod;
+  /** Rótulo legível do período (ex.: "Últimos 30 dias"). */
+  periodLabel: string;
+  /** Intervalo do período atual (ISO, end exclusivo). */
+  range: PeriodRange;
+  /** Intervalo anterior equivalente (comparação de tendência). */
+  previousRange: PeriodRange;
+
   // Alunos
   totalStudents: number;
   activeStudents: number;
@@ -116,6 +165,40 @@ export interface AnalyticsSummary {
   studentAdherence: StudentAdherenceDatum[];
   /** Evolução de volume (kg) por treino (alimenta VolumeProgressChart). */
   volumeTrend: VolumeTrendPoint[];
+
+  // Fase 4 — série por período (buckets adaptativos)
+  /** Receita por bucket (hora/dia/semana/mês) dentro do período ativo. */
+  revenueSeries: RevenuePoint[];
+  /** Treinos concluídos por bucket dentro do período ativo. */
+  workoutSeriesByPeriod: WorkoutTrendPoint[];
+
+  // Fase 4 — KPIs do período + comparação com o período anterior
+  /** Receita recebida (pagos) no período ativo. */
+  revenueInPeriod: number;
+  /** Receita no período anterior equivalente. */
+  previousRevenueInPeriod: number;
+  /** Treinos concluídos no período ativo. */
+  workoutsInPeriod: number;
+  /** Treinos concluídos no período anterior. */
+  previousWorkoutsInPeriod: number;
+  /** Frequência semanal (média) no período ativo. */
+  weeklyFrequencyInPeriod: number;
+  /** Frequência semanal no período anterior. */
+  previousWeeklyFrequencyInPeriod: number;
+  /** Novos alunos criados no período ativo. */
+  newStudentsInPeriod: number;
+  /** Novos alunos no período anterior. */
+  previousNewStudentsInPeriod: number;
+
+  // Fase 4 — tendências (período atual x anterior)
+  revenueTrend: KpiTrend;
+  workoutTrend: KpiTrend;
+  frequencyTrend: KpiTrend;
+  newStudentsTrend: KpiTrend;
+  volumeTrendKpi: KpiTrend;
+
+  // Fase 4 — insights derivados de dados reais
+  insights: AnalyticsInsight[];
 }
 
 /** Dados crus (já carregados) que alimentam o builder puro de analytics. */
@@ -130,6 +213,10 @@ export interface TrainerAnalyticsInput {
  * tornar os cálculos testáveis (determinismo temporal).
  */
 export interface TrainerAnalyticsOptions {
+  /** Período ativo do painel. Padrão '30d'. */
+  period?: AnalyticsPeriod;
+  /** Intervalo customizado (ISO, `end` exclusivo) quando `period === 'custom'`. */
+  customRange?: PeriodRange;
   /** Janela (dias) p/ "novos alunos no período". Padrão 30. */
   periodDays?: number;
   /** Dias sem treino concluído que caracterizam risco. Padrão 7. */

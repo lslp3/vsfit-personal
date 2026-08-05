@@ -29,22 +29,27 @@ const chartTooltipStyle = {
 };
 
 export interface RevenueChartProps {
-  /** Série mensal de receita (12 pontos: Jan..Dez do ano atual). */
+  /** Série de receita (mensal ou por período). */
   data: RevenuePoint[];
+  /** Título do card. Padrão "Receita mensal". */
+  title?: string;
+  /** Subtítulo do card. Padrão "Últimos 12 meses (BRL)". */
+  subtitle?: string;
 }
 
 /**
- * Receita mensal (12 meses) em barras, com tooltip e eixo X de meses.
- * Dados vindos por props (AnalyticsSummary.monthlyRevenueSeries).
+ * Receita em barras, com tooltip e eixo X rotulado pelo bucket (`month`).
+ * Dados vindos por props (AnalyticsSummary.monthlyRevenueSeries ou
+ * AnalyticsSummary.revenueSeries).
  */
-export function RevenueChart({ data }: RevenueChartProps) {
+export function RevenueChart({ data, title = 'Receita mensal', subtitle = 'Últimos 12 meses (BRL)' }: RevenueChartProps) {
   return (
     <Card className="p-5">
       <div className="mb-4 flex items-center gap-2">
         <CircleDollarSign className="h-4 w-4 text-vs-muted" />
         <div>
-          <h3 className="text-sm font-bold text-white">Receita mensal</h3>
-          <p className="text-[11px] text-vs-muted">Últimos 12 meses (BRL)</p>
+          <h3 className="text-sm font-bold text-white">{title}</h3>
+          <p className="text-[11px] text-vs-muted">{subtitle}</p>
         </div>
       </div>
 
@@ -62,6 +67,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
               fontSize={11}
               tickLine={false}
               axisLine={false}
+              minTickGap={24}
             />
             <YAxis
               stroke="#a1a1aa"

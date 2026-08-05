@@ -19,22 +19,31 @@ const chartTooltipStyle = {
 };
 
 export interface WorkoutTrendChartProps {
-  /** Série mensal de treinos concluídos (12 pontos: Jan..Dez). */
+  /** Série de treinos concluídos (mensal ou por período). */
   data: WorkoutTrendPoint[];
+  /** Título do card. Padrão "Treinos concluídos". */
+  title?: string;
+  /** Subtítulo do card. Padrão "Por mês (ano atual)". */
+  subtitle?: string;
 }
 
 /**
- * Treinos concluídos por mês (linha) com tooltip — comparação temporal
- * mês a mês. Dados por props (AnalyticsSummary.workoutSeries).
+ * Treinos concluídos (linha) com tooltip — comparação temporal.
+ * Dados por props (AnalyticsSummary.workoutSeries ou
+ * AnalyticsSummary.workoutSeriesByPeriod).
  */
-export function WorkoutTrendChart({ data }: WorkoutTrendChartProps) {
+export function WorkoutTrendChart({
+  data,
+  title = 'Treinos concluídos',
+  subtitle = 'Por mês (ano atual)',
+}: WorkoutTrendChartProps) {
   return (
     <Card className="p-5">
       <div className="mb-4 flex items-center gap-2">
         <Dumbbell className="h-4 w-4 text-vs-muted" />
         <div>
-          <h3 className="text-sm font-bold text-white">Treinos concluídos</h3>
-          <p className="text-[11px] text-vs-muted">Por mês (ano atual)</p>
+          <h3 className="text-sm font-bold text-white">{title}</h3>
+          <p className="text-[11px] text-vs-muted">{subtitle}</p>
         </div>
       </div>
 
@@ -52,6 +61,7 @@ export function WorkoutTrendChart({ data }: WorkoutTrendChartProps) {
               fontSize={11}
               tickLine={false}
               axisLine={false}
+              minTickGap={24}
             />
             <YAxis
               stroke="#a1a1aa"
