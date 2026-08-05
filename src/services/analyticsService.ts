@@ -24,10 +24,12 @@ import type { Payment, Student, WorkoutLog } from '../types/database';
 import type {
   AnalyticsSummary,
   RevenuePoint,
+  StudentAdherenceDatum,
   StudentRisk,
   TopActiveStudent,
   TrainerAnalyticsInput,
   TrainerAnalyticsOptions,
+  VolumeTrendPoint,
   WorkoutTrendPoint,
 } from '../types/analytics';
 import { getLogDurationSeconds, getLogTotalSets } from './workoutLogService';
@@ -152,6 +154,7 @@ function computeRevenue(payments: Payment[], opts: ResolvedOptions): RevenueMetr
 interface StudentMetrics {
   totalStudents: number;
   activeStudents: number;
+  pausedStudents: number;
   inactiveStudents: number;
   newStudentsPeriod: number;
 }
@@ -164,7 +167,8 @@ function computeStudents(students: Student[], opts: ResolvedOptions): StudentMet
   return {
     totalStudents: list.length,
     activeStudents: list.filter((s) => s.status === 'active').length,
-    inactiveStudents: list.filter((s) => s.status !== 'active').length,
+    pausedStudents: list.filter((s) => s.status === 'paused').length,
+    inactiveStudents: list.filter((s) => s.status !== 'active' && s.status !== 'paused').length,
     newStudentsPeriod: list.filter((s) => {
       const d = toValidDate(s.created_at);
       return !!d && d >= periodStart;
@@ -275,6 +279,45 @@ function computeTopActiveStudents(
     .slice(0, 5);
 }
 
+/**
+ * Frequência semanal média por aluno (AdherenceChart). Reutiliza o mesmo
+ * intervalo (semanas) da frequência média do grupo para manter coerência.
+ * Inclui apenas alunos com ao menos um treino concluído.
+ */
+function computeStudentAdherence(
+  students: Student[],
+  logs: WorkoutLog[]
+): StudentAdherenceDatum[] {
+  const nameById = buildNameById(students);
+  const counter = new Map<string, number>();
+  const dates: number[] = [];
+
+  (logs || [])
+    .filter(isCompleted)
+    .forEach((log) => {
+      if (!log.student_id) return;
+      counter.set(log.student_id, (counter.get(log.student_id) || 0) + 1);
+      const d = toValidDate(log.completed_at || log.created_at);
+      if (d) dates.push(d.getTime());
+    });
+
+  let weeks = 1;
+  if (dates.length > 0) {
+    const first = Math.min(...dates);
+    const last = Math.max(...dates);
+    const spanDays = Math.max(1, (last - first) / DAY_MS);
+    weeks = spanDays / 7;
+  }
+
+  return Array.from(counter.entries())
+    .map(([id, count]) => ({
+      studentName: nameById.get(id) || 'Aluno',
+      weeklyAverage: Math.round((count / weeks) * 10) / 10,
+    }))
+    .sort((a, b) => b.weeklyAverage - a.weeklyAverage)
+    .slice(0, 12);
+}
+
 function computeStudentsAtRisk(
   students: Student[],
   payments: Payment[],
@@ -375,6 +418,12 @@ export function buildTrainerAnalytics(
       ? { name: strength.byExercise[0].exerciseName, volume: strength.byExercise[0].totalVolume }
       : null;
 
+  // Derivadas para gráficos (Fase 3): volume por treino e aderência por aluno.
+  const volumeTrend: VolumeTrendPoint[] = strength.byEvolution.map((point) => ({
+    date: point.date,
+    value: point.value ?? 0,
+  }));
+
   return {
     ...studentMetrics,
     ...workoutMetrics,
@@ -385,6 +434,8 @@ export function buildTrainerAnalytics(
     topExerciseByVolume: topExercise,
     topActiveStudents: computeTopActiveStudents(students, logs),
     studentsAtRisk: computeStudentsAtRisk(students, payments, logs, opts),
+    studentAdherence: computeStudentAdherence(students, logs),
+    volumeTrend,
   };
 }
 

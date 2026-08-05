@@ -86,6 +86,10 @@ const DashboardPage = lazyPage(() =>
   import('../pages/personal/DashboardPage').then((m) => ({ default: m.DashboardPage }))
 );
 
+const AnalyticsPage = lazyPage(() =>
+  import('../pages/personal/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+);
+
 const ExerciseLibraryPage = lazyPage(() =>
   import('../pages/personal/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
 );
@@ -350,6 +354,10 @@ export const router =
         {
           path: 'dashboard',
           element: <DashboardPage />,
+        },
+        {
+          path: 'analytics',
+          element: <AnalyticsPage />,
         },
         {
           path: 'notifications',

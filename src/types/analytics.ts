@@ -28,6 +28,18 @@ export interface TopActiveStudent {
   count: number;
 }
 
+/** Frequência semanal média por aluno (alimenta o AdherenceChart). */
+export interface StudentAdherenceDatum {
+  studentName: string;
+  weeklyAverage: number;
+}
+
+/** Ponto da evolução de volume (kg) por treino (alimenta o VolumeProgressChart). */
+export interface VolumeTrendPoint {
+  date: string;
+  value: number;
+}
+
 /**
  * Aluno em risco de evasão. Regra inicial (Fase 1):
  * - sem treino concluído há >= `riskInactiveDays` (padrão 7), OU
@@ -55,6 +67,7 @@ export interface AnalyticsSummary {
   // Alunos
   totalStudents: number;
   activeStudents: number;
+  pausedStudents: number;
   inactiveStudents: number;
   newStudentsPeriod: number;
 
@@ -97,6 +110,12 @@ export interface AnalyticsSummary {
   workoutSeries: WorkoutTrendPoint[];
   topActiveStudents: TopActiveStudent[];
   studentsAtRisk: StudentRisk[];
+
+  // Derivadas para gráficos (Fase 3)
+  /** Frequência semanal média por aluno (alimenta AdherenceChart). */
+  studentAdherence: StudentAdherenceDatum[];
+  /** Evolução de volume (kg) por treino (alimenta VolumeProgressChart). */
+  volumeTrend: VolumeTrendPoint[];
 }
 
 /** Dados crus (já carregados) que alimentam o builder puro de analytics. */

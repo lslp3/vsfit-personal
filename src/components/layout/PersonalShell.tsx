@@ -12,6 +12,7 @@ import { Sidebar } from './Sidebar';
 function getPageTitle(pathname: string): string {
   const map: Record<string, string> = {
     '/personal/dashboard': 'Painel',
+    '/personal/analytics': 'Analytics',
     '/personal/notifications': 'Notificações',
     '/personal/push-preferences': 'Preferências de Notificações',
     '/personal/students': 'Alunos',
