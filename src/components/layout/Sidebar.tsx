@@ -19,6 +19,7 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  LineChart,
   LogOut,
   MessageSquare,
   User,
@@ -45,6 +46,11 @@ const navItems = [
     to: '/personal/dashboard',
     icon: LayoutDashboard,
     label: 'Painel',
+  },
+  {
+    to: '/personal/analytics',
+    icon: LineChart,
+    label: 'Analytics',
   },
   {
     to: '/personal/notifications',
