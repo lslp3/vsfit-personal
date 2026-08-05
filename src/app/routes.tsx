@@ -267,11 +267,28 @@ function AuthAwareLandingPage() {
   return <LandingPage />;
 }
 
+/**
+ * Rota raiz com atalho TEMPORÁRIO de dev (Sprint 14 Fase 2):
+ * `/?preview=analytics` renderiza o preview de analytics diretamente,
+ * sem depender de shell/guarda/auth. Remover antes da entrega final.
+ */
+function RootRoute() {
+  const location = useLocation();
+  const wantsAnalyticsPreview =
+    new URLSearchParams(location.search).get('preview') === 'analytics';
+
+  if (wantsAnalyticsPreview) {
+    return <AnalyticsPreviewDev />;
+  }
+
+  return <AuthAwareLandingPage />;
+}
+
 export const router =
   createBrowserRouter([
     {
       path: '/',
-      element: <AuthAwareLandingPage />,
+      element: <RootRoute />,
     },
 
     {
