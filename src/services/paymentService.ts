@@ -303,6 +303,8 @@ export async function getPaymentsByStudent(studentId: string): Promise<Payment[]
 export async function createPayment(trainerId: string, data: CreatePaymentWithPixData) {
   const refMonth = monthKey(data.due_date || undefined);
   const invoiceNumber = await nextInvoiceNumber(trainerId, refMonth);
+  // reference_month é do tipo DATE — gravar o primeiro dia do mês (2026-08 -> 2026-08-01)
+  const referenceMonth = `${refMonth}-01`;
 
   const { data: payment, error } = await supabase
     .from('payments')
@@ -321,7 +323,7 @@ export async function createPayment(trainerId: string, data: CreatePaymentWithPi
       // Sprint 15 Fase 4 — Faturas: preenchimento automático
       invoice_number: invoiceNumber,
       issue_date: new Date().toISOString().slice(0, 10),
-      reference_month: refMonth,
+      reference_month: referenceMonth,
       currency: 'BRL',
     })
     .select()
