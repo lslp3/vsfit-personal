@@ -11,6 +11,9 @@ import { useAuthStore } from '../store/authStore';
 
 import { reloadForStaleChunk } from '../utils/chunkReload';
 
+// Rota TEMPORÁRIA de dev (Sprint 14 Fase 2) — remover antes da entrega final.
+import { AnalyticsPreviewDev } from '../dev/AnalyticsPreviewDev';
+
 function lazyPage<T extends ComponentType<any>>(
   loader: () => Promise<{ default: T }>
 ) {
@@ -513,6 +516,11 @@ export const router =
     {
       path: '/signup/:slug',
       element: <SignupPublicPage />,
+    },
+
+    {
+      path: '/dev/analytics-preview',
+      element: <AnalyticsPreviewDev />,
     },
 
     {
