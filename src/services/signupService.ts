@@ -163,7 +163,12 @@ export async function submitSignupLead(
   payload: SubmitSignupLeadData
 ) {
 
-  const { data, error } = await supabase
+  // Sprint 17 — fix RLS/RETURNING: sem .select()/.single().
+  // O INSERT público passa no WITH CHECK (true); mas o RETURNING exigiria uma
+  // policy FOR SELECT que o visitante anônimo não possui, gerando
+  // "new row violates row-level security policy". Sem RETURNING, a linha é
+  // inserida normalmente e o erro desaparece.
+  const { error } = await supabase
     .from('signup_leads')
     .insert({
       signup_link_id: payload.signup_link_id,
@@ -179,15 +184,9 @@ export async function submitSignupLead(
       message: payload.message || null,
 
       status: 'new',
-    })
-    .select('*')
-    .single();
-
+    });
 
   if (error) throw error;
-
-
-  return data as SignupLead;
 }
 
 
