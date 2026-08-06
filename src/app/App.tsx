@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 import { useAuthStore } from '../store/authStore';
 import { SmartSplashScreen } from '../components/ui/SmartSplashScreen';
+import { OfflineScreen } from '../components/ui/OfflineScreen';
 import { OnboardingFlow } from '../components/onboarding/OnboardingFlow';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -18,6 +19,24 @@ const SPLASH_MIN_MS = 1500;
 export function App() {
   const { isLoading, isAuthenticated, initialize } = useAuthStore();
   const { online } = useOnlineStatus();
+
+  // Sprint 17 · ETAPA 8 — Fase B: Recuperação automática ao reconectar.
+  // Quando o dispositivo fica online de novo (transição offline→online,
+  // NÃO no mount), se ainda não há sessão autenticada, re-incializa o auth
+  // de forma leve — sem apagar sessão existente, sem chamar logout e sem
+  // causar flicker de splash (o efeito só age na transição, e só quando já
+  // não está carregando e não está autenticado).
+  const prevOnline = useRef(online);
+  useEffect(() => {
+    const wasOffline = prevOnline.current === false && online === true;
+    prevOnline.current = online;
+    if (!wasOffline) return;
+
+    const state = useAuthStore.getState();
+    if (!state.isLoading && !state.isAuthenticated) {
+      void state.initialize();
+    }
+  }, [online]);
 
   // Sprint 17 · ETAPA 4 — primeiro acesso: só usuários NÃO autenticados e
   // com onboarding pendente veem o fluxo. Existentes/autenticados seguem
@@ -124,6 +143,16 @@ export function App() {
         }}
       />
     );
+  }
+
+  // Sprint 17 · ETAPA 8 — Fase A: Gate Offline Global. Quando o dispositivo
+  // está sem conexão, mostra a tela offline no lugar de qualquer rota
+  // (inclusive /auth e /signup — ambos exigem rede), sem chamar logout e
+  // preservando a sessão existente. Ao reconectar, `online` volta a true e o
+  // fluxo normal (splash → sessão → onboarding → router) é restaurado
+  // automaticamente.
+  if (!online) {
+    return <OfflineScreen />;
   }
 
   return (
