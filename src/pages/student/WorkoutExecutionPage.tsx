@@ -300,7 +300,7 @@ export function WorkoutExecutionPage() {
             }}
             className="flex min-h-screen items-center px-4 py-4"
           >
-            <div className="mx-auto w-full max-w-lg">
+            <div className="mx-auto w-full max-w-lg md:max-w-3xl">
               <section className="rounded-[32px] border border-yellow-400/20 bg-yellow-400/10 p-4 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[28px] bg-gradient-to-br from-yellow-400 to-orange-500">
                   <Trophy className="h-10 w-10" />
@@ -421,7 +421,7 @@ export function WorkoutExecutionPage() {
             }}
             className="flex min-h-screen items-center px-4"
           >
-            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] text-center">
+            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] text-center md:max-w-3xl md:px-6">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/15">
                 <CheckCircle2 className="h-5 w-5 text-emerald-300" />
               </div>
@@ -487,7 +487,7 @@ export function WorkoutExecutionPage() {
             animate={{
               opacity: 1,
             }}
-            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(6rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] pt-4"
+            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(6rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] pt-4 md:max-w-3xl md:px-6"
           >
             <WorkoutExecutionHeader
               workoutName={plan.name}
@@ -717,7 +717,7 @@ export function WorkoutExecutionPage() {
                  handleCompleteSet
                }
                style={{ bottom: 'calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
-               className="fixed inset-x-0 z-40 mx-4 flex h-14 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-sm font-black uppercase"
+               className="fixed inset-x-0 z-40 mx-4 flex h-14 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-sm font-black uppercase md:mx-auto md:max-w-3xl"
              >
               <CheckCircle2 className="h-6 w-6" />
 

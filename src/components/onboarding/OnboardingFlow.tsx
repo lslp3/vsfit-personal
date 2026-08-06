@@ -155,11 +155,11 @@ export function OnboardingFlow({ onSelectRole }: OnboardingFlowProps) {
               {step.tagline}
             </p>
 
-            <h2 className="mx-auto mt-3 max-w-xs text-[26px] font-black leading-tight tracking-[-0.04em]">
+            <h2 className="mx-auto mt-3 max-w-xs text-[26px] font-black leading-tight tracking-[-0.04em] md:max-w-md">
               {step.message}
             </h2>
 
-            <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-zinc-400">
+            <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-zinc-400 md:max-w-md">
               {step.title}
             </p>
           </motion.section>

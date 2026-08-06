@@ -546,7 +546,7 @@ export function StudentChatPage() {
       }}
     >
       <div className="shrink-0 border-b border-white/10 bg-[#080808] px-3 py-3">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
+        <div className="mx-auto flex max-w-lg items-center gap-3 md:max-w-3xl md:px-6">
           <button
             type="button"
             onClick={handleBack}
@@ -580,7 +580,7 @@ export function StudentChatPage() {
         </div>
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-4 md:max-w-3xl md:px-6">
         <div
           className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1"
           style={{

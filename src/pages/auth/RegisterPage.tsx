@@ -60,7 +60,7 @@ export function RegisterPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-sm text-center"
+          className="w-full max-w-sm text-center md:max-w-md"
         >
           <div className="glass-card p-8 space-y-4">
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
@@ -85,7 +85,7 @@ export function RegisterPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm md:max-w-md"
       >
         <div className="flex flex-col items-center mb-6">
           <BrandMark size="xl" className="mb-4" />

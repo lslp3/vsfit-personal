@@ -184,7 +184,7 @@ export function LoginPage() {
           duration: 0.4,
           ease: 'easeOut',
         }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm md:max-w-md"
       >
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="flex h-20 w-20 items-center justify-center p-1">
