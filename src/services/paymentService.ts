@@ -74,6 +74,10 @@ function removeAccents(value: string) {
 
 function limitText(value: string, max: number) {
   return removeAccents(String(value || ''))
+    // Normaliza separadores de espaço não-ASCII (ex.: NBSP U+00A0, em/thin
+    // space, etc.) para o espaço ASCII U+0020, para que nunca percam um
+    // espaço interno entre palavras ao passarem pelo filtro abaixo.
+    .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
     .replace(/[^a-zA-Z0-9 ]/g, '')
     .trim()
     .slice(0, max)
