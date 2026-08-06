@@ -25,15 +25,19 @@ import {
   Trophy,
   User,
   UserRound,
+  Wallet,
   Weight,
   X,
   Zap,
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
-import { formatDate, formatPhone } from '../../lib/formatters';
+import { cn } from '../../lib/utils';
+import { formatCurrency, formatDate, formatDateTime, formatPhone, getStatusLabel } from '../../lib/formatters';
 import { useAuthStore } from '../../store/authStore';
 import * as studentService from '../../services/studentService';
+import { getPaymentsByStudent } from '../../services/paymentService';
+import type { Payment } from '../../types/database';
 
 type ProfileState = {
   student: any | null;
@@ -179,6 +183,25 @@ function createProfileForm(student: any): ProfileFormState {
   };
 }
 
+/** Formata reference_month (YYYY-MM-01) como "MM/YYYY" (ex.: 08/2026). */
+function formatReferenceMonth(value?: string | null): string {
+  if (!value) return '—';
+  const m = String(value).match(/^(\d{4})-(\d{2})/);
+  if (m) return `${m[2]}/${m[1]}`;
+  return String(value);
+}
+
+/** Classes de badge de status de pagamento (só texto/borda/fundo, sem layout). */
+function paymentStatusBadge(status: string): string {
+  const map: Record<string, string> = {
+    paid: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    pending: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300',
+    overdue: 'border-red-500/30 bg-red-500/10 text-red-300',
+    cancelled: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400',
+  };
+  return map[status] || 'border-white/10 bg-white/[0.05] text-zinc-400';
+}
+
 export function StudentProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
@@ -215,6 +238,10 @@ export function StudentProfilePage() {
     latestMetric: null,
     trainer: null,
   });
+
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [paymentsError, setPaymentsError] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -294,6 +321,19 @@ export function StudentProfilePage() {
       });
 
       setProfileForm(createProfileForm(studentData));
+
+      // Sprint 15 Fase 5 — Financeiro do aluno: cobranças da fonte única `payments`
+      setPaymentsLoading(true);
+      setPaymentsError('');
+      try {
+        const studentPayments = await getPaymentsByStudent(studentData.id);
+        setPayments(studentPayments || []);
+      } catch (payErr: any) {
+        console.error('[StudentProfilePage] loadPayments error:', payErr);
+        setPaymentsError(payErr?.message || 'Não foi possível carregar suas cobranças.');
+      } finally {
+        setPaymentsLoading(false);
+      }
     } catch (err: any) {
       console.error('[StudentProfilePage] loadProfile error:', err);
       setError(err?.message || 'Erro ao carregar perfil.');
@@ -823,6 +863,91 @@ export function StudentProfilePage() {
               title="Personal vinculado"
               description="Seu acompanhamento está ativo no VSFit."
             />
+          )}
+        </section>
+
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5">
+          <SectionTitle
+            kicker="Financeiro"
+            title="Cobranças"
+            icon={<Wallet className="h-5 w-5 text-emerald-400" />}
+          />
+
+          {paymentsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-8 text-zinc-500">
+              <Loader2 className="h-5 w-5 animate-spin text-[#ff2a32]" />
+              <span className="text-sm font-bold">Carregando cobranças...</span>
+            </div>
+          ) : paymentsError ? (
+            <ErrorBox>{paymentsError}</ErrorBox>
+          ) : payments.length === 0 ? (
+            <EmptyMini
+              icon={<Wallet className="h-9 w-9 text-zinc-700" />}
+              title="Nenhuma cobrança"
+              description="Suas mensalidades aparecerão aqui quando forem lançadas."
+            />
+          ) : (
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="rounded-[20px] border border-white/10 bg-black/20 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-600">
+                        Cobrança
+                      </p>
+                      <p className="mt-0.5 truncate text-sm font-black text-white">
+                        {payment.invoice_number || '—'}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold text-zinc-500">
+                        {formatReferenceMonth(payment.reference_month)}
+                      </p>
+                    </div>
+
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide border',
+                        paymentStatusBadge(payment.status)
+                      )}
+                    >
+                      {getStatusLabel(payment.status)}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-bold text-zinc-300">
+                        {payment.description || 'Mensalidade / consultoria'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-600">
+                        Vencimento: {formatDate(payment.due_date)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-base font-black text-white">
+                      {formatCurrency(Number(payment.amount || 0))}
+                    </p>
+                  </div>
+
+                  {(payment.paid_at || payment.notes) && (
+                    <div className="mt-3 space-y-1.5 border-t border-white/5 pt-3">
+                      {payment.paid_at && (
+                        <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          Pago em {formatDateTime(payment.paid_at)}
+                        </p>
+                      )}
+                      {payment.notes && (
+                        <p className="text-xs leading-relaxed text-zinc-400">
+                          {payment.notes}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
