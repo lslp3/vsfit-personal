@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ElementType,
 } from 'react';
@@ -386,6 +387,11 @@ export function StudentProfilePage() {
 
   const [searchParams] = useSearchParams();
 
+  // Snapshot dos query params para o deep-link ser aplicado DENTRO do
+  // loadStudent (mesmo commit de estado), sem depender de re-render.
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+
   const { trainerProfile } =
     useAuthStore();
 
@@ -576,6 +582,29 @@ export function StudentProfilePage() {
         setMetrics(
           metricsResult.data || []
         );
+
+        // Sprint 16 Fase 3A (fix) — deep-link ?tab= & ?assessment=1 aplicado
+        // no MESMO commit do carregamento (abre o modal imediatamente).
+        const params = searchParamsRef.current;
+
+        if (params.get('assessment') === '1') {
+          setEditingMetric(null);
+          setAssessmentModalOpen(true);
+        }
+
+        const tabParam = params.get('tab') as TabKey | null;
+        const validTabs: TabKey[] = [
+          'resumo',
+          'treinos',
+          'progresso',
+          'financeiro',
+          'chat',
+          'dados',
+        ];
+
+        if (tabParam && validTabs.includes(tabParam)) {
+          setActiveTab(tabParam);
+        }
       } catch (
         loadError: unknown
       ) {
@@ -600,31 +629,6 @@ export function StudentProfilePage() {
   useEffect(() => {
     void loadStudent();
   }, [loadStudent]);
-
-  // Sprint 16 Fase 3A — deep-link por query param (?tab= & ?assessment=1).
-  // Aplica a aba inicial e, se solicitado, abre o modal de avaliação.
-  useEffect(() => {
-    if (loading || !student) return;
-
-    const tabParam = searchParams.get('tab') as TabKey | null;
-    const validTabs: TabKey[] = [
-      'resumo',
-      'treinos',
-      'progresso',
-      'financeiro',
-      'chat',
-      'dados',
-    ];
-
-    if (tabParam && validTabs.includes(tabParam)) {
-      setActiveTab(tabParam);
-    }
-
-    if (searchParams.get('assessment') === '1') {
-      setEditingMetric(null);
-      setAssessmentModalOpen(true);
-    }
-  }, [loading, student, searchParams]);
 
   /** Recarrega apenas as avaliações (após salvar/excluir). */
   const reloadMetrics = useCallback(async () => {
