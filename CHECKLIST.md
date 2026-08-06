@@ -47,6 +47,17 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
 
 ## Sprints concluídas
 
+### Sprint 17 — Primeiro Acesso Inteligente, Onboarding e Fluxo de Entrada ✅
+- Status: ✅ Concluída · fechada em 2026-08-06
+- Branch: `test/sprint-16-central-alunos` (implementação por reaproveitamento de base)
+- Principais entregas: Splash inteligente; primeiro acesso por perfil; onboarding
+  persistente; fluxo Personal; fluxo Aluno (convite/código); cadastro público com
+  lead; conversão de lead para aluno; login do aluno; usuário existente sem repetir
+  onboarding; offline global com recuperação após reconexão; testes completos de
+  entrada.
+- Validação: `tsc` ✅ · `npm run build` ✅ · validação manual (Preview/APK) pendente
+- Doc: `SPRINT-17.md`
+
 ### Sprint 12 — Push Notifications ✅
 - Status: ✅ Concluída · ✅ Validada em dispositivo real (Android) · ✅ Pronta p/ produção
 - Branch: `test/sprint-12-push`

@@ -241,10 +241,13 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - Pendência registrada: "Publicar treino em massa" **fora desta fase** —
   documentado como evolução futura.
 
-## Sprint 17 — Primeiro Acesso Inteligente, Onboarding e Fluxo de Entrada 📋
+## Sprint 17 — Primeiro Acesso Inteligente, Onboarding e Fluxo de Entrada ✅
 
-- Status: 📋 **Planejada**
-- Branch futura: `test/sprint-17-onboarding-fluxo-entrada`
+- Status: ✅ **Concluída** (fechada em 2026-08-06)
+- Branch de implementação: `test/sprint-16-central-alunos` (Sprint 17 implementada por
+  reaproveitamento da base existente)
+- Commits representativos: `237bd5c` → `3d1e09e` → `870adf4` → `1b5c27a` → `4f55cbd` → `c7f50ec` → `2a84d9b` → `1612cb3`
+- Doc detalhada: `SPRINT-17.md`
 
 ### Objetivo
 
@@ -485,6 +488,26 @@ aplicativo comercial:
 
 A arquitetura fica preparada para publicação na Play Store e crescimento de
 usuários.
+
+### ✅ Fechamento — Sprint 17 concluída (ETAPA 11)
+
+Principais entregas:
+- Splash inteligente
+- Primeiro acesso por perfil
+- Onboarding persistente
+- Fluxo Personal
+- Fluxo Aluno
+- Cadastro público com lead
+- Conversão de lead para aluno
+- Login do aluno
+- Usuário existente sem repetir onboarding
+- Offline global
+- Recuperação após reconexão
+- Testes completos de entrada
+
+Validação final: `npx tsc --noEmit` ✅ · `npm run build` ✅ · invariantes preservadas
+(`supabase.from(` = 8; Central de Alunos intacta; sem migration/RLS/permissões).
+Validação manual (Preview/APK) pendente antes da integração à `main`.
 
 ## Sprint 18 — Versão Desktop 📋
 
