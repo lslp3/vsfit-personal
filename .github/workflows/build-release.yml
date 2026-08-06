@@ -1,5 +1,7 @@
 name: Build APK + AAB Release
 
+# Automatic release build enabled on main push
+
 on:
   push:
     branches:
