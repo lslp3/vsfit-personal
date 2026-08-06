@@ -212,29 +212,280 @@ Roadmap oficial de sprints do VSFit PERSONAL. Branches de trabalho: `test/*`
 - Nota: no plano anterior constava como "Sprint 14 — Financeiro do Personal";
   renumerada após o Analytics ser antecipado e executado como Sprint 14.
 
-## Sprint 16 — Central de Alunos Premium (PLANEJADA)
+## Sprint 16 — Central de Alunos Premium ✅
+
+- Status: ✅ **Concluída e homologada no Preview** (Fases 1–5 + melhoria premium do Export)
+- **Aprovada para integração futura**
+- **Congelada** — não realizar alterações, exceto HOTFIX.
+- Branch: `test/sprint-16-central-alunos` (origem: `test/sprint-15-financeiro`)
+- Entregue (F1–F5):
+  - **F1 — Card Premium** (`8e39391`): card de aluno com indicadores rápidos.
+  - **F2 — Resumo Superior da Carteira** (`f2b5ad0`): resumo 30d da carteira.
+  - **F3 — Ações Rápidas no Card** (`72b801d`): menu de ações no card.
+  - **Hotfix 83921** (fix definitivo `be3b42f`): dupla navegação do menu ⋮ resolvida.
+  - **F4 — Filtros Inteligentes** (`8466f53`): 11 filtros (4 status + 7 inteligentes:
+    precisa atenção, inadimplente, sem treino recente, sem plano publicado, plano
+    ativo, avaliação pendente, aluno só do app), derivados de `students[]` +
+    `auditMap` — zero query nova.
+  - **F5 — Ordenação + Seleção Múltipla + Ações em Massa** (`94edcba`, `31a85fa`,
+    `245df97`): 9 opções de ordenação; seleção múltipla com
+    "selecionar todos (visíveis)"; ações em massa — Exportar CSV (prioridade),
+    Alterar status, Enviar mensagem, Enviar push (com modal de confirmação).
+  - **Export CSV Premium** (`06a35cd`): relatório com cabeçalho de marca,
+    resumo da carteira (total/ativos/pausados/inativos/atenção/média de
+    aderência) e campos formatados (Ativo/Pausado/Inativo, "9 dias atrás",
+    "70 kg") — 100% client-side com BOM UTF-8.
+- Garantias: **5 queries fixas da Central** (1 alunos + 4 batch, sem N+1); zero
+  `supabase.from` no carregamento; zero migrations/RLS/Edge Functions; fluxos
+  Financeiro/Chat/Treinos/Cadastro intocados.
+- Pendência registrada: "Publicar treino em massa" **fora desta fase** —
+  documentado como evolução futura.
+
+## Sprint 17 — Primeiro Acesso Inteligente, Onboarding e Fluxo de Entrada 📋
 
 - Status: 📋 **Planejada**
-- Escopo mínimo previsto:
-  - Dashboard/resumo dos alunos.
-  - Cards Premium com indicadores rápidos.
-  - Ações rápidas no card.
-  - Filtros inteligentes.
-  - Busca avançada.
-  - Ordenação.
-  - Seleção múltipla.
-  - Indicadores visuais.
-  - Melhorias de performance para listas grandes.
-  - Skeletons, animações e UX Premium.
+- Branch futura: `test/sprint-17-onboarding-fluxo-entrada`
 
-## Sprint 17 — Desktop Version (PLANEJADA)
+### Objetivo
+
+Criar uma experiência inicial profissional para o VSFit Personal, garantindo que
+cada usuário entenda rapidamente o aplicativo, seu papel dentro da plataforma e
+o próximo passo.
+
+A Sprint implementará um fluxo inteligente baseado em:
+
+- primeira instalação;
+- usuário autenticado;
+- tipo de usuário (Personal ou Aluno);
+- conexão com internet;
+- atualização do aplicativo.
+
+Escopo exclusivamente de UX, navegação e inicialização.
+
+**Não alterar:** banco Supabase; políticas RLS; Edge Functions; regras dos
+treinos; chat; financeiro; notificações.
+
+### ETAPA 1 — Auditoria da Inicialização Atual
+
+**Objetivo:** mapear o comportamento atual do aplicativo ao abrir.
+
+Verificar:
+- ponto de entrada (`App.tsx`);
+- sistema de rotas;
+- autenticação Supabase;
+- persistência da sessão;
+- páginas existentes de login/cadastro;
+- identificação atual de Personal e Aluno.
+
+Entregáveis:
+- diagnóstico do fluxo atual;
+- arquivos envolvidos;
+- plano de alteração seguro.
+
+### ETAPA 2 — Splash Screen Inteligente
+
+Criar a primeira tela exibida ao abrir.
+
+- Duração: 1–2 segundos.
+- Exibição:
+
+```
+VSFit Personal
+
+Seu treino.
+Seus alunos.
+Sua evolução.
+```
+
+- Elementos: logo VSFit; animação simples; identidade visual atual.
+- Durante o Splash: verificar sessão Supabase; verificar conexão; verificar
+  versão/configurações; carregar dados iniciais necessários.
+
+### ETAPA 3 — Sistema de Primeiro Acesso
+
+Criar controle persistente:
+- onboard concluído;
+- perfil escolhido;
+- estado inicial do usuário.
+
+Regra:
+
+```
+Primeira instalação:
+→ mostrar onboarding
+
+Usuário existente:
+→ nunca repetir onboarding.
+```
+
+### ETAPA 4 — Onboarding Inicial
+
+Máximo 3 telas.
+
+- Tela 1: "Gerencie seus alunos, treinos e pagamentos em um só lugar."
+  Mostrar: alunos; treinos; evolução.
+- Tela 2: "Crie treinos profissionais e acompanhe resultados."
+  Mostrar: execução de treino; técnicas avançadas; histórico.
+- Tela 3: "Comece agora como Personal ou Aluno."
+  Botões:
+  ```
+  [ Sou Personal Trainer ]
+  [ Sou Aluno ]
+  ```
+
+Ao finalizar: salvar onboarding concluído.
+
+### ETAPA 5 — Fluxo Personal Trainer
+
+```
+Escolheu Personal
+↓
+Login ou Cadastro
+↓
+Configuração inicial do perfil
+```
+
+Cadastro:
+- nome;
+- foto;
+- CREF opcional;
+- especialidade;
+- WhatsApp;
+- cidade.
+
+Após concluir: "Configure seu primeiro aluno"
+
+```
+[ + Adicionar primeiro aluno ]
+```
+
+### ETAPA 6 — Fluxo Aluno
+
+Regra: **Aluno não cria conta independente.**
+
+```
+Sou Aluno
+  ↓
+Digite código recebido do Personal
+  ↓
+Criar conta
+  ↓
+Entrar no treino
+```
+
+Validação:
+- vínculo com o Personal é obrigatório;
+- acesso somente após convite válido.
+
+### ETAPA 7 — Usuário Existente
+
+```
+Abrir aplicativo
+  ↓
+Splash
+  ↓
+Verificar sessão Supabase
+  ↓
+Usuário autenticado
+```
+
+Direcionamento:
+- Personal → Dashboard;
+- Aluno → Meu treino do dia.
+
+Nunca mostrar: onboarding; login; escolha de perfil.
+
+### ETAPA 8 — Tratamento Offline
+
+Caso sem internet, mostrar:
+
+```
+Sem conexão
+
+Algumas informações podem estar indisponíveis.
+
+[ Tentar novamente ]
+```
+
+Permitir: retry; recuperação automática.
+
+### ETAPA 9 — Atualização do Aplicativo
+
+Usuário antigo:
+
+```
+Abrir app
+  ↓
+Splash
+  ↓
+Atualização de dados
+  ↓
+Área principal
+```
+
+Nunca repetir: onboarding; escolha de perfil; cadastro inicial.
+
+### ETAPA 10 — Tela Inicial Inteligente
+
+Fallback:
+
+```
+VSFit Personal
+
+Seu treino.
+Seus alunos.
+Sua evolução.
+
+[ Entrar ]
+[ Criar conta ]
+```
+
+Com inteligência:
+- Primeira instalação → onboarding;
+- Usuário antigo → acesso direto;
+- Aluno convidado → código do Personal;
+- Personal → cadastro/login.
+
+### ETAPA 11 — Testes de Regressão
+
+- **Novo Personal:** instalar APK limpo; abrir; visualizar onboarding;
+  escolher Personal; criar conta; configurar perfil.
+- **Novo Aluno:** instalar; onboarding; escolher Aluno; inserir código; criar
+  conta; acessar treino.
+- **Usuário autenticado:** fechar app; abrir novamente; entrar direto.
+- **Offline:** abrir sem internet; visualizar mensagem; recuperar conexão.
+- **Atualização:** simular atualização; confirmar que onboarding não reaparece.
+
+### Critérios de conclusão
+
+- ✅ Splash profissional funcionando
+- ✅ Onboarding implementado
+- ✅ Personal e Aluno separados desde o início
+- ✅ Cadastro Personal estruturado
+- ✅ Convite obrigatório para Aluno
+- ✅ Sessão Supabase preservada
+- ✅ Offline tratado
+- ✅ Atualização sem repetir fluxo
+- ✅ Testado em APK real
+
+### Resultado esperado
+
+O VSFit Personal passa a ter uma experiência de entrada equivalente a um
+aplicativo comercial:
+
+> Instala → entende o produto → escolhe seu papel → entra no fluxo correto.
+
+A arquitetura fica preparada para publicação na Play Store e crescimento de
+usuários.
+
+## Sprint 18 — Versão Desktop 📋
 
 - Status: 📋 **Planejada**
 - Escopo: versão desktop (Responsividade ampliada / app desktop).
 
 ## AI para Personal (POSTERGADA)
 
-- Status: ⏸️ **Postergada para versão futura, após o Sprint 17.**
+- Status: ⏸️ **Postergada para versão futura, após o Sprint 18.**
 
 ---
 
