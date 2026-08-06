@@ -12,7 +12,6 @@ type CreateSignupLinkData = {
 type SubmitSignupLeadData = {
   signup_link_id: string;
   trainer_id: string;
-  trainer_auth_user_id?: string | null;
   name: string;
   email: string;
   phone?: string | null;
@@ -169,8 +168,6 @@ export async function submitSignupLead(
     .insert({
       signup_link_id: payload.signup_link_id,
       trainer_id: payload.trainer_id,
-      trainer_auth_user_id:
-        payload.trainer_auth_user_id || null,
 
       name: payload.name,
       email: payload.email,
