@@ -8,6 +8,7 @@ import {
 import { RoleGuard } from '../components/auth/RoleGuard';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useAuthStore } from '../store/authStore';
+import { useOnboardingStore } from '../store/onboardingStore';
 
 import { reloadForStaleChunk } from '../utils/chunkReload';
 
@@ -69,6 +70,10 @@ const ResetPasswordPage = lazyPage(() =>
 
 const StudentLoginPage = lazyPage(() =>
   import('../pages/auth/StudentLoginPage').then((m) => ({ default: m.StudentLoginPage }))
+);
+
+const StudentEntryPage = lazyPage(() =>
+  import('../pages/auth/StudentEntryPage').then((m) => ({ default: m.StudentEntryPage }))
 );
 
 const SignupPublicPage = lazyPage(() =>
@@ -245,6 +250,16 @@ function AuthAwareLandingPage() {
     student,
   } = useAuthStore();
 
+  const { chosenRole } = useOnboardingStore();
+
+  // Sprint 17 · ETAPA 6 — fluxo Aluno: quem escolheu "Sou Aluno" no onboarding
+  // (e ainda não tem sessão) entra direto pela tela de código do Personal —
+  // reutilizando o fluxo de convite existente (slug do link de cadastro).
+  // Nenhum efeito para usuários existentes ou para quem escolheu Personal.
+  if (!isAuthenticated && !isLoading && chosenRole === 'student') {
+    return <Navigate to="/auth/student-entry" replace />;
+  }
+
   if (isRecovering) {
     return <Navigate to="/auth/reset-password" replace />;
   }
@@ -311,6 +326,10 @@ export const router =
         {
           path: 'student-login',
           element: <StudentLoginPage />,
+        },
+        {
+          path: 'student-entry',
+          element: <StudentEntryPage />,
         },
         {
           path: 'forgot-password',

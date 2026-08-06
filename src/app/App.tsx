@@ -1,16 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 import { useAuthStore } from '../store/authStore';
-import { LoadingScreen } from '../components/ui/LoadingScreen';
+import { SmartSplashScreen } from '../components/ui/SmartSplashScreen';
+import { OnboardingFlow } from '../components/onboarding/OnboardingFlow';
+import { useOnboardingStore } from '../store/onboardingStore';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { supabase } from '../lib/supabase';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { usePushReceiver } from '../hooks/usePushReceiver';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { PushBanner } from '../components/ui/PushBanner';
 
+// Sprint 17 · ETAPA 2 — tempo mínimo de exposição da Splash (1–2s).
+const SPLASH_MIN_MS = 1500;
+
 export function App() {
-  const { isLoading, initialize } = useAuthStore();
+  const { isLoading, isAuthenticated, initialize } = useAuthStore();
+  const { online } = useOnlineStatus();
+
+  // Sprint 17 · ETAPA 4 — primeiro acesso: só usuários NÃO autenticados e
+  // com onboarding pendente veem o fluxo. Existentes/autenticados seguem
+  // direto (comportamento inalterado).
+  const {
+    onboardingDone,
+    markOnboardingDone,
+    chooseRole,
+  } = useOnboardingStore();
+
+  // Garante que a Splash fique visível pelo menos ~1.5s mesmo quando a
+  // inicialização da sessão termina antes (ex.: sessão rápida restaurada).
+  const [splashElapsed, setSplashElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSplashElapsed(true), SPLASH_MIN_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Sprint 12 — Push Notifications: registro de dispositivo (permissão +
   // token FCM) em plataforma nativa; no-op na web/Preview.
@@ -70,8 +95,28 @@ export function App() {
     return () => subscription?.unsubscribe();
   }, [initialize]);
 
-  if (isLoading) {
-    return <LoadingScreen />;
+  // Sprint 17 · ETAPA 2 — Splash Screen Inteligente: exibida durante a
+  // verificação da sessão (e por um tempo mínimo de exposição). Ela apenas
+  // decide/prepara o próximo destino — onboarding e escolha de perfil são
+  // implementados nas próximas etapas.
+  if (isLoading || !splashElapsed) {
+    return (
+      <SmartSplashScreen online={online} />
+    );
+  }
+
+  // Sprint 17 · ETAPA 4 — Onboarding Inicial: apenas na primeira abertura
+  // (não autenticado + sem onboarding concluído). Ao escolher o perfil,
+  // persistimos onboardingDone + chosenRole e seguimos para o fluxo normal.
+  if (!isAuthenticated && !onboardingDone) {
+    return (
+      <OnboardingFlow
+        onSelectRole={(role) => {
+          chooseRole(role);
+          markOnboardingDone();
+        }}
+      />
+    );
   }
 
   return (

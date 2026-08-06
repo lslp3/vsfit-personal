@@ -12,7 +12,9 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
     },
     SplashScreen: {
-      launchShowDuration: 3000,
+      // Sprint 17 · ETAPA 2 — splash nativa reduzida (a Splash inteligente
+      // React assume a identidade visual; total de abertura não aumenta).
+      launchShowDuration: 1000,
       backgroundColor: '#050505',
       androidSplashResourceName: 'splash',
     },

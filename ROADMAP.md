@@ -359,6 +359,14 @@ Após concluir: "Configure seu primeiro aluno"
 [ + Adicionar primeiro aluno ]
 ```
 
+> **Melhoria registrada (pós-ETAPA 5, revisão antes da publicação):**
+> Revisar o critério "perfil configurado" (`needsTrainerSetup`). Hoje qualquer campo
+> opcional preenchido (avatar_url/cref/niche/phone/location/bio/instagram) já
+> considera o setup concluído, o que pode gerar falsos positivos em perfis antigos
+> que tenham apenas um campo preenchido. Avaliar posteriormente utilizar um
+> **conjunto mínimo de campos obrigatórios** (ex.: nome + especialidade) para
+> definir a conclusão — sem criar campo novo no banco. **Não implementado agora.**
+
 ### ETAPA 6 — Fluxo Aluno
 
 Regra: **Aluno não cria conta independente.**

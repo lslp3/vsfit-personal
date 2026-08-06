@@ -8,6 +8,9 @@ import { Menu } from 'lucide-react';
 import { BrandMark } from '../brand/BrandMark';
 import { BottomNav } from '../ui/BottomNav';
 import { Sidebar } from './Sidebar';
+import { useAuthStore } from '../../store/authStore';
+import { needsTrainerSetup } from '../../services/onboardingService';
+import { TrainerFirstSetupPage } from '../../pages/personal/TrainerFirstSetupPage';
 
 function getPageTitle(pathname: string): string {
   const map: Record<string, string> = {
@@ -37,6 +40,15 @@ export function PersonalShell() {
 
   const location = useLocation();
   const title = getPageTitle(location.pathname);
+
+  // Sprint 17 · ETAPA 5 — configuração inicial do Personal: exibida UMA vez
+  // (perfil ainda vazio + flag não marcada). Após concluir, o usuário segue
+  // para o app normalmente (nunca mais reaparece).
+  const { trainerProfile } = useAuthStore();
+
+  if (needsTrainerSetup(trainerProfile)) {
+    return <TrainerFirstSetupPage />;
+  }
 
   return (
     <div className="min-h-screen bg-[#050505] pt-[env(safe-area-inset-top,0px)]">
