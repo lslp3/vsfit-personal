@@ -78,7 +78,7 @@ export function StudentShell() {
         </aside>
 
         <div className="min-w-0 flex-1">
-          <div className="max-w-lg mx-auto pb-20">
+          <div className="mx-auto max-w-lg pb-20 md:max-w-7xl">
             <Outlet />
           </div>
         </div>

@@ -58,7 +58,7 @@ export function PersonalShell() {
 
         <div className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
-            <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
+            <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4 md:max-w-7xl md:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 <BrandMark
                   size="sm"
@@ -87,7 +87,7 @@ export function PersonalShell() {
             </div>
           </header>
 
-          <main className="mx-auto max-w-lg pb-20">
+          <main className="mx-auto max-w-lg pb-20 md:max-w-7xl">
             <Outlet />
           </main>
         </div>
