@@ -8,6 +8,7 @@ import { OnboardingFlow } from '../components/onboarding/OnboardingFlow';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { supabase } from '../lib/supabase';
+import { Capacitor } from '@capacitor/core';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { usePushReceiver } from '../hooks/usePushReceiver';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -124,17 +125,31 @@ export function App() {
     );
   }
 
-  // Sprint 17 · ETAPA 4 → ETAPA 7 — Onboarding Inicial: apenas na primeira
-  // abertura (não autenticado + sem onboarding concluído) e SOMENTE no destino
-  // raiz ("/"). Deep-links de entrada (/auth/login, register, reset-password,
-  // student-entry, e o signup público /signup/:slug) devem abrir o fluxo
-  // correspondente sem serem interceptados — caso contrário um visitante de
-  // primeira vez em um link do Personal ou em reset de senha veria onboarding
-  // em vez do formulário correto.
-  const isEntryDeepLink = window.location.pathname.startsWith('/auth')
-    || window.location.pathname.startsWith('/signup');
+  // Sprint 17 · ETAPA 4 → ETAPA 7 — Onboarding Inicial. Restaurado como
+  // Landing pública na raiz:
+  // - WEB (Vercel): "/" é a Landing pública (chega no router →
+  //   AuthAwareLandingPage → LandingPage). O OnboardingFlow só é acionado
+  //   quando o visitante entra no fluxo do aplicativo (login/cadastro).
+  //   Recovery (/auth/reset-password, forgot-password) e convites públicos
+  //   (/signup/*) sempre abrem direto — nunca interceptados.
+  // - NATIVO (Capacitor/APK): comportamento Sprint 17 inalterado — "/" de um
+  //   primeiro acesso entra direto no OnboardingFlow.
+  const isNative = Capacitor.isNativePlatform();
+  const isAuthPath = window.location.pathname.startsWith('/auth');
+  const isSignupPath = window.location.pathname.startsWith('/signup');
+  const isAppEntry =
+    window.location.pathname === '/auth/login' ||
+    window.location.pathname === '/auth/register' ||
+    window.location.pathname === '/auth/student-login';
+  const isRecoveryPath =
+    window.location.pathname.startsWith('/auth/reset-password') ||
+    window.location.pathname.startsWith('/auth/forgot-password');
 
-  if (!isAuthenticated && !onboardingDone && !isEntryDeepLink) {
+  const shouldShowOnboarding =
+    !isAuthenticated && !onboardingDone &&
+    (isNative ? !isAuthPath && !isSignupPath : isAppEntry && !isRecoveryPath);
+
+  if (shouldShowOnboarding) {
     return (
       <OnboardingFlow
         onSelectRole={(role) => {
