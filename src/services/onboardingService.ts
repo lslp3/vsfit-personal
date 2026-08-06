@@ -14,24 +14,27 @@
 
 const STORAGE_KEY = 'vsf_first_access_v1';
 
+/** Versão atual da persistência de primeiro acesso (ETAPA 9 — hardening). */
+const CURRENT_VERSION = 1 as const;
+
 export type OnboardingRole = 'personal' | 'student' | null;
 
 export interface FirstAccessState {
   /** Concluiu o onboarding? (nunca reexibido para o mesmo device) */
   onboardingDone: boolean;
-  /** Perfil escolhido pelo usuário (Personal | Aluno), se já escolhido. */
+  /** Perfil escolhido pelo usuário (Personal ou Aluno), se já escolhido. */
   chosenRole: OnboardingRole;
   /** Timestamp (epoch ms) da primeira abertura (para telemetria futura). */
   firstAccessAt: number | null;
-  /** Versão da infraestrutura — preparado para evoluções futuras. */
-  version: 1;
+  /** Versão da infraestrutura — usado para migração idempotente. */
+  version: typeof CURRENT_VERSION;
 }
 
 const DEFAULT_STATE: FirstAccessState = {
   onboardingDone: false,
   chosenRole: null,
   firstAccessAt: null,
-  version: 1,
+  version: CURRENT_VERSION,
 };
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -51,19 +54,44 @@ function resolveStorage(): StorageLike | null {
   return null;
 }
 
-function isFirstAccessState(value: unknown): value is FirstAccessState {
-  if (!value || typeof value !== 'object') return false;
+/**
+ * Normaliza qualquer valor lido do storage para um `FirstAccessState` válido.
+ * Tolerante a shape incompleto (preenche defaults), versão antiga (migra) e a
+ * representações legacy (boolean/string). O ponto crítico (ETAPA 9): PRESERVA
+ * `onboardingDone === true` sempre que houver qualquer evidência de conclusão,
+ * para que uma mudança de shape/chave/versão NUNCA re-exiba o onboarding para
+ * um usuário que já concluiu. Retorna `null` quando não há como interpretar.
+ */
+function normalizeState(input: unknown): FirstAccessState | null {
+  if (input && typeof input === 'object') {
+    const s = input as Partial<FirstAccessState>;
 
-  const state = value as Partial<FirstAccessState>;
+    const onboardingDone = s.onboardingDone === true;
+    const chosenRole =
+      s.chosenRole === 'personal' || s.chosenRole === 'student'
+        ? s.chosenRole
+        : null;
+    const firstAccessAt =
+      typeof s.firstAccessAt === 'number' ? s.firstAccessAt : null;
 
-  return (
-    typeof state.onboardingDone === 'boolean' &&
-    (state.chosenRole === 'personal' ||
-      state.chosenRole === 'student' ||
-      state.chosenRole === null) &&
-    (state.firstAccessAt === null ||
-      typeof state.firstAccessAt === 'number')
-  );
+    return {
+      onboardingDone,
+      chosenRole,
+      firstAccessAt,
+      version: CURRENT_VERSION,
+    };
+  }
+
+  // Representações legacy simples que guardavam o flag de conclusão.
+  if (input === true || input === 'true' || input === '1') {
+    return { ...DEFAULT_STATE, onboardingDone: true, version: CURRENT_VERSION };
+  }
+
+  if (input === false || input === 'false' || input === '0' || input === '') {
+    return { ...DEFAULT_STATE, version: CURRENT_VERSION };
+  }
+
+  return null;
 }
 
 /** Lê o estado persistido (ou o estado inicial quando inexistente). */
@@ -82,13 +110,25 @@ export function loadFirstAccessState(): FirstAccessState {
     }
 
     const parsed: unknown = JSON.parse(raw);
+    const normalized = normalizeState(parsed);
 
-    if (isFirstAccessState(parsed)) {
-      return parsed;
+    if (!normalized) {
+      // Conteúdo incompreensível: cai no default sem destruir nada.
+      return { ...DEFAULT_STATE };
     }
 
-    // Estado corrompido/incompatível: reseta com segurança.
-    return { ...DEFAULT_STATE };
+    // Migração idempotente: se a versão persistida está defasada/ausente,
+    // persiste a forma normalizada (preservando onboardingDone) e corrige.
+    const persistedVersion =
+      parsed && typeof parsed === 'object'
+        ? (parsed as Partial<FirstAccessState>).version
+        : undefined;
+
+    if (persistedVersion !== CURRENT_VERSION) {
+      saveFirstAccessState(normalized);
+    }
+
+    return normalized;
   } catch {
     return { ...DEFAULT_STATE };
   }
