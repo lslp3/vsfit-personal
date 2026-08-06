@@ -52,42 +52,53 @@ export function PersonalShell() {
 
   return (
     <div className="min-h-screen bg-[#050505] pt-[var(--safe-area-inset-top, env(safe-area-inset-top,0px))]">
-      <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark
-              size="sm"
-              className="rounded-[11px]"
-            />
+      <div className="mx-auto flex min-h-screen max-w-[1600px]">
+        {/* Sprint 18 · Fase A — sidebar persistente em desktop (inline); oculto no mobile. */}
+        <Sidebar variant="inline" />
 
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-black leading-tight tracking-[-0.025em] text-white">
-                VSFit Personal
-              </p>
+        <div className="min-w-0 flex-1">
+          <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
+            <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <BrandMark
+                  size="sm"
+                  className="rounded-[11px]"
+                />
 
-              <p className="mt-0.5 truncate text-[10px] font-medium leading-tight text-zinc-500">
-                {title}
-              </p>
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-black leading-tight tracking-[-0.025em] text-white">
+                    VSFit Personal
+                  </p>
+
+                  <p className="mt-0.5 truncate text-[10px] font-medium leading-tight text-zinc-500">
+                    {title}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Abrir menu"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white active:scale-90 md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
             </div>
-          </div>
+          </header>
 
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Abrir menu"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white active:scale-90"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <main className="mx-auto max-w-lg pb-20">
+            <Outlet />
+          </main>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-lg pb-20">
-        <Outlet />
-      </main>
+      {/* BottomNav apenas no mobile. */}
+      <div className="md:hidden">
+        <BottomNav />
+      </div>
 
-      <BottomNav />
-
+      {/* Overlay mobile mantido. */}
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
