@@ -235,7 +235,7 @@ export function OnboardingFlow({ onSelectRole }: OnboardingFlowProps) {
       </main>
 
       {/* Rodapé de avançar */}
-      <footer className="relative z-10 px-6 pb-8 pt-4">
+      <footer className="relative z-10 px-6 pb-[calc(2rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] pt-4">
         {!isLast ? (
           <button
             onClick={next}
