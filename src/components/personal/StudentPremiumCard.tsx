@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -23,6 +23,9 @@ import type { StudentCardAudit } from '../../services/auditService';
 type Props = {
   student: Student;
   audit: StudentCardAudit | null;
+  /** Sprint 16 Fase 5 Etapa 2 — seleção múltipla. Opcional: sem valor, sem checkbox. */
+  selected?: boolean;
+  onToggleSelect?: (studentId: string) => void;
 };
 
 function getStudentInitials(name?: string) {
@@ -135,7 +138,12 @@ function formatWeight(weight: number | null): string {
   return `${weight.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`;
 }
 
-export function StudentPremiumCard({ student, audit }: Props) {
+export function StudentPremiumCardComponent({
+  student,
+  audit,
+  selected = false,
+  onToggleSelect,
+}: Props) {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -192,6 +200,39 @@ export function StudentPremiumCard({ student, audit }: Props) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
       <div className="flex items-start gap-4">
+        {/* Sprint 16 Fase 5 Etapa 2 — checkbox de seleção (sem navegar) */}
+        {onToggleSelect && (
+          <button
+            type="button"
+            aria-label={selected ? 'Desselecionar aluno' : 'Selecionar aluno'}
+            aria-pressed={selected}
+            role="checkbox"
+            aria-checked={selected}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelect(student.id);
+            }}
+            className={cn(
+              'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all active:scale-95',
+              selected
+                ? 'border-[#ff2a32] bg-[#ff2a32] text-white'
+                : 'border-white/15 bg-white/[0.05] text-transparent hover:border-white/30'
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </button>
+        )}
+
         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#171717]">
           {avatarUrl ? (
             <img
@@ -445,3 +486,10 @@ export function StudentPremiumCard({ student, audit }: Props) {
     </div>
   );
 }
+
+/**
+ * Sprint 16 Fase 5 Etapa 2 — memo para evitar re-render desnecessário ao
+ * alternar a seleção de outros cards (props estáveis → apenas o card cujo
+ * `selected` mudou re-renderiza).
+ */
+export const StudentPremiumCard = memo(StudentPremiumCardComponent);

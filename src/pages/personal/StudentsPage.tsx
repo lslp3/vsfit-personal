@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Users, KeyRound, Check, Copy, Send } from 'lucide-react';
@@ -14,6 +14,7 @@ import { getPlanLimits } from '../../lib/planLimits';
 import { getStudentAuditByTrainer, buildPortfolioSummary, type StudentCardAudit, type PortfolioSummary } from '../../services/auditService';
 import { StudentsSummary } from '../../components/personal/StudentsSummary';
 import { StudentsSortBar } from '../../components/personal/StudentsSortBar';
+import { BulkActionsBar } from '../../components/personal/BulkActionsBar';
 import { matchesSmartFilter, sortStudents, type SmartFilter, type SortKey } from '../../lib/studentFilters';
 import { cn } from '../../lib/utils';
 import type { Student, Payment } from '../../types/database';
@@ -97,6 +98,28 @@ export function StudentsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   // Sprint 16 Fase 5 — ordenação (client-side, sobre a lista já filtrada).
   const [sort, setSort] = useState<SortKey>('name_asc');
+  // Sprint 16 Fase 5 Etapa 2 — seleção múltipla (estado local da página).
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = useCallback((studentId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) {
+        next.delete(studentId);
+      } else {
+        next.add(studentId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllVisible = useCallback((ids: string[]) => {
+    setSelectedIds(new Set(ids));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -404,6 +427,16 @@ export function StudentsPage() {
             <StudentsSortBar value={sort} onChange={setSort} />
           </div>
 
+          {/* Sprint 16 Fase 5 Etapa 2 — seleção múltipla */}
+          <BulkActionsBar
+            selectedCount={selectedIds.size}
+            visibleCount={visibleStudents.length}
+            onSelectAllVisible={() =>
+              selectAllVisible(visibleStudents.map((student) => student.id))
+            }
+            onClear={clearSelection}
+          />
+
           {filtered.length === 0 ? (
             <div className="py-12">
               <EmptyState
@@ -444,6 +477,8 @@ export function StudentsPage() {
                     <StudentPremiumCard
                       student={student}
                       audit={auditMap[student.id] || null}
+                      selected={selectedIds.has(student.id)}
+                      onToggleSelect={toggleSelect}
                     />
                   </motion.div>
                 ))}
