@@ -235,7 +235,6 @@ export async function convertLeadToStudent(
           birth_date: lead.birth_date || null,
           status: 'active',
           source: 'signup_link',
-          signup_lead_id: lead.id,
           login_enabled: true,
           app_access_status: 'invited',
         })
