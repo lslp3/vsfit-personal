@@ -1,19 +1,22 @@
 name: Build APK + AAB Release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version name (ex: 1.0.0)'
-        required: true
+        description: 'Version name (ex: 1.0.0). Opcional — usado em workflow_dispatch.'
+        required: false
         default: '1.0.0'
       version_code:
-        description: 'Version code (integer)'
-        required: true
+        description: 'Version code (integer). Opcional — usado em workflow_dispatch.'
+        required: false
         default: '2'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -75,11 +78,23 @@ jobs:
           fi
           test -s android/app/release.keystore || { echo "ERROR: release.keystore was not decoded"; exit 1; }
 
+      - name: Resolve version name/code (manual or auto from push)
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version_name=${{ inputs.version_name }}" >> "$GITHUB_OUTPUT"
+            echo "version_code=${{ inputs.version_code }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version_name=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            echo "version_code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved version_name=${{ steps.ver.outputs.version_name }}"
+
       - name: Update version
         working-directory: android/app
         run: |
-          sed -i "s/versionCode [0-9]*/versionCode ${{ inputs.version_code }}/" build.gradle
-          sed -i "s/versionName \"[^\"]*\"/versionName \"${{ inputs.version_name }}\"/" build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.ver.outputs.version_code }}/" build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"${{ steps.ver.outputs.version_name }}\"/" build.gradle
 
       - name: Build web app
         run: npm run build
@@ -98,8 +113,9 @@ jobs:
       - name: Rename artifacts
         working-directory: android/app/build/outputs
         run: |
-          cp apk/release/*.apk vsfit-personal-v${{ inputs.version_name }}.apk
-          cp bundle/release/*.aab vsfit-personal-v${{ inputs.version_name }}.aab
+          cp apk/release/*.apk vsfit-personal-v${{ steps.ver.outputs.version_name }}.apk
+          cp apk/release/*.apk vsfit-personal.apk
+          cp bundle/release/*.aab vsfit-personal-v${{ steps.ver.outputs.version_name }}.aab
           ls -la .
 
       - name: Verify artifacts
@@ -116,18 +132,35 @@ jobs:
           unzip -t "$AAB" | tail -1
           unzip -t "$APK" | tail -1
 
-      - name: Upload APK Release
+      - name: Upload APK Release (backup artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: vsfit-personal-v${{ inputs.version_name }}-apk
-          path: android/app/build/outputs/vsfit-personal-v${{ inputs.version_name }}.apk
+          name: vsfit-personal-v${{ steps.ver.outputs.version_name }}-apk
+          path: android/app/build/outputs/vsfit-personal-v${{ steps.ver.outputs.version_name }}.apk
           if-no-files-found: error
           retention-days: 90
 
-      - name: Upload AAB Release
+      - name: Upload AAB Release (backup artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: vsfit-personal-v${{ inputs.version_name }}-aab
-          path: android/app/build/outputs/vsfit-personal-v${{ inputs.version_name }}.aab
+          name: vsfit-personal-v${{ steps.ver.outputs.version_name }}-aab
+          path: android/app/build/outputs/vsfit-personal-v${{ steps.ver.outputs.version_name }}.aab
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish APK (GitHub Release — fonte oficial da landing)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "VSFit Personal — latest (${{ steps.ver.outputs.version_name }})"
+          body: |
+            APK gerado automaticamente após push/merge na `main`.
+            - Versão: ${{ steps.ver.outputs.version_name }} (code ${{ steps.ver.outputs.version_code }})
+            - Commit: ${{ github.sha }}
+            - Run: ${{ github.run_number }}
+            Asset fixo `vsfit-personal.apk` — a landing usa a URL estável
+            `releases/latest/download/vsfit-personal.apk`.
+          files: android/app/build/outputs/vsfit-personal.apk
+          overwrite: true
+          force_tag: true
+          make_latest: true

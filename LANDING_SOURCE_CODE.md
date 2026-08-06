@@ -418,7 +418,7 @@ export function DynamicInstallGuide() {
   }
 
   if (isAndroid) {
-    const url = import.meta.env.VITE_ANDROID_APK_URL || '/downloads/vsfit-personal.apk';
+    const url = import.meta.env.VITE_ANDROID_APK_URL || 'https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk';
     return (
       <div className="text-center p-8 rounded-3xl bg-white/5 border border-white/10">
         <div className="w-16 h-16 bg-vs-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -496,7 +496,7 @@ export function DynamicInstallGuide() {
             </div>
           </div>
           <a 
-            href={import.meta.env.VITE_ANDROID_APK_URL || '/downloads/vsfit-personal.apk'}
+            href={import.meta.env.VITE_ANDROID_APK_URL || 'https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk'}
             className="p-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors"
           >
             <Download className="w-5 h-5" />
@@ -545,7 +545,7 @@ export function DeviceAwareCTA({ className, onClick }: DeviceAwareCTAProps) {
       return { text: 'Abrir VSFit', action: () => window.location.href = '/auth/login', variant: 'primary' };
     }
     if (isAndroid) {
-      const url = import.meta.env.VITE_ANDROID_APK_URL || '/downloads/vsfit-personal.apk';
+      const url = import.meta.env.VITE_ANDROID_APK_URL || 'https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk';
       return { text: 'Baixar APK para Android', action: () => window.location.href = url, variant: 'primary' };
     }
     if (isIOS) {
@@ -2000,7 +2000,8 @@ Nenhum outro componente é importado diretamente pela LandingPage.
 - `/landing/dashboard.webp` (usado em `LandingHero.tsx:77`) — **NÃO EXISTE** (fallback para placeholder funciona via `onError`)
 - `/landing/student-home.webp` (usado em `StudentFeatures.tsx:35`) — **NÃO EXISTE** (fallback para placeholder funciona via `onError`)
 - `/src/assets/brand/vsfit-logo.png` — **EXISTE** em `src/assets/brand/vsfit-logo.png`
-- `/downloads/vsfit-personal.apk` — **NÃO EXISTE** (fallback para `VITE_ANDROID_APK_URL`)
+- `releases/latest/download/vsfit-personal.apk` — **GitHub Release** (fonte oficial; usado se
+  `VITE_ANDROID_APK_URL` não for setada)
 - `/icons/icon-192.png` — **EXISTE**
 - `/icons/icon-512.png` — **EXISTE**
 - `/icons/icon-maskable-512.png` — **EXISTE**
@@ -2014,7 +2015,8 @@ Não existe CSS específico para a landing page. Todo o CSS global está em `src
 - `/auth/login` — link "Entrar" no header e "Acessar versão web" no hero
 - `/auth/login` — usado no `DeviceAwareCTA` quando `isStandalone` é true
 - `#features`, `#personal`, `#student`, `#install`, `#faq` — links de navegação âncora (scroll suave)
-- `/downloads/vsfit-personal.apk` — link de download Android (fallback sem `VITE_ANDROID_APK_URL`)
+- `releases/latest/download/vsfit-personal.apk` — link de download Android (GitHub Release;
+  override via `VITE_ANDROID_APK_URL`)
 - `#install-section` — scroll no CTA para desktop (usando `getElementById`, mas o ID real é `#install` e não `#install-section` — possível bug)
 
 ### Risco de quebrar login, cadastro ou acesso do aluno

@@ -75,7 +75,10 @@ export function DynamicInstallGuide() {
               </div>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-vs-primary text-white shadow-lg transition-all hover:bg-red-600">
-              <a href="/VSFit-Personal.apk" download>
+              <a
+                href={import.meta.env.VITE_ANDROID_APK_URL || "https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk"}
+                download
+              >
                 <Download className="h-5 w-5" />
               </a>
             </div>

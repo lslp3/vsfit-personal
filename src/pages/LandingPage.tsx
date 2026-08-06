@@ -327,7 +327,7 @@ export default function LandingPage() {
                 </p>
 
                 <a
-                  href="/VSFit-Personal.apk"
+                  href={import.meta.env.VITE_ANDROID_APK_URL || "https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk"}
                   download
                   className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase text-vs-primary transition-all hover:bg-white/[0.1]"
                 >

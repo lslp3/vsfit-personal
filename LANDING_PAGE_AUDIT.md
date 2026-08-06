@@ -364,18 +364,22 @@ Os planos são definidos em dois locais principais:
 | **Ícone Android** | Configurado (vários mipmaps) |
 | **Splash screen** | Configurada (várias resoluções) |
 | **Permissões** | Apenas `INTERNET` |
-| **URL download APK** | `VITE_ANDROID_APK_URL` (variável de ambiente) ou fallback `/downloads/vsfit-personal.apk` |
+| **URL download APK** | `VITE_ANDROID_APK_URL` (override opcional) ou **GitHub Release** estável: `https://github.com/lslp3/vsfit-personal/releases/latest/download/vsfit-personal.apk` |
+| **Fonte oficial** | **GitHub Release** (asset fixo `vsfit-personal.apk`) |
 | **Diretório `/public/downloads/`** | **Não existe** |
 | **Status** | O projeto Android está configurado e compilável, mas **não há APK no repositório**. É necessário executar `npx cap sync android && npx cap open android` e buildar pelo Android Studio, ou configurar CI/CD. |
 
-### O que falta para disponibilizar o download
+### Como o APK é publicado agora (automatizado)
 
-1. Buildar o APK via Android Studio ou linha de comando Gradle.
-2. Colocar o APK em `/public/downloads/vsfit-personal.apk` ou hospedar em CDN (ex: Supabase Storage, S3).
-3. Configurar a variável de ambiente `VITE_ANDROID_APK_URL` apontando para o arquivo.
-4. (Opcional) Configurar assinatura do APK para produção.
+- `push`/merge na `main` dispara o workflow `.github/workflows/build-release.yml`, que:
+  1. Builda o web app + assina o APK/AAB com a keystore release.
+  2. Publica o APK num **GitHub Release** com tag `latest` e asset fixo `vsfit-personal.apk`.
+  3. A landing usa a URL estável `releases/latest/download/vsfit-personal.apk` (sempre a
+     versão mais recente), com override opcional via `VITE_ANDROID_APK_URL`.
+  4. Versão é resolvida automaticamente no push (`1.0.<run_number>`) ou via inputs no
+       `workflow_dispatch` manual.
 
-## 11. PWA e instalação no iPhone
+  ## 11. PWA e instalação no iPhone
 
 ### Configuração PWA atual
 
@@ -758,7 +762,8 @@ Para criar a landing page, o desenvolvedor precisará destes arquivos:
 
 ### Prioridade média
 
-7. **Buildar o APK Android** e disponibilizar em `/public/downloads/vsfit-personal.apk` ou CDN.
+7. **APK Android** é publicado automaticamente no **GitHub Release** (`latest`) após push/merge
+  na `main` — a landing já aponta para a URL estável `releases/latest/download/vsfit-personal.apk`.
 8. **Configurar `VITE_ANDROID_APK_URL`** no ambiente de produção.
 9. **Criar páginas de política de privacidade e termos de uso**.
 10. **Configurar corretamente os tamanhos dos ícones no manifest.json** (atualmente declarados como 1024x1024 mas os arquivos são menores).
