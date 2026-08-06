@@ -293,8 +293,12 @@ export function sortStudents(
 }
 
 /* ────────────────────────────────────────────────────────────
-   SPRINT 16 · FASE 5 · ETAPA 3 — EXPORT CSV (100% client-side)
-   Usa exclusivamente students[] + auditMap[]. SEM queries.
+   SPRINT 16 · FASE 5 · ETAPA 3 — EXPORT CSVs "PREMIUM" (100% client-side)
+
+   Funcionalidade premium do VSFit Personal: relatório de alunos com
+   cabeçalho de marca, resumo da carteira e formatação profissional.
+
+   Usa exclusivamente students[] + auditMap[]. SEM queries, SEM backend.
    ──────────────────────────────────────────────────────────── */
 
 function csvCell(value: unknown): string {
@@ -304,57 +308,162 @@ function csvCell(value: unknown): string {
   return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
 }
 
-/**
- * Gera o CSV (string) com a carteira informada. A ordenação/dedup é com o
- * caller (studentFilters). Nenhuma query — apenas formatação de linha.
- */
-export function buildStudentsCsv(
-  rows: { student: Student; audit?: StudentCardAudit | null }[]
-): string {
-  const header = [
-    'nome',
-    'email',
-    'status',
-    'aderencia %',
-    'ultimo_treino_dias',
-    'proximo_vencimento',
-    'peso_kg',
-    'plano_ativo',
-    'precisa_atencao',
-    'ultima_avaliacao',
-    'telefone',
-  ];
-
-  const lines = rows.map(({ student, audit }) => {
-    const nextDue = audit?.nextDueDate
-      ? new Date(audit.nextDueDate).toLocaleDateString('pt-BR')
-      : '';
-    const lastAssessment = audit?.lastAssessmentAt
-      ? new Date(audit.lastAssessmentAt).toLocaleDateString('pt-BR')
-      : '';
-
-    return [
-      student.name || '',
-      student.email || '',
-      student.status || '',
-      audit?.adherencePercent ?? '',
-      audit?.daysSinceLastWorkout ?? '',
-      audit?.isOverdue ? 'atrasado' : nextDue,
-      audit?.lastWeight ?? '',
-      audit?.activePlanName || '',
-      audit?.needsAttention ? 'sim' : 'nao',
-      lastAssessment,
-      (student as any).phone || '',
-    ]
-      .map(csvCell)
-      .join(',');
-  });
-
-  return [header.join(','), ...lines].join('\n');
+function csvLine(values: unknown[]): string {
+  return values.map(csvCell).join(',');
 }
 
-/** Dispara o download do CSV no navegador (client-side). */
-export function downloadStudentsCsv(csv: string, filename = 'alunos.csv'): void {
+/** Mapeia o status técnico para o rótulo profissional em português. */
+function statusLabel(status?: string): string {
+  const s = String(status || '').toLowerCase();
+  return s === 'active'
+    ? 'Ativo'
+    : s === 'paused'
+      ? 'Pausado'
+      : s === 'inactive'
+        ? 'Inativo'
+        : s || '—';
+}
+
+function formatPtDate(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+}
+
+/** "último treino" em vocabulário humano. */
+function workoutLabel(days: number | null | undefined): string {
+  if (days === null || days === undefined) return 'Nunca treinou';
+  if (days === 0) return 'Hoje';
+  if (days === 1) return '1 dia atrás';
+  return `${days} dias atrás`;
+}
+
+/** Peso formatado com unidade (kg), só quando houver valor. */
+function weightLabel(weight: number | null | undefined): string {
+  if (weight === null || weight === undefined) return '';
+  return `${weight.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`;
+}
+
+/**
+ * Resumo da carteira (derivado em memória dos próprios rows) — usado no
+ * topo do relatório. Zero consultas.
+ */
+export function buildPortfolioCsvSummary(
+  rows: { student: Student; audit?: StudentCardAudit | null }[]
+): { total: number; ativos: number; pausados: number; inativos: number; atencao: number; aderenciaMedia: number | null } {
+  let ativos = 0;
+  let pausados = 0;
+  let inativos = 0;
+  let atencao = 0;
+  let aderenciaSum = 0;
+  let aderenciaN = 0;
+
+  for (const { student, audit } of rows) {
+    const status = String(student.status || '').toLowerCase();
+    if (status === 'active') ativos += 1;
+    else if (status === 'paused') pausados += 1;
+    else if (status === 'inactive') inativos += 1;
+
+    if (audit?.needsAttention) atencao += 1;
+
+    if (audit?.adherencePercent !== null && audit?.adherencePercent !== undefined) {
+      aderenciaSum += audit.adherencePercent;
+      aderenciaN += 1;
+    }
+  }
+
+  return {
+    total: rows.length,
+    ativos,
+    pausados,
+    inativos,
+    atencao,
+    aderenciaMedia: aderenciaN > 0 ? Math.round((aderenciaSum / aderenciaN) * 10) / 10 : null,
+  };
+}
+
+/**
+ * Gera o conteúdo CSV completo do relatório premium:
+ * cabeçalho de marca → resumo da carteira → tabela de alunos com campos
+ * profissionais e valores formatados. Nenhuma query — apenas formatação.
+ */
+export function buildStudentsCsv(
+  rows: { student: Student; audit?: StudentCardAudit | null }[],
+  now: Date = new Date()
+): string {
+  const summary = buildPortfolioCsvSummary(rows);
+
+  const lines: string[] = [];
+
+  // 1) Cabeçalho de marca
+  lines.push(csvLine(['VSFit Personal']));
+  lines.push(csvLine(['Gestão inteligente de alunos']));
+  lines.push(csvLine([`Relatório exportado em ${now.toLocaleDateString('pt-BR')}`]));
+  lines.push('');
+
+  // 2) Resumo da carteira
+  lines.push(csvLine(['RESUMO DA CARTEIRA']));
+  lines.push(csvLine(['Total de alunos', summary.total]));
+  lines.push(csvLine(['Ativos', summary.ativos]));
+  lines.push(csvLine(['Pausados', summary.pausados]));
+  lines.push(csvLine(['Inativos', summary.inativos]));
+  lines.push(csvLine(['Alunos que precisam de atenção', summary.atencao]));
+  lines.push(csvLine(['Média de aderência', summary.aderenciaMedia === null ? '—' : `${summary.aderenciaMedia}%`]));
+  lines.push('');
+
+  // 3) Tabela de dados (campos profissionais)
+  const header = [
+    'Nome',
+    'Email',
+    'Status',
+    'Aderência',
+    'Último treino',
+    'Próximo vencimento',
+    'Peso atual',
+    'Plano de treino',
+    'Situação',
+    'Última avaliação',
+    'Telefone',
+  ];
+  lines.push(csvLine(header));
+
+  for (const { student, audit } of rows) {
+    const nextDue =
+      audit?.isOverdue
+        ? 'Atrasado'
+        : formatPtDate(audit?.nextDueDate) || 'Sem cobrança';
+    const situacao = audit?.needsAttention ? 'Precisa de atenção' : 'Em dia';
+    const lastAssessment = audit?.lastAssessmentAt
+      ? formatPtDate(audit.lastAssessmentAt) || 'Nunca avaliado'
+      : 'Nunca avaliado';
+
+    lines.push(
+      csvLine([
+        student.name || '',
+        student.email || '',
+        statusLabel(student.status),
+        audit?.adherencePercent === null || audit?.adherencePercent === undefined
+          ? '—'
+          : `${audit.adherencePercent}%`,
+        workoutLabel(audit?.daysSinceLastWorkout),
+        nextDue,
+        weightLabel(audit?.lastWeight),
+        audit?.activePlanName || 'Sem plano',
+        situacao,
+        lastAssessment,
+        (student as any).phone || '',
+      ])
+    );
+  }
+
+  return lines.join('\n');
+}
+
+/** Dispara o download do relatório CSV no navegador (client-side). */
+export function downloadStudentsCsv(
+  csv: string,
+  filename: string = `VSFit_Personal_Alunos_${new Date().toISOString().slice(0, 10)}.csv`
+): void {
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

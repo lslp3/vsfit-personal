@@ -76,8 +76,8 @@ export function BulkActionsPanel({ selected, auditMap, trainerId, onDone }: Bulk
       audit: auditMap[student.id] || null,
     }));
     const csv = buildStudentsCsv(rows);
-    downloadStudentsCsv(csv, `alunos_${new Date().toISOString().slice(0, 10)}.csv`);
-    setResult(`CSV exportado com ${countLabel(count)}.`);
+    downloadStudentsCsv(csv);
+    setResult(`Relatório premium exportado com ${countLabel(count)}.`);
     onDone();
   };
 
