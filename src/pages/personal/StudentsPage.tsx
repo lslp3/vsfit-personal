@@ -15,6 +15,7 @@ import { getStudentAuditByTrainer, buildPortfolioSummary, type StudentCardAudit,
 import { StudentsSummary } from '../../components/personal/StudentsSummary';
 import { StudentsSortBar } from '../../components/personal/StudentsSortBar';
 import { BulkActionsBar } from '../../components/personal/BulkActionsBar';
+import { BulkActionsPanel } from '../../components/personal/BulkActionsPanel';
 import { matchesSmartFilter, sortStudents, type SmartFilter, type SortKey } from '../../lib/studentFilters';
 import { cn } from '../../lib/utils';
 import type { Student, Payment } from '../../types/database';
@@ -100,6 +101,12 @@ export function StudentsPage() {
   const [sort, setSort] = useState<SortKey>('name_asc');
   // Sprint 16 Fase 5 Etapa 2 — seleção múltipla (estado local da página).
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Alunos efetivamente selecionados (ordem da carteira original).
+  const selectedStudents = useMemo(
+    () => students.filter((student) => selectedIds.has(student.id)),
+    [students, selectedIds]
+  );
 
   const toggleSelect = useCallback((studentId: string) => {
     setSelectedIds((prev) => {
@@ -435,6 +442,17 @@ export function StudentsPage() {
               selectAllVisible(visibleStudents.map((student) => student.id))
             }
             onClear={clearSelection}
+          />
+
+          {/* Sprint 16 Fase 5 Etapa 3 — ações em massa (só com seleção) */}
+          <BulkActionsPanel
+            selected={selectedStudents}
+            auditMap={auditMap}
+            trainerId={trainerProfile?.id}
+            onDone={() => {
+              loadStudents();
+              clearSelection();
+            }}
           />
 
           {filtered.length === 0 ? (

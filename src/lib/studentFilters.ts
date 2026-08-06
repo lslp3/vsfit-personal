@@ -291,3 +291,77 @@ export function sortStudents(
 
   return sorted;
 }
+
+/* ────────────────────────────────────────────────────────────
+   SPRINT 16 · FASE 5 · ETAPA 3 — EXPORT CSV (100% client-side)
+   Usa exclusivamente students[] + auditMap[]. SEM queries.
+   ──────────────────────────────────────────────────────────── */
+
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? '' : String(value);
+  // Escapa aspas e embrulha em aspas se houver separador, aspas ou quebra de linha.
+  const escaped = text.replace(/"/g, '""');
+  return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
+}
+
+/**
+ * Gera o CSV (string) com a carteira informada. A ordenação/dedup é com o
+ * caller (studentFilters). Nenhuma query — apenas formatação de linha.
+ */
+export function buildStudentsCsv(
+  rows: { student: Student; audit?: StudentCardAudit | null }[]
+): string {
+  const header = [
+    'nome',
+    'email',
+    'status',
+    'aderencia %',
+    'ultimo_treino_dias',
+    'proximo_vencimento',
+    'peso_kg',
+    'plano_ativo',
+    'precisa_atencao',
+    'ultima_avaliacao',
+    'telefone',
+  ];
+
+  const lines = rows.map(({ student, audit }) => {
+    const nextDue = audit?.nextDueDate
+      ? new Date(audit.nextDueDate).toLocaleDateString('pt-BR')
+      : '';
+    const lastAssessment = audit?.lastAssessmentAt
+      ? new Date(audit.lastAssessmentAt).toLocaleDateString('pt-BR')
+      : '';
+
+    return [
+      student.name || '',
+      student.email || '',
+      student.status || '',
+      audit?.adherencePercent ?? '',
+      audit?.daysSinceLastWorkout ?? '',
+      audit?.isOverdue ? 'atrasado' : nextDue,
+      audit?.lastWeight ?? '',
+      audit?.activePlanName || '',
+      audit?.needsAttention ? 'sim' : 'nao',
+      lastAssessment,
+      (student as any).phone || '',
+    ]
+      .map(csvCell)
+      .join(',');
+  });
+
+  return [header.join(','), ...lines].join('\n');
+}
+
+/** Dispara o download do CSV no navegador (client-side). */
+export function downloadStudentsCsv(csv: string, filename = 'alunos.csv'): void {
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
