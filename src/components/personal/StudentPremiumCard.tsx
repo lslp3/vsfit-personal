@@ -164,7 +164,8 @@ export function StudentPremiumCard({ student, audit }: Props) {
     goTo(path);
   };
 
-  const handleMenuAction = (path: string) => {
+  const handleMenuAction = (event: React.MouseEvent, path: string) => {
+    event.stopPropagation();
     setMenuOpen(false);
     goTo(path);
   };
@@ -347,7 +348,11 @@ export function StudentPremiumCard({ student, audit }: Props) {
       </div>
 
       {/* Menu overflow (⋮) — ações extras */}
-      <div ref={menuRef} className="relative mt-2 flex justify-end">
+      <div
+        ref={menuRef}
+        onClick={(event) => event.stopPropagation()}
+        className="relative mt-2 flex justify-end"
+      >
         <button
           type="button"
           aria-label="Mais ações"
@@ -364,8 +369,9 @@ export function StudentPremiumCard({ student, audit }: Props) {
           <div className="absolute bottom-full right-0 z-20 mb-2 w-52 overflow-hidden rounded-[16px] border border-white/10 bg-[#101014] p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
             <button
               type="button"
-              onClick={() =>
+              onClick={(event) =>
                 handleMenuAction(
+                  event,
                   `/personal/students/${student.id}?tab=progresso&assessment=1`
                 )
               }
@@ -377,8 +383,8 @@ export function StudentPremiumCard({ student, audit }: Props) {
 
             <button
               type="button"
-              onClick={() =>
-                handleMenuAction(`/personal/students/${student.id}?tab=dados`)
+              onClick={(event) =>
+                handleMenuAction(event, `/personal/students/${student.id}?tab=dados`)
               }
               className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
             >
@@ -388,8 +394,8 @@ export function StudentPremiumCard({ student, audit }: Props) {
 
             <button
               type="button"
-              onClick={() =>
-                handleMenuAction(`/personal/students/${student.id}`)
+              onClick={(event) =>
+                handleMenuAction(event, `/personal/students/${student.id}`)
               }
               className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
             >
