@@ -1140,7 +1140,7 @@ export function NutritionPage() {
               )}
             </div>
 
-            <div className="shrink-0 border-t border-white/10 bg-[#080808] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
+            <div className="shrink-0 border-t border-white/10 bg-[#080808] px-5 pb-[calc(1.25rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-4">
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -1291,7 +1291,7 @@ export function NutritionPage() {
               )}
             </div>
 
-            <div className="shrink-0 border-t border-white/10 bg-[#080808] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
+            <div className="shrink-0 border-t border-white/10 bg-[#080808] px-5 pb-[calc(1.25rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-4">
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"

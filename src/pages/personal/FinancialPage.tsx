@@ -822,7 +822,7 @@ export function FinancialPage() {
               )}
             </div>
 
-            <div className="shrink-0 border-t border-white/10 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
+            <div className="shrink-0 border-t border-white/10 px-5 pb-[calc(1.25rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-4">
               <button
                 type="button"
                 onClick={handleSavePixSettings}
@@ -978,7 +978,7 @@ export function FinancialPage() {
               )}
             </div>
 
-            <div className="shrink-0 border-t border-white/10 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
+            <div className="shrink-0 border-t border-white/10 px-5 pb-[calc(1.25rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-4">
               <button
                 type="button"
                 onClick={handleCreate}

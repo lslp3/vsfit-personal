@@ -202,7 +202,7 @@ export function ExerciseMediaCard({
           <button
             type="button"
             onClick={toggleExpand}
-            className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10"
+            className="absolute right-4 top-[calc(var(--safe-area-inset-top, env(safe-area-inset-top,0px))+0.5rem)] flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10"
           >
             <Minimize2 className="h-4 w-4" />
           </button>

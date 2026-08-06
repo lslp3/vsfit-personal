@@ -209,8 +209,8 @@ export function WorkoutExecutionPage() {
     !plan
   ) {
     return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 pt-[env(safe-area-inset-top,0px)] text-white">
-        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] text-center">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] px-5 pt-[var(--safe-area-inset-top, env(safe-area-inset-top,0px))] text-white">
+        <div className="w-full max-w-sm rounded-[30px] border border-red-500/20 bg-red-500/10 p-6 pb-[calc(1.5rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] text-center">
           <AlertCircle className="mx-auto h-10 w-10 text-red-300" />
 
           <h1 className="mt-5 text-xl font-black">
@@ -285,7 +285,7 @@ export function WorkoutExecutionPage() {
         : 'Treino concluído 😀';
 
   return (
-    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] pt-[env(safe-area-inset-top,0px)] text-white">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#050505] pt-[var(--safe-area-inset-top, env(safe-area-inset-top,0px))] text-white">
       <AnimatePresence mode="wait">
         {isCompleted ? (
           <motion.main
@@ -421,7 +421,7 @@ export function WorkoutExecutionPage() {
             }}
             className="flex min-h-screen items-center px-4"
           >
-            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] text-center">
+            <div className="mx-auto w-full max-w-lg rounded-[32px] border border-[#ff2a32]/20 bg-[#ff2a32]/10 p-4 pb-[calc(1rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] text-center">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/15">
                 <CheckCircle2 className="h-5 w-5 text-emerald-300" />
               </div>
@@ -487,7 +487,7 @@ export function WorkoutExecutionPage() {
             animate={{
               opacity: 1,
             }}
-            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-4"
+            className="mx-auto flex w-full max-w-lg flex-col px-4 pb-[calc(6rem+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))] pt-4"
           >
             <WorkoutExecutionHeader
               workoutName={plan.name}
@@ -716,7 +716,7 @@ export function WorkoutExecutionPage() {
                onClick={
                  handleCompleteSet
                }
-               style={{ bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+               style={{ bottom: 'calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
                className="fixed inset-x-0 z-40 mx-4 flex h-14 items-center justify-center gap-3 rounded-[24px] bg-[#ff2a32] text-sm font-black uppercase"
              >
               <CheckCircle2 className="h-6 w-6" />

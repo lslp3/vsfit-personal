@@ -23,7 +23,7 @@ interface SmartSplashScreenProps {
  */
 export function SmartSplashScreen({ online = true }: SmartSplashScreenProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#050505]">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#050505] pt-[var(--safe-area-inset-top, env(safe-area-inset-top, 0px))]">
       <motion.div
         initial={{ opacity: 0, scale: 0.88, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

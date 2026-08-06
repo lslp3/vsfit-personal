@@ -55,7 +55,7 @@ export function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 pt-[var(--safe-area-inset-top, env(safe-area-inset-top, 0px))]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -80,7 +80,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 pt-[var(--safe-area-inset-top, env(safe-area-inset-top, 0px))]">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

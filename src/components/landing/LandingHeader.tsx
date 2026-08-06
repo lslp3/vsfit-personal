@@ -17,7 +17,7 @@ export function LandingHeader() {
   ];
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-[#050505]/95 backdrop-blur-xl pt-[max(0px,env(safe-area-inset-top))]">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-[#050505]/95 backdrop-blur-xl pt-[max(0px,var(--safe-area-inset-top, env(safe-area-inset-top)))]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         {/* Logo */}
         <a

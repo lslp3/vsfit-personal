@@ -324,7 +324,7 @@ export function AdminShell() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#080809]/98 px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#080809]/98 px-2 pb-[max(8px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-2 backdrop-blur-xl md:hidden">
         <nav className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;

@@ -170,7 +170,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-6">
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 pt-[var(--safe-area-inset-top, env(safe-area-inset-top, 0px))] pb-6">
       <motion.div
         initial={{
           opacity: 0,

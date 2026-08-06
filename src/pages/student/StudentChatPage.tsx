@@ -639,7 +639,7 @@ export function StudentChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 bg-[#050505] pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
+        <div className="shrink-0 bg-[#050505] pb-[max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-2">
           <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2">
             {(selectedFile || validationError) && (
               <div className="mb-2">

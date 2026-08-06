@@ -184,7 +184,7 @@ export function TrainerFirstSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] px-4 py-8 text-white">
+    <div className="min-h-screen bg-[#050505] px-4 pt-[var(--safe-area-inset-top, env(safe-area-inset-top, 0px))] pb-8 text-white">
       <div className="mx-auto max-w-lg">
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark size="lg" className="mb-4 rounded-[22px]" />

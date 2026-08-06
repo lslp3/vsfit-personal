@@ -423,7 +423,7 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 24, stiffness: 220 }}
         className="absolute inset-x-0 bottom-0 max-h-[100dvh] overflow-y-auto rounded-t-[34px] border border-white/10 bg-[#070707] shadow-[0_-28px_90px_rgba(0,0,0,0.85)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/20" />
 
@@ -555,7 +555,7 @@ function DetailsModal({ exercise, onClose }: { exercise: Exercise; onClose: () =
             </p>
           </section>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 pb-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}>
+          <div className="mt-5 grid grid-cols-2 gap-3 pb-4" style={{ paddingBottom: 'max(16px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
             <button
               type="button"
               onClick={onClose}

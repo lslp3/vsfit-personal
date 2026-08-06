@@ -256,7 +256,7 @@ export function Sidebar({
                 ))}
               </nav>
 
-               <div className="border-t border-white/[0.08] px-3 py-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))]">
+               <div className="border-t border-white/[0.08] px-3 py-3 pb-[calc(12px+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))]">
                  <button
                   type="button"
                   onClick={handleLogout}

@@ -98,7 +98,7 @@ export function OnboardingFlow({ onSelectRole }: OnboardingFlowProps) {
       <div className="pointer-events-none absolute left-1/2 top-0 h-[380px] w-[380px] -translate-x-1/2 rounded-full bg-[#ff2a32]/8 blur-[130px]" />
 
       {/* Header: logo + indicador de progresso */}
-      <header className="relative z-10 flex items-center justify-between px-5 pt-6">
+      <header className="relative z-10 flex items-center justify-between px-5 pt-[calc(1.5rem+var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))]">
         <div className="flex items-center gap-2.5">
           <BrandMark size="sm" />
           <span className="text-sm font-black tracking-[-0.02em]">

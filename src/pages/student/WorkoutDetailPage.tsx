@@ -907,7 +907,7 @@ export function WorkoutDetailPage() {
       </div>
 
        {selectedSection && (
-         <div className="fixed inset-x-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pt-2.5 backdrop-blur-xl" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 0px))' }}>
+         <div className="fixed inset-x-0 z-40 border-t border-white/10 bg-[#050505]/98 px-4 pt-2.5 backdrop-blur-xl" style={{ bottom: 'calc(56px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))', paddingBottom: 'max(10px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
            <div className="mx-auto max-w-lg">
             {planExpired ? (
               <div className="rounded-[20px] border border-red-400/25 bg-red-400/10 px-3.5 py-3 text-center">
