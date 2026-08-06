@@ -15,6 +15,28 @@
   input, textarea, select {
     @apply outline-none;
   }
+
+  /* Fase D · Sprint 18 — foco visível para teclado (acessibilidade).
+     Exclui inputs/textarea/select: estes mantêm o próprio focus:ring (sem duplicação). */
+  :focus-visible:not(input):not(textarea):not(select) {
+    outline: 2px solid rgb(255 42 50 / 0.55);
+    outline-offset: 2px;
+  }
+
+  /* Fase D · Sprint 18 — protege contra overflow horizontal acidental. */
+  html, body {
+    overflow-x: clip;
+  }
+
+  /* Fase D · Sprint 18 — largura mínima para evitar colapso em telas estreitas. */
+  html {
+    min-width: 320px;
+  }
+
+  /* Fase D · Sprint 18 — cursor consistente em elementos clicáveis. */
+  button {
+    cursor: pointer;
+  }
 }
 
 @layer components {
