@@ -327,7 +327,7 @@ export function FinancialPage() {
   }
 
   function handleCopyPix(payment: Payment, pixCode?: string) {
-    const code = getPixCodeForPayment(payment, pixCode).replace(/\s+/g, '').trim();
+    const code = getPixCodeForPayment(payment, pixCode).trim();
 
     if (!code) {
       alert('Pix copia e cola não encontrado. Configure sua chave Pix novamente.');
@@ -347,7 +347,7 @@ export function FinancialPage() {
 
   function handleSendWhatsApp(payment: Payment, pixCode?: string) {
     const phone = normalizeWhatsappPhone(getStudentPhone(students, payment.student_id));
-    const code = getPixCodeForPayment(payment, pixCode).replace(/\s+/g, '').trim();
+    const code = getPixCodeForPayment(payment, pixCode).trim();
 
     const message = paymentService.buildPaymentWhatsAppMessage({
       studentName: payment.student_name,
