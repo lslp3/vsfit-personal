@@ -47,6 +47,16 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
 
 ## Sprints concluídas
 
+### Sprint 18 — Versão Desktop ✅
+- Status: ✅ Concluída · fechada em 2026-08-06
+- Branch: `test/sprint-18-desktop-version`
+- Principais entregas: Shell Desktop Personal/Aluno (sidebar fixa `md+`, bottom-nav só
+  mobile); containers ampliados (`md:max-w-7xl`); telas especiais desktop (Chat,
+  WorkoutExecution, Auth/Onboarding); PWA/Desktop polish (acessibilidade teclado,
+  overflow, cursor, manifest sem portrait). Mobile 100% preservado.
+- Validação: `tsc` ✅ · `npm run build` ✅ · validação manual (Preview/APK) ✅ concluída
+- Doc: `SPRINT-18.md`
+
 ### Sprint 17 — Primeiro Acesso Inteligente, Onboarding e Fluxo de Entrada ✅
 - Status: ✅ Concluída · fechada em 2026-08-06
 - Branch: `test/sprint-16-central-alunos` (implementação por reaproveitamento de base)
@@ -92,8 +102,7 @@ Legenda: ✅ concluída · 🔄 em andamento · 📋 planejada · ⏸️ posterg
 - Sprint 13 → **Chat Media** (🟢 ETAPA 1+2+3 concluídas tecnicamente; ⬜ validação manual pendente)
 - Sprint 14 → **Financeiro do Personal**
 - Sprint 15 → **Advanced Analytics & Dashboard**
-- Sprint 16 → **Desktop Version**
-- **AI para Personal** → ⏸️ Postergada para versão futura, **após o Sprint 16**.
+- **AI para Personal** → ⏸️ Postergada para versão futura, **após o Sprint 18**.
 
 ---
 

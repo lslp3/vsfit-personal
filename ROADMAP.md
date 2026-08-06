@@ -509,10 +509,23 @@ Validação final: `npx tsc --noEmit` ✅ · `npm run build` ✅ · invariantes 
 (`supabase.from(` = 8; Central de Alunos intacta; sem migration/RLS/permissões).
 Validação manual (Preview/APK) pendente antes da integração à `main`.
 
-## Sprint 18 — Versão Desktop 📋
+## Sprint 18 — Versão Desktop ✅
 
-- Status: 📋 **Planejada**
+- Status: ✅ **Concluída** (fechada em 2026-08-06)
+- Branch de implementação: `test/sprint-18-desktop-version`
 - Escopo: versão desktop (Responsividade ampliada / app desktop).
+
+### ✅ Fechamento — Sprint 18 concluída (Fase E)
+
+Principais entregas:
+- Fase A — Shell Desktop Personal/Aluno (sidebar fixa `md+`, bottom-nav só mobile)
+- Fase B — Containers de conteúdo ampliados (`md:max-w-7xl`)
+- Fase C — Telas especiais desktop (Chat, WorkoutExecution, Auth/Onboarding)
+- Fase D — PWA/Desktop polish (acessibilidade teclado, overflow, cursor, manifest sem portrait)
+
+Validação final: `npx tsc --noEmit` ✅ · `npm run build` ✅ · invariantes preservadas
+(`supabase.from(` = 8; Central de Alunos intacta; sem migration/RLS/policies).
+Validação manual (Preview/APK) concluída ✅.
 
 ## AI para Personal (POSTERGADA)
 
