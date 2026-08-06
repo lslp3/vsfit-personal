@@ -105,10 +105,17 @@ export function App() {
     );
   }
 
-  // Sprint 17 · ETAPA 4 — Onboarding Inicial: apenas na primeira abertura
-  // (não autenticado + sem onboarding concluído). Ao escolher o perfil,
-  // persistimos onboardingDone + chosenRole e seguimos para o fluxo normal.
-  if (!isAuthenticated && !onboardingDone) {
+  // Sprint 17 · ETAPA 4 → ETAPA 7 — Onboarding Inicial: apenas na primeira
+  // abertura (não autenticado + sem onboarding concluído) e SOMENTE no destino
+  // raiz ("/"). Deep-links de entrada (/auth/login, register, reset-password,
+  // student-entry, e o signup público /signup/:slug) devem abrir o fluxo
+  // correspondente sem serem interceptados — caso contrário um visitante de
+  // primeira vez em um link do Personal ou em reset de senha veria onboarding
+  // em vez do formulário correto.
+  const isEntryDeepLink = window.location.pathname.startsWith('/auth')
+    || window.location.pathname.startsWith('/signup');
+
+  if (!isAuthenticated && !onboardingDone && !isEntryDeepLink) {
     return (
       <OnboardingFlow
         onSelectRole={(role) => {
