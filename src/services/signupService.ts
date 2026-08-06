@@ -183,7 +183,7 @@ export async function submitSignupLead(
       goal: payload.goal || null,
       message: payload.message || null,
 
-      status: 'new',
+      status: 'pending',
     });
 
   if (error) throw error;
