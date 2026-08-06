@@ -8,6 +8,7 @@ import {
 import {
   useNavigate,
   useParams,
+  useSearchParams,
 } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -383,6 +384,8 @@ export function StudentProfilePage() {
 
   const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams();
+
   const { trainerProfile } =
     useAuthStore();
 
@@ -597,6 +600,31 @@ export function StudentProfilePage() {
   useEffect(() => {
     void loadStudent();
   }, [loadStudent]);
+
+  // Sprint 16 Fase 3A — deep-link por query param (?tab= & ?assessment=1).
+  // Aplica a aba inicial e, se solicitado, abre o modal de avaliação.
+  useEffect(() => {
+    if (loading || !student) return;
+
+    const tabParam = searchParams.get('tab') as TabKey | null;
+    const validTabs: TabKey[] = [
+      'resumo',
+      'treinos',
+      'progresso',
+      'financeiro',
+      'chat',
+      'dados',
+    ];
+
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+
+    if (searchParams.get('assessment') === '1') {
+      setEditingMetric(null);
+      setAssessmentModalOpen(true);
+    }
+  }, [loading, student, searchParams]);
 
   /** Recarrega apenas as avaliações (após salvar/excluir). */
   const reloadMetrics = useCallback(async () => {

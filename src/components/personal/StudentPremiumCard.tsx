@@ -1,13 +1,19 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CalendarClock,
+  CalendarPlus,
   ChevronRight,
   Dumbbell,
   KeyRound,
+  MessageSquare,
+  MoreVertical,
   Scale,
   TrendingDown,
   TrendingUp,
+  UserRound,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -132,6 +138,37 @@ function formatWeight(weight: number | null): string {
 export function StudentPremiumCard({ student, audit }: Props) {
   const navigate = useNavigate();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o menu overflow ao clicar fora.
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [menuOpen]);
+
+  const goTo = (path: string) => {
+    navigate(path);
+  };
+
+  const stopAndGo = (event: React.MouseEvent, path: string) => {
+    event.stopPropagation();
+    goTo(path);
+  };
+
+  const handleMenuAction = (path: string) => {
+    setMenuOpen(false);
+    goTo(path);
+  };
+
   const avatarUrl = getAvatarUrl(student);
   const access = hasAppAccess(student);
   const hasActivePlan = Boolean(audit?.activePlanName);
@@ -248,6 +285,119 @@ export function StudentPremiumCard({ student, audit }: Props) {
           }
           emphasis="good"
         />
+      </div>
+
+      {/* Sprint 16 Fase 3B — Ações rápidas no card */}
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        <button
+          type="button"
+          aria-label="Abrir chat"
+          onClick={(event) =>
+            stopAndGo(event, `/personal/chat/${student.id}`)
+          }
+          className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-[16px] border border-white/5 bg-black/20 px-1 py-2 transition-all hover:border-white/15 hover:bg-white/[0.06] active:scale-95"
+        >
+          <MessageSquare className="h-4 w-4 text-[#ff2a32]" />
+          <span className="truncate text-[10px] font-black uppercase tracking-wide text-zinc-400">
+            Chat
+          </span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Abrir treinos"
+          onClick={(event) =>
+            stopAndGo(event, `/personal/students/${student.id}?tab=treinos`)
+          }
+          className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-[16px] border border-white/5 bg-black/20 px-1 py-2 transition-all hover:border-white/15 hover:bg-white/[0.06] active:scale-95"
+        >
+          <Dumbbell className="h-4 w-4 text-[#ff2a32]" />
+          <span className="truncate text-[10px] font-black uppercase tracking-wide text-zinc-400">
+            Treino
+          </span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Abrir progresso"
+          onClick={(event) =>
+            stopAndGo(event, `/personal/students/${student.id}?tab=progresso`)
+          }
+          className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-[16px] border border-white/5 bg-black/20 px-1 py-2 transition-all hover:border-white/15 hover:bg-white/[0.06] active:scale-95"
+        >
+          <TrendingUp className="h-4 w-4 text-[#ff2a32]" />
+          <span className="truncate text-[10px] font-black uppercase tracking-wide text-zinc-400">
+            Progresso
+          </span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Abrir financeiro"
+          onClick={(event) =>
+            stopAndGo(event, `/personal/students/${student.id}?tab=financeiro`)
+          }
+          className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-[16px] border border-white/5 bg-black/20 px-1 py-2 transition-all hover:border-white/15 hover:bg-white/[0.06] active:scale-95"
+        >
+          <Wallet className="h-4 w-4 text-[#ff2a32]" />
+          <span className="truncate text-[10px] font-black uppercase tracking-wide text-zinc-400">
+            Financeiro
+          </span>
+        </button>
+      </div>
+
+      {/* Menu overflow (⋮) — ações extras */}
+      <div ref={menuRef} className="relative mt-2 flex justify-end">
+        <button
+          type="button"
+          aria-label="Mais ações"
+          onClick={(event) => {
+            event.stopPropagation();
+            setMenuOpen((open) => !open);
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-white/5 bg-black/20 text-zinc-400 transition-all hover:border-white/15 hover:text-white active:scale-95"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+
+        {menuOpen && (
+          <div className="absolute bottom-full right-0 z-20 mb-2 w-52 overflow-hidden rounded-[16px] border border-white/10 bg-[#101014] p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+            <button
+              type="button"
+              onClick={() =>
+                handleMenuAction(
+                  `/personal/students/${student.id}?tab=progresso&assessment=1`
+                )
+              }
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <CalendarPlus className="h-4 w-4 text-[#ff2a32]" />
+              Agendar avaliação
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleMenuAction(`/personal/students/${student.id}?tab=dados`)
+              }
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <UserRound className="h-4 w-4 text-[#ff2a32]" />
+              Dados do aluno
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleMenuAction(`/personal/students/${student.id}`)
+              }
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <ChevronRight className="h-4 w-4 text-[#ff2a32]" />
+              Abrir perfil
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
