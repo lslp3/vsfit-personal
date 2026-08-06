@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Users, Phone, KeyRound, Check, Copy, Send } from 'lucide-react';
+import { Search, Plus, Users, KeyRound, Check, Copy, Send } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
 import { Input, Select, Textarea } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { StudentPremiumCard } from '../../components/personal/StudentPremiumCard';
 import * as studentService from '../../services/studentService';
 import * as subscriptionService from '../../services/subscriptionService';
 import { getPlanLimits } from '../../lib/planLimits';
+import { getStudentAuditByTrainer, type StudentCardAudit } from '../../services/auditService';
 import { cn } from '../../lib/utils';
 import type { Student } from '../../types/database';
 
@@ -69,108 +71,13 @@ const initialCreateForm = {
   createAppAccess: false,
 };
 
-function getStudentInitials(name?: string) {
-  const safeName = String(name || 'Aluno').trim();
-  const parts = safeName.split(' ').filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return safeName.slice(0, 2).toUpperCase();
-}
-
-function StudentAvatar({ student }: { student: any }) {
-  const avatarUrl =
-    student.avatar_url ||
-    student.photo_url ||
-    student.profile_photo_url ||
-    student.image_url ||
-    '';
-
-  const initials = getStudentInitials(student.name);
-
-  if (avatarUrl) {
-    return (
-      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#171717]">
-        <img
-          src={avatarUrl}
-          alt={student.name || 'Aluno'}
-          className="h-full w-full object-cover"
-          onError={(event) => {
-            event.currentTarget.style.display = 'none';
-          }}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#ff2a32]/20 bg-[#ff2a32]/15 text-[15px] font-black text-[#ff2a32] shadow-[0_14px_35px_rgba(255,42,48,0.16)]">
-      {initials}
-    </div>
-  );
-}
-
-function StudentStatusBadge({ status }: { status?: string }) {
-  const normalized = String(status || 'active').toLowerCase();
-
-  const label =
-    normalized === 'active'
-      ? 'Ativo'
-      : normalized === 'paused'
-        ? 'Pausado'
-        : normalized === 'inactive'
-          ? 'Inativo'
-          : 'Ativo';
-
-  const className =
-    normalized === 'active'
-      ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-      : normalized === 'paused'
-        ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300'
-        : 'border-zinc-400/20 bg-zinc-400/10 text-zinc-300';
-
-  return (
-    <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${className}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function AccessBadge({ student }: { student: any }) {
-  const accounts = student.student_accounts || student.student_account;
-
-  const hasAccess =
-    Boolean(student.auth_user_id) ||
-    (Array.isArray(accounts)
-      ? accounts.some((account) => account.auth_user_id)
-      : Boolean(accounts?.auth_user_id)) ||
-    student.has_app_access === true ||
-    student.app_access === true;
-
-  return (
-    <span
-      className={
-        hasAccess
-          ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300'
-          : 'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-400'
-      }
-    >
-      <KeyRound className="h-3 w-3" />
-      {hasAccess ? 'Com acesso' : 'Sem acesso'}
-    </span>
-  );
-}
-
 export function StudentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { trainerProfile, isAuthenticated } = useAuthStore();
 
   const [students, setStudents] = useState<Student[]>([]);
+  const [auditMap, setAuditMap] = useState<Record<string, StudentCardAudit>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -211,6 +118,15 @@ export function StudentsPage() {
     try {
       const data = await studentService.getStudentsByTrainer(trainerId);
       setStudents(data || []);
+
+      // Sprint 16 Fase 1 — agregação batch por trainer (sem N+1).
+      try {
+        const audits = await getStudentAuditByTrainer(trainerId);
+        setAuditMap(audits || {});
+      } catch (auditErr) {
+        console.error('[StudentsPage] loadAudit error:', auditErr);
+        setAuditMap({});
+      }
     } catch (err) {
       console.error('[StudentsPage] loadStudents error:', err);
     } finally {
@@ -468,42 +384,10 @@ export function StudentsPage() {
                     exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div
-                      onClick={() => navigate(`/personal/students/${student.id}`)}
-                      className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition-all hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.98]"
-                    >
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-
-                      <div className="flex items-start gap-4">
-                        <StudentAvatar student={student} />
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h3 className="truncate text-[15px] font-black tracking-[-0.02em] text-white">
-                                {student.name}
-                              </h3>
-                              <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400">
-                                {student.email || 'Sem email'}
-                              </p>
-                            </div>
-
-                            <StudentStatusBadge status={student.status} />
-                          </div>
-
-                          <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <AccessBadge student={student} />
-
-                            {student.phone && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400">
-                                <Phone className="h-3 w-3" />
-                                {student.phone}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <StudentPremiumCard
+                      student={student}
+                      audit={auditMap[student.id] || null}
+                    />
                   </motion.div>
                 ))}
               </AnimatePresence>
