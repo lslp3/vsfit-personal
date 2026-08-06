@@ -13,10 +13,11 @@ import * as subscriptionService from '../../services/subscriptionService';
 import { getPlanLimits } from '../../lib/planLimits';
 import { getStudentAuditByTrainer, buildPortfolioSummary, type StudentCardAudit, type PortfolioSummary } from '../../services/auditService';
 import { StudentsSummary } from '../../components/personal/StudentsSummary';
+import { matchesSmartFilter, type SmartFilter } from '../../lib/studentFilters';
 import { cn } from '../../lib/utils';
 import type { Student, Payment } from '../../types/database';
 
-type FilterType = 'all' | 'active' | 'paused' | 'inactive';
+type FilterType = SmartFilter;
 
 type CreatedStudentAccess = {
   name: string;
@@ -51,6 +52,16 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'active', label: 'Ativos' },
   { key: 'paused', label: 'Pausados' },
   { key: 'inactive', label: 'Inativos' },
+];
+
+const smartFilters: { key: FilterType; label: string }[] = [
+  { key: 'attention', label: 'Precisam de atenção' },
+  { key: 'no_recent_workout', label: 'Sem treinar há 7+ dias' },
+  { key: 'overdue_payment', label: 'Pagamentos atrasados' },
+  { key: 'new_student', label: 'Novos alunos' },
+  { key: 'pending_assessment', label: 'Avaliação pendente' },
+  { key: 'no_published_plan', label: 'Sem treino publicado' },
+  { key: 'no_app_access', label: 'Sem acesso ao app' },
 ];
 
 const initialCreateForm = {
@@ -284,7 +295,7 @@ export function StudentsPage() {
       String(student.name || '').toLowerCase().includes(search.toLowerCase()) ||
       String(student.email || '').toLowerCase().includes(search.toLowerCase());
 
-    const matchesFilter = activeFilter === 'all' || student.status === activeFilter;
+    const matchesFilter = matchesSmartFilter(student, auditMap[student.id], activeFilter);
 
     return matchesSearch && matchesFilter;
   });
@@ -344,6 +355,25 @@ export function StudentsPage() {
 
           <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1">
             {filters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setActiveFilter(filter.key)}
+                className={cn(
+                  'rounded-full border px-5 py-2.5 text-[12px] font-black tracking-wide transition-all',
+                  activeFilter === filter.key
+                    ? 'border-[#ff2a32]/40 bg-[#ff2a32]/20 text-[#ff2a32]'
+                    : 'border-white/5 bg-white/[0.045] text-zinc-500 hover:border-white/10'
+                )}
+              >
+                {filter.label.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Sprint 16 Fase 4 — Filtros inteligentes (derivados 100% em memória) */}
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1">
+            {smartFilters.map((filter) => (
               <button
                 key={filter.key}
                 type="button"

@@ -38,6 +38,12 @@ export interface StudentCardAudit {
   /** Variação de peso (kg) entre a última e a penúltima avaliação. */
   weightDelta: number | null;
 
+  /** Data ISO da última avaliação registrada (student_metrics). null se nunca avaliado. */
+  lastAssessmentAt: string | null;
+
+  /** 'true' se o aluno tem ao menos um treino publicado (em curso OU vencido). */
+  hasPublishedPlan: boolean;
+
   /** Data de vencimento do próximo pagamento pendente/atrasado. */
   nextDueDate: string | null;
 
@@ -353,6 +359,10 @@ export async function getStudentAuditByTrainer(
       adherencePercent,
       lastWeight,
       weightDelta,
+      lastAssessmentAt: latestMetric?.date || null,
+      hasPublishedPlan: (plansByStudent.get(studentId) || []).some(
+        (plan) => plan.status === 'published'
+      ),
       nextDueDate: activePayment?.due_date || null,
       isOverdue,
       needsAttention,
