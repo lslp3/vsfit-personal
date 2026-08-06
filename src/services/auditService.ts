@@ -110,13 +110,113 @@ function computeAdherence(logs: WorkoutLog[], now: Date): number | null {
 }
 
 /**
+ * Resumo executivo da carteira do Personal (Sprint 16 · Fase 2).
+ * Derivado EXCLUSIVAMENTE de dados já carregados pela Fase 1 (students,
+ * auditMap por aluno e payments do batch) — nenhuma query adicional.
+ */
+export interface PortfolioSummary {
+  total: number;
+  active: number;
+  paused: number;
+  inactive: number;
+  /** Novos alunos cujo created_at cai nos últimos 30 dias corridos. */
+  newStudents: number;
+  /** Média da aderência (0..100) da carteira; null se nenhum aluno com dados. */
+  avgAdherence: number | null;
+  /** Receita recebida (status 'paid') paga nos últimos 30 dias corridos. */
+  revenueReceived: number;
+  /** Saldo pendente (status 'pending'), sem filtro de período. */
+  pendingAmount: number;
+  /** Saldo inadimplente (status 'overdue'), sem filtro de período. */
+  overdueAmount: number;
+}
+
+/** Janela fixa de 30 dias corridos para novos alunos e receita recebida. */
+const SUMMARY_WINDOW_DAYS = 30;
+
+/**
+ * Deriva o resumo da carteira a partir de dados já em memória.
+ * Função pura (sem I/O) — não faz nenhuma consulta.
+ */
+export function buildPortfolioSummary(
+  students: Array<{ id: string; status?: string | null; created_at?: string | null }>,
+  auditMap: Record<string, StudentCardAudit>,
+  payments: Payment[],
+  now: Date = new Date()
+): PortfolioSummary {
+  const cutoff = new Date(now.getTime() - SUMMARY_WINDOW_DAYS * 86400000);
+
+  let active = 0;
+  let paused = 0;
+  let inactive = 0;
+  let newStudents = 0;
+
+  students.forEach((student) => {
+    const status = String(student.status || 'active').toLowerCase();
+
+    if (status === 'paused') paused += 1;
+    else if (status === 'inactive') inactive += 1;
+    else active += 1;
+
+    const created = parseDate(student.created_at);
+    if (created && created.getTime() >= cutoff.getTime()) {
+      newStudents += 1;
+    }
+  });
+
+  // Aderência média (média dos alunos com aderência conhecida).
+  let adherenceSum = 0;
+  let adherenceCount = 0;
+  students.forEach((student) => {
+    const audit = auditMap[student.id];
+    if (audit && typeof audit.adherencePercent === 'number') {
+      adherenceSum += audit.adherencePercent;
+      adherenceCount += 1;
+    }
+  });
+  const avgAdherence = adherenceCount > 0 ? Math.round(adherenceSum / adherenceCount) : null;
+
+  // Receita e pendências — derivadas do batch de payments já carregado.
+  let revenueReceived = 0;
+  let pendingAmount = 0;
+  let overdueAmount = 0;
+
+  payments.forEach((payment) => {
+    const status = String(payment.status || '').toLowerCase();
+
+    if (status === 'paid') {
+      const paid = parseDate(payment.paid_at);
+      if (paid && paid.getTime() >= cutoff.getTime()) {
+        revenueReceived += Number(payment.amount) || 0;
+      }
+    } else if (status === 'pending') {
+      pendingAmount += Number(payment.amount) || 0;
+    } else if (status === 'overdue') {
+      overdueAmount += Number(payment.amount) || 0;
+    }
+  });
+
+  return {
+    total: students.length,
+    active,
+    paused,
+    inactive,
+    newStudents,
+    avgAdherence,
+    revenueReceived,
+    pendingAmount,
+    overdueAmount,
+  };
+}
+
+/**
  * Retorna o mapa `student_id -> StudentCardAudit` para TODOS os alunos do
  * trainer. Realiza apenas consultas em lote agrupadas por trainer_id
- * (N4 queries, independentemente do nº de alunos — sem N+1).
+ * (4 queries, independentemente do nº de alunos — sem N+1).
  */
 export async function getStudentAuditByTrainer(
   trainerId: string
-): Promise<Record<string, StudentCardAudit>> {
+): Promise<{ cards: Record<string, StudentCardAudit>; payments: Payment[] }> {
   const now = new Date();
 
   const [plans, logs, payments, metrics] = await Promise.all([
@@ -259,5 +359,5 @@ export async function getStudentAuditByTrainer(
     };
   });
 
-  return result;
+  return { cards: result, payments };
 }

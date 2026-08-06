@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Users, KeyRound, Check, Copy, Send } from 'lucide-react';
@@ -11,9 +11,10 @@ import { StudentPremiumCard } from '../../components/personal/StudentPremiumCard
 import * as studentService from '../../services/studentService';
 import * as subscriptionService from '../../services/subscriptionService';
 import { getPlanLimits } from '../../lib/planLimits';
-import { getStudentAuditByTrainer, type StudentCardAudit } from '../../services/auditService';
+import { getStudentAuditByTrainer, buildPortfolioSummary, type StudentCardAudit, type PortfolioSummary } from '../../services/auditService';
+import { StudentsSummary } from '../../components/personal/StudentsSummary';
 import { cn } from '../../lib/utils';
-import type { Student } from '../../types/database';
+import type { Student, Payment } from '../../types/database';
 
 type FilterType = 'all' | 'active' | 'paused' | 'inactive';
 
@@ -78,6 +79,7 @@ export function StudentsPage() {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [auditMap, setAuditMap] = useState<Record<string, StudentCardAudit>>({});
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -121,11 +123,13 @@ export function StudentsPage() {
 
       // Sprint 16 Fase 1 — agregação batch por trainer (sem N+1).
       try {
-        const audits = await getStudentAuditByTrainer(trainerId);
-        setAuditMap(audits || {});
+        const audit = await getStudentAuditByTrainer(trainerId);
+        setAuditMap(audit.cards || {});
+        setPayments(audit.payments || []);
       } catch (auditErr) {
         console.error('[StudentsPage] loadAudit error:', auditErr);
         setAuditMap({});
+        setPayments([]);
       }
     } catch (err) {
       console.error('[StudentsPage] loadStudents error:', err);
@@ -285,6 +289,13 @@ export function StudentsPage() {
     return matchesSearch && matchesFilter;
   });
 
+  // Sprint 16 Fase 2 — resumo executivo da carteira (derivado em memória;
+  // considera a carteira COMPLETA, não a lista filtrada).
+  const summary: PortfolioSummary = useMemo(
+    () => buildPortfolioSummary(students, auditMap, payments),
+    [students, auditMap, payments]
+  );
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505]">
@@ -317,6 +328,8 @@ export function StudentsPage() {
               NOVO
             </button>
           </div>
+
+          <StudentsSummary summary={summary} />
 
           <div className="group relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition-colors group-focus-within:text-[#ff2a32]" />
