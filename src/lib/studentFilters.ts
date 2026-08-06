@@ -128,3 +128,166 @@ export function matchesSmartFilter(
       return true;
   }
 }
+
+/* ────────────────────────────────────────────────────────────
+   SPRINT 16 · FASE 5 — ORDENAÇÃO INTELIGENTE
+   Lógica pura (client-side) sobre students[] + auditMap[].
+   SEM consultas, SEM N+1.
+   ──────────────────────────────────────────────────────────── */
+
+export type SortKey =
+  | 'name_asc'
+  | 'name_desc'
+  | 'last_workout'
+  | 'adherence_desc'
+  | 'adherence_asc'
+  | 'next_due'
+  | 'created_desc'
+  | 'created_asc'
+  | 'risk_first';
+
+/** Opções de ordenação exibidas na barra de ordenação (rótulos pt-BR). */
+export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'name_asc', label: 'Nome (A-Z)' },
+  { key: 'name_desc', label: 'Nome (Z-A)' },
+  { key: 'last_workout', label: 'Último treino' },
+  { key: 'adherence_desc', label: 'Maior aderência' },
+  { key: 'adherence_asc', label: 'Menor aderência' },
+  { key: 'next_due', label: 'Próximo vencimento' },
+  { key: 'created_desc', label: 'Mais recente cadastro' },
+  { key: 'created_asc', label: 'Mais antigo cadastro' },
+  { key: 'risk_first', label: 'Maior risco' },
+];
+
+/**
+ * Ordena a lista de alunos conforme a chave, usando exclusivamente os dados
+ * já em memória. Deve ser aplicada APÓS o filtro (ordenação + filtro são
+ * etapas independentes; o caller filtra primeiro e ordena depois).
+ *
+ * Regra de nulos: campos ausentes (sem treino, sem aderência, sem vencimento)
+ * vão SEMPRE para o final da lista em qualquer direção, para não "lixar" o topo.
+ */
+export function sortStudents(
+  students: Student[],
+  auditMap: Record<string, StudentCardAudit | undefined>,
+  sort: SortKey
+): Student[] {
+  const auditOf = (s: Student) => auditMap[s.id];
+
+  const nameOf = (s: Student) => String(s.name || '').toLowerCase();
+  const workoutMs = (s: Student) => {
+    const at = auditOf(s)?.lastWorkoutAt;
+    return at ? new Date(at).getTime() : null;
+  };
+  const adherenceOf = (s: Student) => auditOf(s)?.adherencePercent ?? null;
+  const dueOf = (s: Student) => {
+    const d = auditOf(s)?.nextDueDate;
+    return d ? new Date(d).getTime() : null;
+  };
+  const createdMs = (s: Student) => {
+    const c = s.created_at;
+    return c ? new Date(c).getTime() : null;
+  };
+
+  const sorted = [...students];
+
+  switch (sort) {
+    case 'name_asc':
+      sorted.sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+      break;
+
+    case 'name_desc':
+      sorted.sort((a, b) => nameOf(b).localeCompare(nameOf(a)));
+      break;
+
+    case 'last_workout': {
+      // Mais recente primeiro (maior timestamp). Nulos no final.
+      sorted.sort((a, b) => {
+        const am = workoutMs(a);
+        const bm = workoutMs(b);
+        if (am === null && bm === null) return 0;
+        if (am === null) return 1;
+        if (bm === null) return -1;
+        return bm - am;
+      });
+      break;
+    }
+
+    case 'adherence_desc': {
+      sorted.sort((a, b) => {
+        const aa = adherenceOf(a);
+        const ba = adherenceOf(b);
+        if (aa === null && ba === null) return 0;
+        if (aa === null) return 1;
+        if (ba === null) return -1;
+        return ba - aa;
+      });
+      break;
+    }
+
+    case 'adherence_asc': {
+      sorted.sort((a, b) => {
+        const aa = adherenceOf(a);
+        const ba = adherenceOf(b);
+        if (aa === null && ba === null) return 0;
+        if (aa === null) return 1;
+        if (ba === null) return -1;
+        return aa - ba;
+      });
+      break;
+    }
+
+    case 'next_due': {
+      // Próximo vencimento = menor data de vencimento futura/pendente primeiro.
+      sorted.sort((a, b) => {
+        const am = dueOf(a);
+        const bm = dueOf(b);
+        if (am === null && bm === null) return 0;
+        if (am === null) return 1;
+        if (bm === null) return -1;
+        return am - bm;
+      });
+      break;
+    }
+
+    case 'created_desc':
+      sorted.sort((a, b) => {
+        const am = createdMs(a);
+        const bm = createdMs(b);
+        if (am === null && bm === null) return 0;
+        if (am === null) return 1;
+        if (bm === null) return -1;
+        return bm - am;
+      });
+      break;
+
+    case 'created_asc':
+      sorted.sort((a, b) => {
+        const am = createdMs(a);
+        const bm = createdMs(b);
+        if (am === null && bm === null) return 0;
+        if (am === null) return 1;
+        if (bm === null) return -1;
+        return am - bm;
+      });
+      break;
+
+    case 'risk_first':
+      // Alunos em risco (needsAttention) primeiro.
+      sorted.sort((a, b) => {
+        const ar = auditOf(a)?.needsAttention === true ? 0 : 1;
+        const br = auditOf(b)?.needsAttention === true ? 0 : 1;
+        if (ar !== br) return ar - br;
+        // Desempate: menor aderência primeiro (mais crítico).
+        const aa = adherenceOf(a);
+        const ba = adherenceOf(b);
+        if (aa === null && ba === null) return 0;
+        if (aa === null) return 1;
+        if (ba === null) return -1;
+        return aa - ba;
+      });
+      break;
+  }
+
+  return sorted;
+}

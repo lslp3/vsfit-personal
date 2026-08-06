@@ -13,7 +13,8 @@ import * as subscriptionService from '../../services/subscriptionService';
 import { getPlanLimits } from '../../lib/planLimits';
 import { getStudentAuditByTrainer, buildPortfolioSummary, type StudentCardAudit, type PortfolioSummary } from '../../services/auditService';
 import { StudentsSummary } from '../../components/personal/StudentsSummary';
-import { matchesSmartFilter, type SmartFilter } from '../../lib/studentFilters';
+import { StudentsSortBar } from '../../components/personal/StudentsSortBar';
+import { matchesSmartFilter, sortStudents, type SmartFilter, type SortKey } from '../../lib/studentFilters';
 import { cn } from '../../lib/utils';
 import type { Student, Payment } from '../../types/database';
 
@@ -94,6 +95,8 @@ export function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  // Sprint 16 Fase 5 — ordenação (client-side, sobre a lista já filtrada).
+  const [sort, setSort] = useState<SortKey>('name_asc');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -300,6 +303,12 @@ export function StudentsPage() {
     return matchesSearch && matchesFilter;
   });
 
+  // Sprint 16 Fase 5 — ordenação: primeiro filtra, depois ordena (client-side).
+  const visibleStudents = useMemo(
+    () => sortStudents(filtered, auditMap, sort),
+    [filtered, auditMap, sort]
+  );
+
   // Sprint 16 Fase 2 — resumo executivo da carteira (derivado em memória;
   // considera a carteira COMPLETA, não a lista filtrada).
   const summary: PortfolioSummary = useMemo(
@@ -390,6 +399,11 @@ export function StudentsPage() {
             ))}
           </div>
 
+          {/* Sprint 16 Fase 5 — ordenação da lista (após filtros) */}
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1">
+            <StudentsSortBar value={sort} onChange={setSort} />
+          </div>
+
           {filtered.length === 0 ? (
             <div className="py-12">
               <EmptyState
@@ -418,7 +432,7 @@ export function StudentsPage() {
           ) : (
             <div className="grid gap-3">
               <AnimatePresence mode="popLayout">
-                {filtered.map((student) => (
+                {visibleStudents.map((student) => (
                   <motion.div
                     key={student.id}
                     layout
