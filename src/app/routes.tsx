@@ -272,6 +272,16 @@ function AuthAwareLandingPage() {
     return <LoadingScreen />;
   }
 
+  // Sprint 17 · ETAPA 4 — fluxo Personal: quem escolheu "Sou Personal
+  // Trainer" no onboarding (e ainda não tem sessão) vai para o login/cadastro
+  // do Personal em vez da landing genérica. Ao concluir a autenticação, cai
+  // no gate de setup (perfil novo → TrainerFirstSetupPage, configurado →
+  // Dashboard). Usuários existentes, signup público e recovery continuam
+  // intocados (a lógica segue abaixo, respectivamente).
+  if (!isAuthenticated && chosenRole === 'personal') {
+    return <Navigate to="/auth/login" replace />;
+  }
+
   if (isAuthenticated) {
     const home = getHomeByRole(
       profile?.role || (student?.id ? 'student' : null)

@@ -24,27 +24,20 @@ interface SmartSplashScreenProps {
 export function SmartSplashScreen({ online = true }: SmartSplashScreenProps) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#050505]">
-      {/* Glow suave (identidade Dark Luxury) */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff2a32]/10 blur-[120px]" />
-
       <motion.div
-        initial={{ opacity: 0, scale: 0.86, y: 10 }}
+        initial={{ opacity: 0, scale: 0.88, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         className="flex flex-col items-center"
       >
-        <div className="flex h-24 w-24 items-center justify-center">
-          <BrandMark
-            size="xl"
-            className="rounded-[24px] shadow-[0_20px_60px_rgba(255,42,50,0.25)]"
-          />
-        </div>
+        {/* Logo isolada — sem container, card, background ou moldura. */}
+        <BrandMark size="xl" style={{ width: 140, height: 140 }} />
 
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45, duration: 0.6, ease: 'easeOut' }}
-          className="mt-8 text-center"
+          className="mt-9 text-center"
         >
           <h1 className="text-[22px] font-black tracking-[-0.04em] text-white">
             VSFit Personal
