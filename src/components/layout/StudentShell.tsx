@@ -78,7 +78,7 @@ export function StudentShell() {
         </aside>
 
         <div className="min-w-0 flex-1">
-          <div className="mx-auto max-w-lg pb-20 md:max-w-7xl">
+          <div className="mx-auto max-w-lg pb-[calc(5rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] md:max-w-7xl">
             <Outlet />
           </div>
         </div>

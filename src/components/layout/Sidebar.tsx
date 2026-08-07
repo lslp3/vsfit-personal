@@ -172,7 +172,7 @@ export function Sidebar({
   // evitando duplicar a lógica de navegação/perfil/logout.
   const sidebarContent = (
     <>
-      <div className="flex items-center justify-between border-b border-white/[0.08] px-5 pb-4 pt-5">
+      <div className="flex items-center justify-between border-b border-white/[0.08] px-5 pb-4 pt-[calc(1.25rem+var(--safe-area-inset-top,env(safe-area-inset-top,0px)))]">
         <div className="flex min-w-0 items-center gap-3">
           <BrandMark
             size="md"

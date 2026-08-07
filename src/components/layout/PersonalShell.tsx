@@ -51,13 +51,13 @@ export function PersonalShell() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] pt-[var(--safe-area-inset-top, env(safe-area-inset-top,0px))]">
+    <div className="min-h-screen bg-[#050505]">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         {/* Sprint 18 · Fase A — sidebar persistente em desktop (inline); oculto no mobile. */}
         <Sidebar variant="inline" />
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))] z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
+          <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505] pt-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))]">
             <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4 md:max-w-7xl md:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 <BrandMark
@@ -87,7 +87,7 @@ export function PersonalShell() {
             </div>
           </header>
 
-          <main className="mx-auto max-w-lg pb-20 md:max-w-7xl">
+          <main className="mx-auto max-w-lg pb-[calc(5rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] md:max-w-7xl">
             <Outlet />
           </main>
         </div>
