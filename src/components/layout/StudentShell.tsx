@@ -34,10 +34,18 @@ export function StudentShell() {
   }
 
   return (
-    <div className="min-h-screen bg-vs-dark pt-[var(--safe-area-inset-top, env(safe-area-inset-top,0px))]">
+    <div className="min-h-screen bg-vs-dark">
+      {/* Dono do topo (mobile): sticky + pt-safe + fundo sólido — o conteúdo
+          não passa mais atrás da StatusBar ao rolar. */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-vs-dark pt-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))] md:hidden">
+        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
+          <BrandMark size="sm" className="rounded-[13px]" />
+        </div>
+      </header>
+
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         {/* Sprint 18 · Fase A — sidebar desktop persistente (oculta no mobile). */}
-        <aside className="sticky top-0 hidden h-screen w-[250px] shrink-0 flex-col border-r border-white/[0.07] bg-[#09090a] px-4 py-5 md:flex">
+        <aside className="sticky top-0 hidden h-screen w-[250px] shrink-0 flex-col border-r border-white/[0.07] bg-[#09090a] px-4 pb-5 pt-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))] md:flex">
           <div className="mb-6 flex items-center gap-3 rounded-[16px] border border-white/[0.07] bg-white/[0.025] p-3">
             <BrandMark
               size="sm"
