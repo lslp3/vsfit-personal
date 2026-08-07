@@ -59,6 +59,11 @@ export function StudentChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Teclado aberto (Android): o WebView encolhe 100dvh e o composer passa a
+  // ficar acima dele → reserva inferior pequena. Fechado → o composer precisa
+  // sentar acima do BottomNav → reserva = nav real + safe-area.
+  const [composerFocused, setComposerFocused] = useState(false);
+
   const studentId = student?.id || '';
   const studentName = getStudentName(student);
   const studentAvatarUrl = getStudentAvatarUrl(student);
@@ -639,7 +644,7 @@ export function StudentChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 bg-[#050505] pb-[max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))] pt-2">
+        <div className={`shrink-0 bg-[#050505] pt-2 ${composerFocused ? 'pb-[max(12px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'pb-[calc(var(--bottom-nav-content-height)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))] md:pb-[max(12px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}>
           <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2">
             {(selectedFile || validationError) && (
               <div className="mb-2">
@@ -673,6 +678,8 @@ export function StudentChatPage() {
                 value={newMessage}
                 onChange={(event) => setNewMessage(event.target.value)}
                 onKeyDown={handleKeyDown}
+                onFocus={() => setComposerFocused(true)}
+                onBlur={() => setComposerFocused(false)}
                 placeholder="Mensagem"
                 rows={1}
                 className="max-h-24 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"

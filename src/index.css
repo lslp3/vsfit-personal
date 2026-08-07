@@ -7,6 +7,12 @@
     /* Altura do conteúdo do BottomNav (sem safe-area). Reserva inferior
        centralizada: usada nos shells e no sidebar (botão Sair). */
     --bottom-nav-height: 4rem;
+
+    /* Altura REAL do conteúdo do BottomNav (sem safe-area): py-2 16 + ícone
+       20 + gap 2 + label ~12.5 + border 1 ≈ 52px. Reserva JUSTA para ajustes
+       locais (botão Sair do Sidebar e composers do Chat), derivada da geometria
+       real em vez do valor folgado --bottom-nav-height (4rem). */
+    --bottom-nav-content-height: 3.25rem;
   }
 
   html {
