@@ -699,7 +699,7 @@ export function ChatPage() {
             </div>
           </div>
 
-          <div className={`shrink-0 bg-[#050505] pt-2 ${composerFocused ? 'pb-[max(12px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'pb-[calc(var(--bottom-nav-content-height)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))] md:pb-[max(12px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}>
+          <div className={`shrink-0 bg-[#050505] pt-2 ${composerFocused ? 'pb-2' : 'pb-[calc(var(--bottom-nav-content-height)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))] md:pb-[max(12px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}>
             <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2">
               {(selectedFile || validationError) && (
                 <div className="mb-2">

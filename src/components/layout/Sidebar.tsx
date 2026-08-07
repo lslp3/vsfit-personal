@@ -246,13 +246,17 @@ export function Sidebar({
 
       <div className={cn(
         'border-t border-white/[0.08] px-3 pt-3',
-        // Mobile (drawer ocupando a viewport): reserva a altura REAL do BottomNav
-        // (--bottom-nav-content-height ≈ 52px, não os 64px da reserva geral) +
-        // safe-area → Sair fica imediatamente acima do nav, sem lacuna exagerada.
+        // Mobile (drawer ocupando a viewport): reserva a altura do conteúdo do
+        // BottomNav (--bottom-nav-content-height ≈ 52px) + safe-area, MINOS os
+        // 8px de "ar" interno do topo do nav (py-2). Assim a borda inferior do
+        // botão Sair alinha na linha do conteúdo (ícones) do nav — o aperto
+        // máximo permitido SEM alterar a altura/posição do BottomNav nem a
+        // safe-area (o drawer é opaco e cobre o nav z-50 com z-999, então nada
+        // fica sobreposto de forma visível).
         // Desktop (inline) não tem BottomNav → só o padding natural inferior.
         isInline
           ? 'pb-3'
-          : 'pb-[calc(var(--bottom-nav-content-height)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
+          : 'pb-[calc(var(--bottom-nav-content-height)-8px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
       )}>
         <button
           type="button"
