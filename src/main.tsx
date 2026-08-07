@@ -5,6 +5,7 @@ import { GlobalChatFileInput } from './components/chat/GlobalChatFileInput';
 import { reloadForStaleChunk } from './utils/chunkReload';
 import './index.css';
 import { initSafeArea } from './lib/safeArea';
+import { initAndroidBackButton } from './lib/androidBackButton';
 
 // Fallback global: se o navegador tentar importar um chunk de um deploy
 // antigo (PWA) e ele não existir mais, recarrega a página uma vez.
@@ -17,6 +18,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 initSafeArea();
+initAndroidBackButton();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

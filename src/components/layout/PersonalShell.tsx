@@ -57,7 +57,7 @@ export function PersonalShell() {
         <Sidebar variant="inline" />
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
+          <header className="sticky top-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))] z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
             <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4 md:max-w-7xl md:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 <BrandMark

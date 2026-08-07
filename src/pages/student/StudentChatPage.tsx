@@ -545,7 +545,7 @@ export function StudentChatPage() {
         overscrollBehavior: 'none',
       }}
     >
-      <div className="shrink-0 border-b border-white/10 bg-[#080808] px-3 py-3">
+      <div className="shrink-0 border-b border-white/10 bg-[#080808] px-3 pt-[calc(0.75rem+var(--safe-area-inset-top,env(safe-area-inset-top,0px)))] pb-3">
         <div className="mx-auto flex max-w-lg items-center gap-3 md:max-w-3xl md:px-6">
           <button
             type="button"
