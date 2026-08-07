@@ -23,7 +23,7 @@ import {
   User,
 } from 'lucide-react';
 
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
@@ -482,6 +482,12 @@ export function WorkoutBuilderPage() {
 
   const [isEditMode, setIsEditMode] =
     useState(Boolean(workoutId));
+
+  // Header único = global do PersonalShell (back + título dinâmico).
+  usePersonalPageHeader({
+    title: isEditMode ? 'Editar Treino' : 'Montar Treino',
+    back: true,
+  });
 
   const [loadingWorkout, setLoadingWorkout] =
     useState(false);
@@ -2552,10 +2558,6 @@ export function WorkoutBuilderPage() {
   if (loadingWorkout) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <Header
-          title="Editar Treino"
-          showBack
-        />
 
         <div className="page-container space-y-5 pb-36">
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-zinc-400">
@@ -2568,15 +2570,6 @@ export function WorkoutBuilderPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header
-        title={
-          isEditMode
-            ? 'Editar Treino'
-            : 'Montar Treino'
-        }
-        showBack
-      />
-
       <div className="page-container space-y-5 pb-36">
         {successMessage && (
           <motion.div

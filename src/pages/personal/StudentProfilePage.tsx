@@ -38,7 +38,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { Header } from '../../components/ui/Header';
+import { usePersonalHeaderSetter } from '../../lib/personalPageHeader';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -435,6 +435,26 @@ export function StudentProfilePage() {
       () => buildStudentBillingSummary(payments),
       [payments]
     );
+
+  // Header único = global do PersonalShell. Tela de detalhe: preserva o botão
+  // voltar e a ação EDITAR no header GLOBAL (sem criar segunda barra).
+  const setPageHeader = usePersonalHeaderSetter();
+  useEffect(() => {
+    setPageHeader({
+      title: 'Perfil do Aluno',
+      back: true,
+      right: student ? (
+        <button
+          type="button"
+          onClick={() => setEditModalOpen(true)}
+          className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black text-white"
+        >
+          EDITAR
+        </button>
+      ) : undefined,
+    });
+    return () => setPageHeader({});
+  }, [setPageHeader, student]);
 
   const [messages, setMessages] =
     useState<Message[]>([]);
@@ -1150,10 +1170,6 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505]">
-        <Header
-          title="Carregando..."
-          showBack
-        />
 
         <div className="flex items-center justify-center pt-20">
           <Loader2 className="h-8 w-8 animate-spin text-[#ff2a32]" />
@@ -1165,10 +1181,6 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
   if (error && !student) {
     return (
       <div className="min-h-screen bg-[#050505]">
-        <Header
-          title="Aluno"
-          showBack
-        />
 
         <EmptyState
           title="Aluno não encontrado"
@@ -1194,22 +1206,6 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
-      <Header
-        title="Perfil do Aluno"
-        showBack
-        right={
-          <button
-            type="button"
-            onClick={() =>
-              setEditModalOpen(true)
-            }
-            className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black text-white"
-          >
-            EDITAR
-          </button>
-        }
-      />
-
       <div className="mx-auto w-full max-w-lg px-4 pb-32 pt-4">
         {error && (
           <div className="mb-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">

@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { Input, Textarea } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -251,6 +251,9 @@ function buildPlanMessage(plan: NutritionPlan, student?: Student) {
 
 export function NutritionPage() {
   const { trainerProfile } = useAuthStore();
+
+  // Header único = global do PersonalShell (back integrado).
+  usePersonalPageHeader({ title: 'Nutrição', back: true });
 
   const [coachEmail, setCoachEmail] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -636,7 +639,6 @@ export function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Nutrição" showBack />
 
       <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
         <div className="space-y-6">

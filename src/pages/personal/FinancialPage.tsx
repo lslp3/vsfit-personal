@@ -17,7 +17,7 @@ import {
   FileText,
 } from 'lucide-react';
 
-import { Header } from '../../components/ui/Header';
+
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -415,7 +415,6 @@ export function FinancialPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Financeiro" />
 
       <div className="mx-auto max-w-lg space-y-5 px-4 pb-32 pt-5">
         {showPlanModal ? (

@@ -25,7 +25,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import { useTrainerAnalytics } from '../../hooks/useTrainerAnalytics';
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { MetricCard } from '../../components/dashboard/MetricCard';
 import { RevenueChart } from '../../components/dashboard/RevenueChart';
@@ -116,6 +116,23 @@ export function AnalyticsPage() {
     setTimeout(() => setRefreshing(false), 600);
   }
 
+  // Header único = global do PersonalShell. Integra back + ação de refresh.
+  usePersonalPageHeader({
+    title: 'Analytics',
+    back: true,
+    right: (
+      <button
+        type="button"
+        onClick={handleRefresh}
+        disabled={refreshing}
+        aria-label="Atualizar analytics"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300 transition-all active:scale-90 disabled:opacity-50"
+      >
+        <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+      </button>
+    ),
+  });
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] text-white">
@@ -130,7 +147,6 @@ export function AnalyticsPage() {
   if (error && !summary) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <Header title="Analytics" showBack />
         <div className="mx-auto max-w-lg px-4 pb-32 pt-5">
           <EmptyState
             title="Não foi possível carregar"
@@ -153,7 +169,6 @@ export function AnalyticsPage() {
   if (!summary) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <Header title="Analytics" showBack />
         <div className="mx-auto max-w-lg px-4 pb-32 pt-5">
           <EmptyState
             icon={<BarChart3 className="h-8 w-8 text-zinc-700" />}
@@ -169,22 +184,6 @@ export function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header
-        title="Analytics"
-        showBack
-        right={
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            aria-label="Atualizar analytics"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-zinc-300 transition-all active:scale-90 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        }
-      />
-
       <div className="mx-auto max-w-lg space-y-5 px-4 pb-32 pt-5">
         {/* Filtro global de período */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

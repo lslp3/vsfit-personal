@@ -18,7 +18,7 @@ import {
   Target,
   KeyRound,
 } from 'lucide-react';
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input, Textarea } from '../../components/ui/Input';
@@ -34,6 +34,9 @@ import { cn } from '../../lib/utils';
 export function SignupLinksPage() {
   const { user, trainerProfile } = useAuthStore();
   const navigate = useNavigate();
+
+  // Header único = global do PersonalShell (back integrado).
+  usePersonalPageHeader({ title: 'Captura de Alunos', back: true });
 
   const [links, setLinks] = useState<SignupLink[]>([]);
   const [leads, setLeads] = useState<SignupLead[]>([]);
@@ -320,7 +323,6 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Captura de Alunos" showBack />
 
       <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
         <div className="space-y-6">

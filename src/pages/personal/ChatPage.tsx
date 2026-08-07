@@ -10,7 +10,7 @@ import {
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { Header } from '../../components/ui/Header';
+
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -598,7 +598,6 @@ export function ChatPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <Header title="Chat" />
 
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
@@ -757,7 +756,6 @@ export function ChatPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Chat" />
 
       <div className="mx-auto max-w-lg space-y-3 px-4 pb-32 pt-4 md:max-w-3xl md:px-6">
         {conversations.length === 0 ? (

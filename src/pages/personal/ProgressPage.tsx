@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 import { useStudentStore } from '../../store/studentStore';
@@ -188,6 +188,9 @@ export function ProgressPage() {
   const { trainerProfile } = useAuthStore();
   const { students, fetchStudents } = useStudentStore();
   const navigate = useNavigate();
+
+  // Header único = global do PersonalShell (back integrado).
+  usePersonalPageHeader({ title: 'Progresso', back: true });
 
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [metrics, setMetrics] = useState<
@@ -707,7 +710,6 @@ export function ProgressPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Progresso" showBack />
 
       <div className="mx-auto max-w-lg space-y-5 px-4 pb-32 pt-5">
         <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.55)]">

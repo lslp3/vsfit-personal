@@ -11,7 +11,7 @@ import {
   ListChecks,
   Sparkles,
 } from 'lucide-react';
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea, Select } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -228,24 +228,25 @@ export function ExerciseLibraryPage() {
     }
   };
 
+  // Header único = global do PersonalShell (back + sincronizar integrados).
+  usePersonalPageHeader({
+    title: 'Biblioteca de Exercícios',
+    back: true,
+    right: (
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={syncing}
+        className="flex items-center gap-1.5 rounded-lg bg-vs-primary/10 px-3 py-1.5 text-xs font-medium text-vs-primary transition-colors hover:bg-vs-primary/20 disabled:opacity-50"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+        {syncing ? 'Sincronizando...' : 'Sincronizar Storage'}
+      </button>
+    ),
+  });
+
   return (
     <div>
-      <Header
-        title="Biblioteca de Exercícios"
-        showBack
-        right={
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 text-xs font-medium text-vs-primary bg-vs-primary/10 px-3 py-1.5 rounded-lg hover:bg-vs-primary/20 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Sincronizando...' : 'Sincronizar Storage'}
-          </button>
-        }
-      />
-
       <div className="page-container space-y-4">
         {syncResult && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">

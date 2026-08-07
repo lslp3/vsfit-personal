@@ -18,7 +18,7 @@ import {
   Bell,
 } from 'lucide-react';
 
-import { Header } from '../../components/ui/Header';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 
@@ -59,6 +59,9 @@ function getAvatarExtension(file: File) {
 
 export function ProfilePage() {
   const navigate = useNavigate();
+
+  // Header único = global do PersonalShell (back integrado).
+  usePersonalPageHeader({ title: 'Meu Perfil', back: true });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { trainerProfile, setUser, user, profile } = useAuthStore();
@@ -239,7 +242,6 @@ export function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <Header title="Meu Perfil" showBack />
 
       <input
         ref={fileInputRef}

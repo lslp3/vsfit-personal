@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Check,
   ChevronRight,
   Crown,
@@ -11,6 +9,7 @@ import {
   Star,
   Zap,
 } from 'lucide-react';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import * as subscriptionService from '../../services/subscriptionService';
@@ -93,7 +92,8 @@ function getPlanTone(slug: string, isCurrent: boolean) {
 }
 
 export function SubscriptionPage() {
-  const navigate = useNavigate();
+  // Header único = global do PersonalShell (titulo + botão voltar integrados).
+  usePersonalPageHeader({ title: 'Assinatura', back: true });
   const { trainerProfile, user } = useAuthStore();
 
   const [plans, setPlans] = useState<SubscriptionPlanWithLimits[]>([]);
@@ -251,26 +251,6 @@ export function SubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] pb-28 text-white">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050505]">
-        <div className="mx-auto flex h-[64px] max-w-lg items-center gap-3 px-4">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-
-          <div>
-            <h1 className="text-[20px] font-black tracking-[-0.04em] text-white">
-              Assinatura
-            </h1>
-            <p className="text-[11px] font-semibold text-zinc-500">
-              Planos do personal
-            </p>
-          </div>
-        </div>
-      </header>
 
       <main className="mx-auto max-w-lg space-y-6 px-4 pt-6">
         {errorMessage && (
