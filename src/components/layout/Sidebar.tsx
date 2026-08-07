@@ -289,9 +289,9 @@ export function Sidebar({
               damping: 28,
               stiffness: 260,
             }}
-            className="fixed left-0 top-0 z-[999] h-full min-h-[100dvh] w-[300px] border-r border-white/[0.08] bg-[#080808] shadow-[10px_0_70px_rgba(0,0,0,0.65)]"
+            className="fixed left-0 top-0 z-[999] h-[100dvh] w-[300px] border-r border-white/[0.08] bg-[#080808] shadow-[10px_0_70px_rgba(0,0,0,0.65)]"
           >
-            <div className="flex h-full min-h-[100dvh] flex-col">
+            <div className="flex h-[100dvh] flex-col">
               {sidebarContent}
             </div>
           </motion.aside>

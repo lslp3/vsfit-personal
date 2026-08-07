@@ -610,7 +610,7 @@ export function ChatPage() {
   if (selectedStudentId) {
     return (
       <div
-        className="fixed inset-0 z-[99999] flex w-screen flex-col overflow-hidden bg-[#050505] text-white"
+        className="fixed inset-0 z-[99999] flex w-full flex-col overflow-hidden bg-[#050505] text-white"
         style={{
           height: '100dvh',
           maxHeight: '100dvh',

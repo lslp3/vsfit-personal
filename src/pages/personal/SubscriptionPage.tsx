@@ -251,7 +251,7 @@ export function SubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] pb-28 text-white">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050505]">
         <div className="mx-auto flex h-[64px] max-w-lg items-center gap-3 px-4">
           <button
             type="button"

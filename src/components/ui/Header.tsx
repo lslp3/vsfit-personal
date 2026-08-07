@@ -11,7 +11,7 @@ export function Header({ title, showBack, right }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-40 bg-vs-dark/95 backdrop-blur-xl border-b border-vs-border">
+    <header className="sticky top-0 z-40 bg-vs-dark border-b border-vs-border">
       <div className="flex items-center justify-between max-w-lg mx-auto px-4 h-14">
         <div className="flex items-center gap-3">
           {showBack && (

@@ -278,7 +278,7 @@ export function AdminShell() {
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/95 backdrop-blur-xl">
+          <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]">
             <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-3 px-4 md:h-[76px] md:px-8">
               <div className="flex min-w-0 items-center gap-3">
                 <BrandMark
