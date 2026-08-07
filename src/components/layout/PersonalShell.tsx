@@ -63,7 +63,7 @@ export function PersonalShell() {
           <div className="min-w-0 flex-1">
             <ShellHeader onOpenSidebar={() => setSidebarOpen(true)} />
 
-            <main className="mx-auto max-w-lg pb-[calc(5rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] md:max-w-7xl">
+            <main className="pb-bottom-nav mx-auto max-w-lg md:max-w-7xl md:pb-6">
               <Outlet />
             </main>
           </div>

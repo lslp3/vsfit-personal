@@ -38,8 +38,18 @@ export function StudentShell() {
       {/* Dono do topo (mobile): sticky + pt-safe + fundo sólido — o conteúdo
           não passa mais atrás da StatusBar ao rolar. */}
       <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-vs-dark pt-[var(--safe-area-inset-top,env(safe-area-inset-top,0px))] md:hidden">
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
-          <BrandMark size="sm" className="rounded-[13px]" />
+        <div className="mx-auto flex h-16 max-w-lg items-center gap-3 px-4">
+          <BrandMark size="sm" className="shrink-0 rounded-[13px]" />
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-black leading-tight tracking-[-0.025em] text-white">
+              VSFit Aluno
+            </p>
+
+            <p className="mt-0.5 truncate text-[10px] font-medium leading-tight text-zinc-500">
+              {student?.name || 'Aluno'}
+            </p>
+          </div>
         </div>
       </header>
 
@@ -86,7 +96,7 @@ export function StudentShell() {
         </aside>
 
         <div className="min-w-0 flex-1">
-          <div className="mx-auto max-w-lg pb-[calc(5rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] md:max-w-7xl">
+          <div className="pb-bottom-nav mx-auto max-w-lg md:max-w-7xl md:pb-6">
             <Outlet />
           </div>
         </div>

@@ -244,7 +244,15 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="border-t border-white/[0.08] px-3 py-3 pb-[calc(12px+var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px)))]">
+      <div className={cn(
+        'border-t border-white/[0.08] px-3 pt-3',
+        // Mobile (drawer ocupando a viewport): reserva a altura do BottomNav +
+        // safe-area para o botão Sair nunca ficar atrás/na banda do nav.
+        // Desktop (inline) não tem BottomNav → só o padding natural inferior.
+        isInline
+          ? 'pb-3'
+          : 'pb-[calc(var(--bottom-nav-height)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
+      )}>
         <button
           type="button"
           onClick={handleLogout}
