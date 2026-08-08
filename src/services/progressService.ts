@@ -33,6 +33,13 @@ export interface ProgressPhotoRecord {
   created_at: string;
 }
 
+/** Registro mínimo de progresso (student_progress) para a Central de Alunos. */
+export interface StudentProgressRecord {
+  id: string;
+  student_id: string;
+  created_at?: string;
+}
+
 export interface SaveProgressPhotoInput {
   studentId: string;
   photoUrl: string;
@@ -133,6 +140,64 @@ export async function getStudentMetricsByTrainer(
   } catch (error) {
     console.error(
       '[ProgressService] getStudentMetricsByTrainer exception:',
+      error
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Busca em lote os registros de progresso (student_progress) dos alunos do
+ * trainer. Mesmo padrão do `getStudentMetricsByTrainer`: primeiro resolve os
+ * ids dos alunos (students.trainer_id) e depois filtra `student_progress`
+ * por student_id — a tabela não possui trainer_id.
+ */
+export async function getStudentProgressByTrainer(
+  trainerId: string
+): Promise<StudentProgressRecord[]> {
+  try {
+    const { data: students, error: studentsError } =
+      await supabase
+        .from('students')
+        .select('id')
+        .eq('trainer_id', trainerId);
+
+    if (studentsError) {
+      console.error(
+        '[ProgressService] student_progress students error:',
+        studentsError
+      );
+
+      throw studentsError;
+    }
+
+    const studentIds = (students || [])
+      .map((student) => student.id)
+      .filter(Boolean);
+
+    if (studentIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('student_progress')
+      .select('id, student_id, created_at')
+      .in('student_id', studentIds);
+
+    if (error) {
+      console.error(
+        '[ProgressService] student_progress error:',
+        error
+      );
+
+      throw error;
+    }
+
+    return (data || []) as StudentProgressRecord[];
+  } catch (error) {
+    console.error(
+      '[ProgressService] getStudentProgressByTrainer exception:',
       error
     );
 

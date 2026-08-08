@@ -166,8 +166,13 @@ export function StudentsPage() {
       setStudents(data || []);
 
       // Sprint 16 Fase 1 — agregação batch por trainer (sem N+1).
+      // FONTE DA CENTRAL: a própria carteira (students.trainer_id). O mapa de
+      // auditoria cobre TODOS os alunos — mesmo os sem dados complementares.
       try {
-        const audit = await getStudentAuditByTrainer(trainerId);
+        const audit = await getStudentAuditByTrainer(
+          trainerId,
+          (data || []).map((student) => student.id)
+        );
         setAuditMap(audit.cards || {});
         setPayments(audit.payments || []);
       } catch (auditErr) {
