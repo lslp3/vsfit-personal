@@ -64,6 +64,11 @@ import {
 } from '../../lib/studentBilling';
 
 import * as studentService from '../../services/studentService';
+import {
+  buildStudentDeletionOutcome,
+  canCloseDeleteModal,
+  isDeleteActionEnabled,
+} from '../../lib/studentDeletion';
 import * as workoutService from '../../services/workoutService';
 import * as paymentService from '../../services/paymentService';
 import * as messageService from '../../services/messageService';
@@ -436,6 +441,11 @@ export function StudentProfilePage() {
       [payments]
     );
 
+  // Exclusão de aluno (modal destrutivo + estado de loading/erro).
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Header único = global do PersonalShell. Tela de detalhe: preserva o botão
   // voltar e a ação EDITAR no header GLOBAL (sem criar segunda barra).
   const setPageHeader = usePersonalHeaderSetter();
@@ -444,17 +454,26 @@ export function StudentProfilePage() {
       title: 'Perfil do Aluno',
       back: true,
       right: student ? (
-        <button
-          type="button"
-          onClick={() => setEditModalOpen(true)}
-          className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black text-white"
-        >
-          EDITAR
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEditModalOpen(true)}
+            className="flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-4 text-xs font-black text-white"
+          >
+            EDITAR
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteModalOpen(true)}
+            className="flex h-9 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 px-4 text-xs font-black text-red-400"
+          >
+            EXCLUIR
+          </button>
+        </div>
       ) : undefined,
     });
     return () => setPageHeader({});
-  }, [setPageHeader, student]);
+  }, [setPageHeader, setDeleteModalOpen, student]);
 
   const [messages, setMessages] =
     useState<Message[]>([]);
@@ -787,6 +806,45 @@ export function StudentProfilePage() {
           ? updateError.message
           : 'Erro ao editar o aluno.'
       );
+    }
+  }
+
+  async function handleDeleteStudent() {
+    if (!student?.id) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      // Único caminho: Edge Function delete-student (valida JWT/ownership e
+      // executa a purga transacional + remoção de Auth em Fase B).
+      const result = await studentService.deleteStudent(student.id);
+      const outcome = buildStudentDeletionOutcome(result);
+
+      // Sucesso no banco? Só então a UI remove o aluno da lista.
+      if (outcome.kind === 'error' || !outcome.removeFromList) {
+        setDeleteError(outcome.message);
+        return;
+      }
+
+      // Limpa memory cache + sessionStorage do aluno (studentService).
+      if (outcome.clearCache) {
+        studentService.clearStudentAccountCache();
+      }
+
+      // Volta para a Central (remonta → refetch → lista/KPIs refletem a
+      // exclusão). Mensagem honesta: sucesso completo ou parcial (Auth falhou).
+      navigate('/personal/students', {
+        state: { removeStudentMessage: outcome.message },
+      });
+    } catch (error: unknown) {
+      console.error('[StudentProfilePage] delete student:', error);
+      const outcome = buildStudentDeletionOutcome(null);
+      setDeleteError(outcome.message);
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -2186,6 +2244,55 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
             <Save className="h-4 w-4" />
             Salvar alterações
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => {
+          if (canCloseDeleteModal(deleteLoading)) {
+            setDeleteModalOpen(false);
+            setDeleteError(null);
+          }
+        }}
+        title="Excluir aluno?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-zinc-300">
+            Esta ação excluirá permanentemente o aluno e os dados associados,
+            incluindo treinos, histórico, métricas, progresso e registros
+            relacionados.
+          </p>
+
+          {deleteError && (
+            <p className="rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300">
+              {deleteError}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              variant="secondary"
+              disabled={!isDeleteActionEnabled(deleteLoading)}
+              onClick={() => {
+                if (canCloseDeleteModal(deleteLoading)) {
+                  setDeleteModalOpen(false);
+                  setDeleteError(null);
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleteLoading}
+              disabled={!isDeleteActionEnabled(deleteLoading)}
+              onClick={() => void handleDeleteStudent()}
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir aluno
+            </Button>
+          </div>
         </div>
       </Modal>
 

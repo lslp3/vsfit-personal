@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Users, KeyRound, Check, Copy, Send } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -88,6 +88,16 @@ const initialCreateForm = {
 
 export function StudentsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Mensagem opcional vinda do perfil do aluno após exclusão bem-sucedida
+  // (navegação com state) — a Central não duplica a lógica de exclusão,
+  // apenas exibe o retorno honesto da Edge Function.
+  const removeStudentMessage =
+    (location.state as { removeStudentMessage?: string } | null)?.removeStudentMessage ||
+    null;
+  const [showRemoveBanner, setShowRemoveBanner] = useState(
+    Boolean(removeStudentMessage)
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const { trainerProfile, isAuthenticated } = useAuthStore();
 
@@ -366,6 +376,20 @@ export function StudentsPage() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
         <div className="space-y-5">
+          {showRemoveBanner && removeStudentMessage && (
+            <div className="flex items-start justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-xs text-emerald-300">
+              <p className="leading-relaxed">{removeStudentMessage}</p>
+              <button
+                type="button"
+                onClick={() => setShowRemoveBanner(false)}
+                className="shrink-0 font-black text-emerald-300/70 transition-colors hover:text-emerald-300"
+                aria-label="Fechar aviso"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ff2a32]">

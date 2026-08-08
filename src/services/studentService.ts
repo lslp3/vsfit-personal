@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import type { DeleteStudentFailure, DeleteStudentResult } from '../lib/studentDeletion';
 import type { Student, StudentAccount } from '../types/database';
 import type { CreateStudentData } from '../types/student';
 
@@ -326,6 +327,50 @@ export async function updateStudent(id: string, data: any) {
   clearStudentAccountCache();
 
   return mapStudentFromDb(student);
+}
+
+/**
+ * Exclusão segura de aluno — ÚNICO ponto do app que dispara a remoção.
+ *
+ * O cliente NUNCA executa DELETE em `students`: delega à Edge Function
+ * `delete-student`, que valida ownership (JWT do personal logado) e executa
+ * a purga transacional via RPC `delete_student_data`. Auth (auth.users) é
+ * removido pela Edge Function APÓS o commit do banco (Fase B).
+ *
+ * Contrato de retorno (DeleteStudentResult):
+ * - success: false               → nada foi removido (banco recusou/falhou);
+ * - databaseDeleted: true        → purga do banco concluída;
+ * - authDeleted: true/false      → usuário de acesso removido ou não
+ *                                  (authCleanupError com o motivo).
+ */
+export async function deleteStudent(studentId: string): Promise<DeleteStudentResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-student', {
+      body: { studentId },
+    });
+
+    if (error) {
+      console.error('[StudentService] delete-student error:', error);
+      throw error;
+    }
+
+    const result = data as DeleteStudentResult | DeleteStudentFailure | null;
+
+    if (!result || !result.success) {
+      throw new Error(
+        (result as DeleteStudentFailure | null)?.error || 'Erro ao excluir o aluno.'
+      );
+    }
+
+    if (!result.databaseDeleted) {
+      throw new Error('Erro ao excluir o aluno.');
+    }
+
+    return result;
+  } catch (e) {
+    console.error('[StudentService] deleteStudent exception:', e);
+    throw e;
+  }
 }
 
 export async function getStudentByAuthUser(
