@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { PUSH_ROUTES, type PushEventType } from '../types/push';
+import type { PushSendOutcome } from '../lib/pushRecipients';
 
 /**
  * Sprint 12 — ETAPA 5: disparos de push a partir de eventos de negócio.
@@ -29,22 +30,46 @@ export async function sendPush({
   event_type,
   route,
   data,
-}: PushTriggerOptions): Promise<void> {
+}: PushTriggerOptions): Promise<PushSendOutcome> {
   try {
-    await supabase.functions.invoke('send-push-notification', {
-      body: {
-        user_id: user,
-        title,
-        body,
-        data: {
-          event_type,
-          route,
-          ...(data ?? {}),
+    const { data: result, error } = await supabase.functions.invoke(
+      'send-push-notification',
+      {
+        body: {
+          user_id: user,
+          title,
+          body,
+          data: {
+            event_type,
+            route,
+            ...(data ?? {}),
+          },
         },
-      },
-    });
+      }
+    );
+
+    if (error) {
+      console.warn('[PushTrigger] sendPush invoke error:', error);
+      return { ok: false, sent: 0, devices: 0, blocked: false };
+    }
+
+    // Normalização mínima do contrato da Edge Function: a UI precisa saber
+    // quando a resposta indica que NENHUM dispositivo recebeu (devices: 0,
+    // blocked por preferência, ou envio sem sucesso) para não afirmar uma
+    // entrega que não aconteceu.
+    const payload = (result ?? {}) as Partial<PushSendOutcome> & { ok?: unknown };
+    const sent = Number(payload.sent ?? 0);
+    const devices = Number(payload.devices ?? 0);
+
+    return {
+      ok: payload.ok !== false,
+      sent: Number.isFinite(sent) && sent > 0 ? sent : 0,
+      devices: Number.isFinite(devices) && devices > 0 ? devices : 0,
+      blocked: payload.blocked === true,
+    };
   } catch (error) {
     console.warn('[PushTrigger] sendPush error:', error);
+    return { ok: false, sent: 0, devices: 0, blocked: false };
   }
 }
 
@@ -185,8 +210,8 @@ export async function pushSystemNotification(opts: {
   title: string;
   body: string;
   type?: string;
-}): Promise<void> {
-  await sendPush({
+}): Promise<PushSendOutcome> {
+  return sendPush({
     user: opts.user,
     title: opts.title,
     body: opts.body,

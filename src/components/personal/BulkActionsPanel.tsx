@@ -14,6 +14,10 @@ import { buildStudentsCsv, downloadStudentsCsv } from '../../lib/studentFilters'
 import { sendMessage } from '../../services/messageService';
 import { updateStudent } from '../../services/studentService';
 import { pushSystemNotification } from '../../services/pushTrigger';
+import {
+  resolvePushRecipients,
+  isPushDelivered,
+} from '../../lib/pushRecipients';
 
 type BulkActionMode = 'status' | 'message' | 'push' | null;
 
@@ -58,7 +62,12 @@ export function BulkActionsPanel({ selected, auditMap, trainerId, onDone }: Bulk
 
   const count = selected.length;
   const noneSelected = count === 0;
-  const pushEligible = selected.filter((s) => s.auth_user_id).length;
+
+  // Destinatários de push — FONTE ÚNICA via resolver (auth legado ->
+  // student_accounts), respeitando bloqueio/status de acesso da Central.
+  // O contador do modal e o envio usam EXATAMENTE o mesmo conjunto.
+  const pushRecipients = resolvePushRecipients(selected);
+  const pushEligible = pushRecipients.length;
 
   const close = () => {
     if (busy) return;
@@ -127,22 +136,27 @@ export function BulkActionsPanel({ selected, auditMap, trainerId, onDone }: Bulk
     if (!pushEligible || busy || !pushTitle.trim()) return;
     setBusy(true);
     setResult('');
-    let ok = 0;
-    for (const s of selected) {
-      if (!s.auth_user_id) continue;
+    let delivered = 0;
+    // Envia SOMENTE para os destinatários resolvidos (nunca mais de um por
+    // aluno; usa o auth uid da student_accounts quando a coluna legada é
+    // nula). Conta como entregue apenas quando a Edge Function confirma
+    // que ao menos um dispositivo recebeu (sent > 0).
+    for (const { authUserId } of pushRecipients) {
       try {
-        await pushSystemNotification({
-          user: s.auth_user_id,
+        const outcome = await pushSystemNotification({
+          user: authUserId,
           title: pushTitle.trim(),
           body: pushBody.trim(),
         });
-        ok += 1;
+        if (isPushDelivered(outcome)) delivered += 1;
       } catch {
         // continua com os demais
       }
     }
     setBusy(false);
-    setResult(`Notificação enviada para ${ok} de ${pushEligible} alunos elegíveis.`);
+    setResult(
+      `Notificação entregue para ${delivered} de ${pushEligible} alunos elegíveis.`
+    );
   };
 
   if (noneSelected) return null;
