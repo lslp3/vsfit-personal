@@ -19,6 +19,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { usePersonalPageHeader } from '../../lib/personalPageHeader';
+import { getPublicSignupUrl } from '../../lib/appConfig';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input, Textarea } from '../../components/ui/Input';
@@ -208,7 +209,7 @@ export function SignupLinksPage() {
   };
 
   const handleCopyLink = async (slug: string, id: string) => {
-    const url = `${window.location.origin}/signup/${slug}`;
+    const url = getPublicSignupUrl(slug);
 
     try {
       await navigator.clipboard.writeText(url);
@@ -480,7 +481,7 @@ Acesse o aplicativo e altere sua senha após o primeiro login.`;
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `${window.location.origin}/signup/${link.slug}`;
+                          const url = getPublicSignupUrl(link.slug);
                           const msg = `Confira minha consultoria: ${url}`;
                           window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
                         }}
