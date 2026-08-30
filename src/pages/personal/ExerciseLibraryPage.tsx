@@ -268,23 +268,13 @@ export function ExerciseLibraryPage() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={<Dumbbell className="w-8 h-8 text-vs-muted" />}
-            title="Nenhum exercício"
-            description="Nenhum exercício encontrado. Clique em Sincronizar Storage para carregar seus exercícios reais."
-            action={
-              <div className="flex gap-2">
-                <Button onClick={handleSync} loading={syncing}>
-                  <RefreshCw className="w-4 h-4" /> Sincronizar Catálogo
-                </Button>
-                <Button variant="secondary" onClick={() => setShowCreate(true)}>
-                  <Plus className="w-4 h-4" /> Criar
-                </Button>
-              </div>
-            }
-          />
-        ) : (
+        {filtered.length === 0 ? (
+                  <EmptyState
+                    icon={<Dumbbell className="w-8 h-8 text-vs-muted" />}
+                    title="Nenhum exercício"
+                    description="Nenhum exercício encontrado."
+                  />
+                ) : (
           <div className="grid grid-cols-2 gap-3">
             {filtered.map((ex) => (
               <ExerciseCard
