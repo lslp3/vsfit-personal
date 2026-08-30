@@ -1,0 +1,110 @@
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Exercise } from '../../types/database';
+import { cn } from '../../lib/utils';
+
+interface VideoPlayerModalProps {
+  exercise: Exercise | null;
+  onClose: () => void;
+}
+
+export function VideoPlayerModal({ exercise, onClose }: VideoPlayerModalProps) {
+  useEffect(() => {
+    if (exercise) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [exercise]);
+
+  if (!exercise) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-6">
+        {/* Backdrop */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        />
+
+        {/* Modal Content */}
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="relative z-10 w-full max-w-4xl overflow-hidden rounded-[24px] bg-vs-dark border border-white/[0.08] shadow-2xl"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-white leading-tight">{exercise.name}</h2>
+              <div className="flex flex-wrap gap-2">
+                {exercise.muscle_group && (
+                  <span className="rounded-[12px] bg-vs-primary/10 px-2 py-0.5 text-[10px] font-bold text-vs-primary border border-vs-primary/20">
+                    {exercise.muscle_group}
+                  </span>
+                )}
+                {exercise.equipment && (
+                  <span className="rounded-[12px] bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/60 border border-white/10">
+                    {exercise.equipment}
+                  </span>
+                )}
+                {exercise.difficulty && (
+                  <span className="rounded-[12px] bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/40 border border-white/5">
+                    {exercise.difficulty}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Player */}
+          <div className="aspect-video bg-black overflow-hidden">
+            {exercise.video_url ? (
+              <video 
+                src={exercise.video_url} 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-vs-muted">
+                Vídeo indisponível
+              </div>
+            )}
+          </div>
+
+          {/* Instructions */}
+          {(exercise.instructions || exercise.tips) && (
+            <div className="p-6 space-y-4 max-h-[30vh] overflow-y-auto">
+              {exercise.instructions && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-vs-muted">Instruções</h4>
+                  <p className="text-sm text-white/80 leading-relaxed">{exercise.instructions}</p>
+                </div>
+              )}
+              {exercise.tips && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-vs-muted">Dicas Extras</h4>
+                  <p className="text-sm text-white/80 leading-relaxed italic">{exercise.tips}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

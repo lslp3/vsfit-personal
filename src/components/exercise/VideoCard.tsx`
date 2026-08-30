@@ -1,0 +1,107 @@
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Play } from 'lucide-react';
+import type { Exercise } from '../../types/database';
+import { cn } from '../../lib/utils';
+
+interface VideoCardProps {
+  exercise: Exercise;
+  onPlay: (exercise: Exercise) => void;
+}
+
+export function VideoCard({ exercise, onPlay }: VideoCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {
+        // Autoplay might be blocked by browser until interaction
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => onPlay(exercise)}
+      className={cn(
+        'group relative flex flex-col overflow-hidden cursor-pointer transition-all duration-300',
+        'rounded-[24px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm',
+        'hover:border-vs-primary/50 hover:shadow-lg hover:shadow-vs-primary/10'
+      )}
+    >
+      {/* Video/Thumbnail Container */}
+      <div className="relative aspect-video overflow-hidden bg-vs-dark">
+        {exercise.video_url ? (
+          <video
+            ref={videoRef}
+            src={exercise.video_url}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className={cn(
+              'h-full w-full object-cover transition-transform duration-500',
+              isHovered ? 'scale-105' : 'scale-100'
+            )}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-zinc-900">
+            <div className="text-vs-muted text-xs">Sem vídeo</div>
+          </div>
+        )}
+
+        {/* Play Overlay */}
+        <div 
+          className={cn(
+            'absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300',
+            isHovered ? 'opacity-100' : 'opacity-0'
+          )}
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-vs-primary text-white shadow-lg">
+            <Play className="ml-1 h-6 w-6 fill-current" />
+          </div>
+        </div>
+
+        {/* Difficulty Badge */}
+        <div className="absolute right-3 top-3">
+          <span className="rounded-[12px] bg-black/60 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md border border-white/10">
+            {exercise.difficulty || 'Básico'}
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-3">
+        <h3 className="line-clamp-2 text-sm font-bold text-white leading-tight group-hover:text-vs-primary transition-colors">
+          {exercise.name}
+        </h3>
+        
+        <div className="flex flex-wrap gap-2">
+          {exercise.muscle_group && (
+            <span className="rounded-[12px] bg-vs-primary/10 px-2 py-1 text-[10px] font-bold text-vs-primary border border-vs-primary/20">
+              {exercise.muscle_group}
+            </span>
+          )}
+          {exercise.equipment && (
+            <span className="rounded-[12px] bg-white/10 px-2 py-1 text-[10px] font-bold text-white/80 border border-white/10">
+              {exercise.equipment}
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}

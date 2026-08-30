@@ -1,0 +1,141 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import type { Exercise } from '../types/database';
+
+export interface ExerciseFilters {
+  search: string;
+  muscleGroup: string;
+  equipment: string;
+  category: string;
+  page: number;
+  pageSize: number;
+}
+
+interface UseExercisesReturn {
+  exercises: Exercise[];
+  totalCount: number;
+  totalPages: number;
+  loading: boolean;
+  error: string | null;
+  currentPage: number;
+}
+
+export function useExercises(filters: ExerciseFilters): UseExercisesReturn {
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchExercises() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        let query = supabase
+          .from('exercises')
+          .select('*', { count: 'exact' })
+          .eq('is_public', true);
+
+        if (filters.search) {
+          query = query.ilike('name', `%${filters.search}%`);
+        }
+
+        if (filters.muscleGroup) {
+          query = query.eq('muscle_group', filters.muscleGroup);
+        }
+
+        if (filters.equipment) {
+          query = query.eq('equipment', filters.equipment);
+        }
+
+        if (filters.category) {
+          query = query.eq('category', filters.category);
+        }
+
+        const from = (filters.page - 1) * filters.pageSize;
+        const to = from + filters.pageSize - 1;
+
+        const { data, count, error: queryError } = await query
+          .order('name', { ascending: true })
+          .range(from, to);
+
+        if (queryError) throw queryError;
+
+        setExercises(data || []);
+        setTotalCount(count || 0);
+      } catch (err: any) {
+        console.error('[useExercises] fetch error:', err);
+        setError(err.message || 'Erro ao carregar exercícios');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchExercises();
+  }, [
+    filters.search,
+    filters.muscleGroup,
+    filters.equipment,
+    filters.category,
+    filters.page,
+    filters.pageSize,
+  ]);
+
+  return {
+    exercises,
+    totalCount,
+    totalPages: Math.ceil(totalCount / filters.pageSize),
+    loading,
+    error,
+    currentPage: filters.page,
+  };
+}
+
+export function useExerciseFilters() {
+  const [filtersData, setFiltersData] = useState<{
+    muscleGroups: string[];
+    equipment: string[];
+    categories: string[];
+    loading: boolean;
+  }>({
+    muscleGroups: [],
+    equipment: [],
+    categories: [],
+    loading: true,
+  });
+
+  useEffect(() => {
+    async function fetchFilterOptions() {
+      try {
+        const { data, error } = await supabase
+          .from('exercises')
+          .select('muscle_group, equipment, category')
+          .eq('is_public', true);
+
+        if (error) throw error;
+
+        const muscleGroups = [...new Set(data.map((e) => e.muscle_group).filter(Boolean))]
+          .sort((a, b) => (a || '') > (b || '') ? 1 : -1);
+        const equipment = [...new Set(data.map((e) => e.equipment).filter(Boolean))]
+          .sort((a, b) => (a || '') > (b || '') ? 1 : -1);
+        const categories = [...new Set(data.map((e) => e.category).filter(Boolean))]
+          .sort((a, b) => (a || '') > (b || '') ? 1 : -1);
+
+        setFiltersData({
+          muscleGroups: muscleGroups as string[],
+          equipment: equipment as string[],
+          categories: categories as string[],
+          loading: false,
+        });
+      } catch (err) {
+        console.error('[useExerciseFilters] error:', err);
+        setFiltersData((prev) => ({ ...prev, loading: false }));
+      }
+    }
+
+    fetchFilterOptions();
+  }, []);
+
+  return filtersData;
+}

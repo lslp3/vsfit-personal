@@ -1,0 +1,147 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Loader2, Dumbbell } from 'lucide-react';
+import { usePersonalPageHeader } from '../../lib/personalPageHeader';
+import { useExercises, useExerciseFilters, type ExerciseFilters } from '../../hooks/useExercises';
+import { VideoCard } from '../../components/exercise/VideoCard';
+import { ExerciseFilters as FiltersBar } from '../../components/exercise/ExerciseFilters';
+import { VideoPlayerModal } from '../../components/exercise/VideoPlayerModal';
+import { Button } from '../../components/ui/Button';
+import type { Exercise } from '../../types/database';
+import { cn } from '../../lib/utils';
+
+export function ExerciseLibraryPage() {
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [filters, setFilters] = useState<ExerciseFilters>({
+    search: '',
+    muscleGroup: '',
+    equipment: '',
+    category: '',
+    page: 1,
+    pageSize: 30,
+  });
+
+  const filterOptions = useExerciseFilters();
+  const { exercises, totalCount, totalPages, loading, error, currentPage } = useExercises(filters);
+
+  // Header da página - SINCRONIZAÇÃO REMOVIDA POR SEGURANÇA
+  usePersonalPageHeader({
+    title: 'Biblioteca de Exercícios',
+    back: true,
+  });
+
+  const handleFilterChange = (updates: Partial<ExerciseFilters>) => {
+    setFilters(prev => ({
+      ...prev,
+      ...updates,
+      page: 1, // Reseta página ao filtrar
+    }));
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setFilters(prev => ({ ...prev, page: prev.page + 1 }));
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setFilters(prev => ({ ...prev, page: prev.page - 1 }));
+    }
+  };
+
+  return (
+    <div className="page-container space-y-6 pb-20">
+      {/* Header Informativo */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-black text-white">Exercícios</h1>
+        <p className="text-sm text-vs-muted">
+          {totalCount} exercícios disponíveis no catálogo
+        </p>
+      </div>
+
+      {/* Barra de Filtros */}
+      <FiltersBar 
+        filters={filters} 
+        onChange={(updates) => handleFilterChange(updates)}
+        options={filterOptions}
+      />
+
+      {/* Conteúdo Principal */}
+      <div className="relative min-h-[60vh]">
+        {loading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-vs-primary" />
+            <p className="text-sm text-vs-muted">Carregando biblioteca...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center p-8 rounded-[24px] bg-red-500/10 border border-red-500/20 text-center space-y-3">
+            <div className="p-3 rounded-full bg-red-500/20 text-red-500">
+              <Loader2 className="h-6 w-6" />
+            </div>
+            <p className="text-sm text-red-400 font-medium">{error}</p>
+            <Button onClick={() => setFilters(prev => ({ ...prev, page: 1 }))} variant="secondary">
+              Tentar Novamente
+            </Button>
+          </div>
+        ) : exercises.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
+            <div className="p-6 rounded-full bg-white/[0.04] text-vs-muted">
+              <Dumbbell className="h-12 w-12" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-white font-bold">Nenhum exercício encontrado</p>
+              <p className="text-sm text-vs-muted">Tente ajustar seus filtros de busca.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Grid de Vídeos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {exercises.map((ex) => (
+                <VideoCard 
+                  key={ex.id} 
+                  exercise={ex} 
+                  onPlay={setSelectedExercise} 
+                />
+              ))}
+            </div>
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <Button 
+                  onClick={handlePrevPage} 
+                  disabled={currentPage === 1}
+                  variant="secondary"
+                  className="rounded-[12px] h-10 px-4"
+                >
+                  Anterior
+                </Button>
+                
+                <span className="text-xs font-bold text-vs-muted">
+                  Página <span className="text-white">{currentPage}</span> de {totalPages}
+                </span>
+
+                <Button 
+                  onClick={handleNextPage} 
+                  disabled={currentPage === totalPages}
+                  variant="secondary"
+                  className="rounded-[12px] h-10 px-4"
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Player */}
+      <VideoPlayerModal 
+        exercise={selectedExercise} 
+        onClose={() => setSelectedExercise(null)} 
+      />
+    </div>
+  );
+}

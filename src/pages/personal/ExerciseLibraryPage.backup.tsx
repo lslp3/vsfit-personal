@@ -100,6 +100,8 @@ export function ExerciseLibraryPage() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeMuscle, setActiveMuscle] = useState<string | null>(null);
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
@@ -230,11 +232,29 @@ export function ExerciseLibraryPage() {
   usePersonalPageHeader({
     title: 'Biblioteca de Exercícios',
     back: true,
+    right: (
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={syncing}
+        className="flex items-center gap-1.5 rounded-lg bg-vs-primary/10 px-3 py-1.5 text-xs font-medium text-vs-primary transition-colors hover:bg-vs-primary/20 disabled:opacity-50"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+        {syncing ? 'Sincronizando...' : 'Sincronizar Storage'}
+      </button>
+    ),
   });
 
   return (
     <div>
       <div className="page-container space-y-4">
+        {syncResult && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {syncResult}
+          </div>
+        )}
+
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
             <AlertCircle className="w-4 h-4 shrink-0" />
