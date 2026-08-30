@@ -255,7 +255,6 @@ export function ExerciseLibraryPage() {
           ))}
         </div>
 
-        {/* AQUI ESTAVA O ERRO: Faltava o ") : " antes de filtered.length === 0 */}
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -269,10 +268,10 @@ export function ExerciseLibraryPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState>
-            <Dumbbell className="w-8 h-8 text-vs-muted" />
-            <div>Nenhum exercício</div>
-            <div>Nenhum exercício encontrado.</div>
+          /* ✅ CORREÇÃO: Adicionado a prop 'title' obrigatória */
+          <EmptyState title="Nenhum exercício encontrado">
+            <Dumbbell className="w-8 h-8 text-vs-muted mb-2" />
+            <p className="text-sm text-zinc-400">Tente ajustar sua busca ou filtros.</p>
           </EmptyState>
         ) : (
           <div className="grid grid-cols-2 gap-3">
