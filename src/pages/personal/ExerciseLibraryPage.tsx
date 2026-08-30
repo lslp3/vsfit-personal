@@ -6,7 +6,6 @@ import {
   Dumbbell,
   X,
   RefreshCw,
-  CheckCircle2,
   AlertCircle,
   ListChecks,
   Sparkles,
@@ -159,21 +158,6 @@ export function ExerciseLibraryPage() {
       console.error('[ExerciseLibraryPage] loadMore error:', err);
     } finally {
       setLoadingMore(false);
-    }
-  }
-
-  async function handleSync() {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const result = await exerciseService.syncStorageExercises(trainerProfile?.id);
-      setSyncResult(`${result.upserted} de ${result.scanned} exercícios sincronizados`);
-      await loadExercises();
-    } catch (err) {
-      console.error('[ExerciseLibrary] sync error:', err);
-      setSyncResult('Erro ao sincronizar');
-    } finally {
-      setSyncing(false);
     }
   }
 
