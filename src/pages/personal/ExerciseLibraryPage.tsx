@@ -210,7 +210,6 @@ export function ExerciseLibraryPage() {
     }
   };
 
-  // Header único = global do PersonalShell (back + sincronizar integrados).
   usePersonalPageHeader({
     title: 'Biblioteca de Exercícios',
     back: true,
@@ -256,6 +255,7 @@ export function ExerciseLibraryPage() {
           ))}
         </div>
 
+        {/* AQUI ESTAVA O ERRO: Faltava o ") : " antes de filtered.length === 0 */}
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -268,13 +268,13 @@ export function ExerciseLibraryPage() {
               </div>
             ))}
           </div>
-        {filtered.length === 0 ? (
-                          <EmptyState>
-                            <Dumbbell className="w-8 h-8 text-vs-muted" />
-                            <div>Nenhum exercício</div>
-                            <div>Nenhum exercício encontrado.</div>
-                          </EmptyState>
-                        ) : (
+        ) : filtered.length === 0 ? (
+          <EmptyState>
+            <Dumbbell className="w-8 h-8 text-vs-muted" />
+            <div>Nenhum exercício</div>
+            <div>Nenhum exercício encontrado.</div>
+          </EmptyState>
+        ) : (
           <div className="grid grid-cols-2 gap-3">
             {filtered.map((ex) => (
               <ExerciseCard
