@@ -269,12 +269,12 @@ export function ExerciseLibraryPage() {
             ))}
           </div>
         {filtered.length === 0 ? (
-                  <EmptyState
-                    icon={<Dumbbell className="w-8 h-8 text-vs-muted" />}
-                    title="Nenhum exercício"
-                    description="Nenhum exercício encontrado."
-                  />
-                ) : (
+                          <EmptyState>
+                            <Dumbbell className="w-8 h-8 text-vs-muted" />
+                            <div>Nenhum exercício</div>
+                            <div>Nenhum exercício encontrado.</div>
+                          </EmptyState>
+                        ) : (
           <div className="grid grid-cols-2 gap-3">
             {filtered.map((ex) => (
               <ExerciseCard
