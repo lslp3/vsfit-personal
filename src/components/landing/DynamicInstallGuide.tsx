@@ -85,7 +85,7 @@ export function DynamicInstallGuide() {
           </div>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase text-vs-primary transition-all hover:bg-white/[0.1]">
             <span className="text-white/50">Versão</span>
-            v1.0.0
+            v1.1.0
           </div>
         </div>
 
