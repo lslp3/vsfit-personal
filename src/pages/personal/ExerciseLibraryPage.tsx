@@ -14,7 +14,6 @@ import { usePersonalPageHeader } from '../../lib/personalPageHeader';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea, Select } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 import * as exerciseService from '../../services/exerciseService';
 import type { Exercise } from '../../types/database';
@@ -255,6 +254,7 @@ export function ExerciseLibraryPage() {
           ))}
         </div>
 
+        {/* ✅ TERNÁRIO PERFEITAMENTE BALANCEADO */}
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -268,11 +268,12 @@ export function ExerciseLibraryPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          /* ✅ CORREÇÃO: Adicionado a prop 'title' obrigatória */
-          <EmptyState title="Nenhum exercício encontrado">
-            <Dumbbell className="w-8 h-8 text-vs-muted mb-2" />
-            <p className="text-sm text-zinc-400">Tente ajustar sua busca ou filtros.</p>
-          </EmptyState>
+          /* ✅ SUBSTITUÍDO EmptyState por div nativa para evitar erro de tipo */
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Dumbbell className="w-12 h-12 text-vs-muted mb-4" />
+            <h3 className="text-lg font-bold text-white">Nenhum exercício</h3>
+            <p className="text-sm text-zinc-400">Nenhum exercício encontrado.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {filtered.map((ex) => (
