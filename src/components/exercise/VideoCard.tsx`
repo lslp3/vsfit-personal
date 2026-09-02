@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import type { Exercise } from '../../types/database';
+import { getExerciseDisplayName } from '../../lib/exerciseDisplay';
 import { cn } from '../../lib/utils';
 
 interface VideoCardProps {
@@ -86,7 +87,7 @@ export function VideoCard({ exercise, onPlay }: VideoCardProps) {
       {/* Content */}
       <div className="p-4 space-y-3">
         <h3 className="line-clamp-2 text-sm font-bold text-white leading-tight group-hover:text-vs-primary transition-colors">
-          {exercise.name}
+          {getExerciseDisplayName(exercise)}
         </h3>
         
         <div className="flex flex-wrap gap-2">

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Exercise } from '../../types/database';
+import { getExerciseDisplayName } from '../../lib/exerciseDisplay';
 import { cn } from '../../lib/utils';
 
 interface VideoPlayerModalProps {
@@ -43,7 +44,7 @@ export function VideoPlayerModal({ exercise, onClose }: VideoPlayerModalProps) {
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-white leading-tight">{exercise.name}</h2>
+              <h2 className="text-xl font-bold text-white leading-tight">{getExerciseDisplayName(exercise)}</h2>
               <div className="flex flex-wrap gap-2">
                 {exercise.muscle_group && (
                   <span className="rounded-[12px] bg-vs-primary/10 px-2 py-0.5 text-[10px] font-bold text-vs-primary border border-vs-primary/20">

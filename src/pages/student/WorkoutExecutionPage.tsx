@@ -281,7 +281,7 @@ export function WorkoutExecutionPage() {
           ? ` · ${nextDraft.reps} reps`
           : '')
       : nextExercise
-        ? `Próximo exercício: ${nextExercise.name}`
+        ? `Próximo exercício: ${nextExercise.name_pt?.trim() || nextExercise.name || 'Exercício'}`
         : 'Treino concluído 😀';
 
   return (

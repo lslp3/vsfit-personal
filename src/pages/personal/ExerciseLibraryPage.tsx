@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { usePersonalPageHeader } from '../../lib/personalPageHeader';
+import { getExerciseDisplayName } from '../../lib/exerciseDisplay';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea, Select } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -54,7 +55,7 @@ const ExerciseCard = memo(function ExerciseCard({
         {n.imageUrl ? (
           <img
             src={n.imageUrl}
-            alt={exercise.name}
+            alt={getExerciseDisplayName(exercise)}
             className="h-full w-full object-cover"
             loading="lazy"
           />
@@ -81,7 +82,7 @@ const ExerciseCard = memo(function ExerciseCard({
 
       <div className="p-3">
         <h3 className="line-clamp-2 text-[13px] font-black text-white leading-tight">
-          {exercise.name}
+          {getExerciseDisplayName(exercise)}
         </h3>
         <p className="mt-1 text-[11px] text-zinc-400">
           {n.category || n.muscleGroup}
@@ -165,6 +166,7 @@ export function ExerciseLibraryPage() {
       const n = normalizeEx(ex);
       const matchSearch =
         !search ||
+        getExerciseDisplayName(ex).toLowerCase().includes(search.toLowerCase()) ||
         ex.name.toLowerCase().includes(search.toLowerCase()) ||
         n.muscleGroup.toLowerCase().includes(search.toLowerCase()) ||
         n.category.toLowerCase().includes(search.toLowerCase());

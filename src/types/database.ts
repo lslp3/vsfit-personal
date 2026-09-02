@@ -155,6 +155,7 @@ export interface Exercise {
   id: string;
   trainer_id: string | null;
   name: string;
+  name_pt: string | null;
   muscle_group: string | null;
   category: string | null;
   equipment: string | null;
@@ -231,6 +232,7 @@ export interface WorkoutPlanExercise {
   technique_config: TechniqueConfig | JsonValue | null;
 
   name: string;
+  name_pt?: string | null;
   sets: string | null;
   reps: string | null;
   rest_seconds: number | null;

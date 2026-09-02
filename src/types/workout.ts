@@ -86,6 +86,7 @@ export interface CreateExerciseInWorkout {
   execution_order?: number | null;
 
   name: string;
+  name_pt?: string | null;
   sets: string;
   reps: string;
   rest_seconds?: number;

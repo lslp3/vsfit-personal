@@ -38,7 +38,8 @@ export function useExercises(filters: ExerciseFilters): UseExercisesReturn {
           .eq('is_public', true);
 
         if (filters.search) {
-          query = query.ilike('name', `%${filters.search}%`);
+          const searchPattern = `%${filters.search}%`;
+          query = query.or(`name.ilike.${searchPattern},name_pt.ilike.${searchPattern}`);
         }
 
         if (filters.muscleGroup) {

@@ -923,7 +923,7 @@ export function WorkoutBuilderPage() {
         execution_order:
           exercise.execution_order ??
           exercise.order_index,
-        name: exercise.name,
+        name: exercise.name_pt || exercise.name,
         sets: exercise.sets ?? '4',
         reps: exercise.reps ?? '10',
         rest_seconds: exercise.rest_seconds ?? 60,
@@ -1274,7 +1274,7 @@ export function WorkoutBuilderPage() {
       localId: createLocalId(),
       exercise_id: exercise.id,
       day_key: currentDay,
-      name: exercise.name,
+      name: exercise.name_pt || exercise.name,
       sets: values?.sets ?? '4',
       reps: values?.reps ?? '10',
       rest_seconds:

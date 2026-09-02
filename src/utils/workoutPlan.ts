@@ -55,7 +55,11 @@ export function getExerciseOrder(
 export function getExerciseName(
   exercise: WorkoutPlanExercise
 ) {
-  return exercise.name || 'Exercício';
+  return (
+    exercise.name_pt?.trim() ||
+    exercise.name?.trim() ||
+    'Exercício'
+  );
 }
 
 export function getExerciseSets(

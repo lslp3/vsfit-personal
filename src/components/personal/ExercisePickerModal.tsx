@@ -6,6 +6,7 @@ import { ExerciseMediaCard } from '../workout-execution/ExerciseMediaCard';
 import { Button } from '../ui/Button';
 import { Input, Textarea } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { getExerciseDisplayName } from '../../lib/exerciseDisplay';
 import { cn } from '../../lib/utils';
 import type { Exercise } from '../../types/database';
 import {
@@ -106,6 +107,9 @@ export function ExercisePickerModal({
       const name = String(
         exercise.name || ''
       ).toLowerCase();
+      const namePt = String(
+        exercise.name_pt || ''
+      ).toLowerCase();
       const category = String(
         exercise.category || ''
       ).toLowerCase();
@@ -115,6 +119,7 @@ export function ExercisePickerModal({
 
       return (
         name.includes(query) ||
+        namePt.includes(query) ||
         category.includes(query) ||
         muscle.includes(query)
       );
@@ -168,7 +173,7 @@ export function ExercisePickerModal({
       onClose={onClose}
       title={
         selected
-          ? selected.name
+          ? getExerciseDisplayName(selected)
           : showNew
             ? 'Criar exercício novo'
             : `Adicionar em ${dayName}`

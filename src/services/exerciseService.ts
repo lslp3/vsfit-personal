@@ -133,6 +133,7 @@ function scannedToExercise(ex: ScannedExercise, idx: number): Exercise {
     id: `scan-${idx}`,
     trainer_id: null,
     name: ex.name,
+    name_pt: null,
     muscle_group: ex.muscle_group,
     category: ex.category,
     equipment: ex.equipment || null,
